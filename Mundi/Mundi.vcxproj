@@ -261,6 +261,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Source\Editor\FbxLoader.cpp" />
     <ClCompile Include="Source\Runtime\AssetManagement\SkeletalMesh.cpp" />
+    <ClCompile Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.cpp" />
     <ClCompile Include="Source\Runtime\Core\Misc\VertexData.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimDataModel.cpp" />
@@ -660,6 +661,7 @@
     <ClInclude Include="Source\Editor\FbxLoader.h" />
     <ClInclude Include="Source\Editor\PlatformProcess.h" />
     <ClInclude Include="Source\Runtime\AssetManagement\SkeletalMesh.h" />
+    <ClInclude Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.h" />
     <ClInclude Include="Source\Runtime\Core\Misc\Delegates.h" />
     <ClInclude Include="Source\Runtime\Core\Misc\Hash.h" />
     <ClInclude Include="Source\Runtime\Core\Misc\PathUtils.h" />
