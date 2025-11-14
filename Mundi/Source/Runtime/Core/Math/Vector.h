@@ -62,6 +62,21 @@ namespace FMath
 	{
 		return A + (B - A) * Alpha;
 	}
+
+	static int32 RoundToInt(float F)
+	{
+		return (int32)roundf(F);
+	}
+
+	static int32 FloorToInt(float F)
+	{
+		return (int32)floorf(F);
+	}
+
+	static int32 CeilToInt(float F)
+	{
+		return (int32)ceilf(F);
+	}
 }
 // 각도를 -180 ~ 180 범위로 정규화 (모듈러 연산)
 inline float NormalizeAngleDeg(float angleDeg)
