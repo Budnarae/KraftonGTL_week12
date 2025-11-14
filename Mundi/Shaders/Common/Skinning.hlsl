@@ -13,7 +13,7 @@ float3 SkinPosition(float3 Position, uint4 BoneIndices, float4 BoneWeights)
     {
         if(BoneWeights[i] > 0.0f)
         {
-            Result += mul(float4(Position, 1.0f), BoneMatrices[BoneIndices[i]]).xyz;
+            Result += mul(float4(Position, 1.0f), BoneMatrices[BoneIndices[i]]).xyz * BoneWeights[i];;
         }
     }
     
