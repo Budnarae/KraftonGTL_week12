@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Archive.h"
+#include "Name.h"
 #include "Vector.h"
 
 // 직렬화 포맷 (FVertexDynamic와 역할이 달라서 분리됨)
@@ -373,6 +374,54 @@ struct FSkeletalMeshData
 
             // 6. CacheFilePath 로드
             Serialization::ReadString(Ar, Data.CacheFilePath);
+        }
+        return Ar;
+    }
+};
+
+struct FRawAnimSequenceTrack
+{
+    TArray<FVector> PosKeys; // 위치 키프레임
+    TArray<FVector4>   RotKeys; // 회전 키프레임 (Quaternion)
+    TArray<FVector> ScaleKeys; // 스케일 키프레임
+
+    friend FArchive& operator<<(FArchive& Ar, FRawAnimSequenceTrack& Track)
+    {
+        if (Ar.IsSaving())
+        {
+            Serialization::WriteArray(Ar, Track.PosKeys);
+            Serialization::WriteArray(Ar, Track.RotKeys);
+            Serialization::WriteArray(Ar, Track.ScaleKeys);
+        }
+        else if (Ar.IsLoading())
+        {
+            Serialization::ReadArray(Ar, Track.PosKeys);
+            Serialization::ReadArray(Ar, Track.RotKeys);
+            Serialization::ReadArray(Ar, Track.ScaleKeys);
+        }
+        return Ar;
+    }
+};
+
+struct FBoneAnimationTrack
+{
+    FName Name;                        // Bone 이름
+    FRawAnimSequenceTrack InternalTrack; // 실제 애니메이션 데이터
+
+    friend FArchive& operator<<(FArchive& Ar, FBoneAnimationTrack& Track)
+    {
+        if (Ar.IsSaving())
+        {
+            FString NameStr = Track.Name.ToString();
+            Serialization::WriteString(Ar, NameStr);
+            Ar << Track.InternalTrack;
+        }
+        else if (Ar.IsLoading())
+        {
+            FString NameStr;
+            Serialization::ReadString(Ar, NameStr);
+            Track.Name = FName(NameStr);
+            Ar << Track.InternalTrack;
         }
         return Ar;
     }
