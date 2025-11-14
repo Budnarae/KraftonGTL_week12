@@ -16,6 +16,7 @@
 #include "StaticMeshActor.h"
 //#include "SkeletalMeshActor.h"
 #include "ResourceManager.h"
+#include "SkinnedMeshComponent.h"
 #include <filesystem>
 
 extern float CLIENTWIDTH;
@@ -1927,6 +1928,20 @@ void SViewportWindow::RenderShowFlagDropdownMenu()
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip("그림자 안티 에일리어싱 기술 설정");
+		}
+
+		// GPU 스키닝 전역 토글
+		bool bGpuSkinning = RenderSettings.IsGpuSkinningEnabled();
+		if (ImGui::Checkbox("##GpuSkinning", &bGpuSkinning))
+		{
+			RenderSettings.SetGpuSkinningEnabled(bGpuSkinning);
+			USkinnedMeshComponent::SetGlobalGpuSkinningEnabled(bGpuSkinning);
+		}
+		ImGui::SameLine();
+		ImGui::Text(" GPU 스키닝");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("모든 스켈레탈 메시 컴포넌트에 GPU 스키닝을 일괄 적용합니다.");
 		}
 
 		ImGui::PopStyleColor(3);

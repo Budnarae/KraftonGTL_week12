@@ -40,6 +40,9 @@ public:
     void SetShadowAATechnique(EShadowAATechnique In) { ShadowAATechnique = In; }
     EShadowAATechnique GetShadowAATechnique() const { return ShadowAATechnique; }
 
+    void SetGpuSkinningEnabled(bool bEnable) { bGpuSkinningEnabled = bEnable; }
+    bool IsGpuSkinningEnabled() const { return bGpuSkinningEnabled; }
+
 private:
     EEngineShowFlags ShowFlags = EEngineShowFlags::SF_DefaultEnabled;
     EViewMode ViewMode = EViewMode::VMI_Lit_Phong;
@@ -55,4 +58,5 @@ private:
 
     // 그림자 안티 에일리어싱
     EShadowAATechnique ShadowAATechnique = EShadowAATechnique::PCF; // 기본값 PCF
+    bool bGpuSkinningEnabled = true;
 };

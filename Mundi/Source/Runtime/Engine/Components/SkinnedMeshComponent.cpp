@@ -2,12 +2,17 @@
 #include "SkinnedMeshComponent.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
+#include "Actor.h"
+#include "Level.h"
+
+bool USkinnedMeshComponent::bGlobalGpuSkinningEnabled = true;
 
 USkinnedMeshComponent::USkinnedMeshComponent() : SkeletalMesh(nullptr)
 {
    bCanEverTick = true;
    RHIDevice = GEngine.GetRHIDevice();
-   CurrentVertexStride = sizeof(FVertexDynamic);
+   IsGpuSkinning = bGlobalGpuSkinningEnabled;
+   CurrentVertexStride = IsGpuSkinning ? sizeof(FSkinnedVertex) : sizeof(FVertexDynamic);
 }
 
 USkinnedMeshComponent::~USkinnedMeshComponent()
@@ -388,6 +393,95 @@ void USkinnedMeshComponent::UpdateSkinningMatrices(const TArray<FMatrix>& InSkin
            RHIDevice->UpdateStructuredBuffer(BoneNormalMatrixBuffer, InSkinningNormalMatrices.GetData(), InSkinningNormalMatrices.Num() * sizeof(FMatrix));
        }
    }
+}
+
+bool USkinnedMeshComponent::IsGlobalGpuSkinningEnabled()
+{
+    return bGlobalGpuSkinningEnabled;
+}
+
+void USkinnedMeshComponent::SetGlobalGpuSkinningEnabled(bool bEnable)
+{
+    if (bGlobalGpuSkinningEnabled == bEnable)
+    {
+        return;
+    }
+
+    bGlobalGpuSkinningEnabled = bEnable;
+
+    if (!GWorld || !GWorld->GetLevel())
+    {
+        return;
+    }
+
+    const TArray<AActor*>& Actors = GWorld->GetLevel()->GetActors();
+    for (AActor* Actor : Actors)
+    {
+        if (!Actor)
+        {
+            continue;
+        }
+
+        const TArray<USceneComponent*>& Components = Actor->GetSceneComponents();
+        for (USceneComponent* SceneComponent : Components)
+        {
+            if (!SceneComponent)
+            {
+                continue;
+            }
+
+            if (auto* SkinnedComponent = dynamic_cast<USkinnedMeshComponent*>(SceneComponent))
+            {
+                SkinnedComponent->ApplyGpuSkinningMode(bEnable);
+            }
+        }
+    }
+}
+
+void USkinnedMeshComponent::ApplyGpuSkinningMode(bool bEnable)
+{
+    if (IsGpuSkinning == bEnable)
+    {
+        return;
+    }
+
+    IsGpuSkinning = bEnable;
+
+    if (VertexBuffer)
+    {
+        VertexBuffer->Release();
+        VertexBuffer = nullptr;
+    }
+
+    if (IsGpuSkinning)
+    {
+        InitializeGpuSkinningResources(SkeletalMesh ? SkeletalMesh->GetBoneCount() : 0);
+    }
+    else
+    {
+        ReleaseGpuSkinningResources();
+    }
+
+    CurrentVertexStride = IsGpuSkinning ? sizeof(FSkinnedVertex) : sizeof(FVertexDynamic);
+
+    if (SkeletalMesh && SkeletalMesh->GetSkeletalMeshData())
+    {
+        SkeletalMesh->CreateVertexBuffer(&VertexBuffer, IsGpuSkinning);
+    }
+
+    bSkinningMatricesDirty = true;
+
+    if (IsGpuSkinning)
+    {
+        if (!FinalSkinningMatrices.IsEmpty())
+        {
+            UpdateSkinningMatrices(FinalSkinningMatrices, FinalSkinningNormalMatrices);
+        }
+    }
+    else
+    {
+        PerformSkinning();
+    }
 }
 
 FVector USkinnedMeshComponent::SkinVertexPosition(const FSkinnedVertex& InVertex) const

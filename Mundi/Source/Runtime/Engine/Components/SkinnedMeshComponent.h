@@ -22,6 +22,9 @@ public:
     
 // Mesh Component Section
 public:
+    static void SetGlobalGpuSkinningEnabled(bool bEnable);
+    static bool IsGlobalGpuSkinningEnabled();
+
     void CollectMeshBatches(TArray<FMeshBatchElement>& OutMeshBatchElements, const FSceneView* View) override;
     
     FAABB GetWorldAABB() const override;
@@ -62,6 +65,7 @@ protected:
 private:
     void InitializeGpuSkinningResources(uint32 BoneCount);
     void ReleaseGpuSkinningResources();
+    void ApplyGpuSkinningMode(bool bEnable);
 
     FVector SkinVertexPosition(const FSkinnedVertex& InVertex) const;
     FVector SkinVertexNormal(const FSkinnedVertex& InVertex) const;
@@ -83,6 +87,8 @@ private:
      * @brief GPU 스키닝에서 진행할 때 필요한 Structured Buffer과 SRV
     */
     bool IsGpuSkinning = true;
+
+    static bool bGlobalGpuSkinningEnabled;
 
     D3D11RHI* RHIDevice = nullptr;
 
