@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SkinnedMeshComponent.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
@@ -62,7 +62,7 @@ void USkinnedMeshComponent::InitializeGpuSkinningResources(uint32 BoneCount)
         RHIDevice = GEngine.GetRHIDevice();
     }
 
-    ReleaseGpuSkinningResources();
+    // ReleaseGpuSkinningResources();
 
     if (!RHIDevice)
     {
