@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "UAnimationSequence.h"
+#include "AnimationSequence.h"
 
 IMPLEMENT_CLASS(UAnimationSequence)
 

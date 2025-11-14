@@ -72,6 +72,62 @@ protected:
     TArray<FMatrix> TempFinalSkinningNormalMatrices;
 
 
+// ====================================
+// Animation Playback (SingleNode Mode)
+// ====================================
+public:
+    /**
+     * @brief 애니메이션 재생 모드
+     */
+    enum class EAnimationMode : uint8
+    {
+        AnimationSingleNode,  ///< AnimInstance 없이 단일 애니메이션 재생
+        AnimationBlueprint    ///< AnimInstance를 통한 복잡한 애니메이션 로직 (블렌딩, 스테이트 머신)
+    };
+
+    /**
+     * @brief 애니메이션을 재생합니다 (편의 함수)
+     * @param NewAnimToPlay 재생할 애니메이션 에셋
+     * @param bLooping 루프 재생 여부
+     */
+    void PlayAnimation(class UAnimationAsset* NewAnimToPlay, bool bLooping = true);
+
+    /**
+     * @brief 현재 재생 중인 애니메이션을 정지하고 BindPose로 복원합니다
+     */
+    void StopAnimation();
+
+    /**
+     * @brief 애니메이션 모드를 설정합니다
+     * @param InAnimationMode SingleNode 또는 AnimationBlueprint
+     */
+    void SetAnimationMode(EAnimationMode InAnimationMode);
+
+    /**
+     * @brief 재생할 애니메이션을 설정합니다 (시간 초기화)
+     * @param NewAnimation 설정할 애니메이션 에셋
+     */
+    void SetAnimation(class UAnimationAsset* NewAnimation);
+
+    /**
+     * @brief 현재 설정된 애니메이션을 재생 시작합니다
+     * @param bLooping 루프 재생 여부
+     */
+    void Play(bool bLooping = true);
+
+private:
+    /**
+     * @brief 매 프레임 애니메이션 시간을 업데이트하고 본 포즈를 갱신합니다
+     * @param DeltaTime 프레임 델타 타임
+     */
+    void UpdateAnimation(float DeltaTime);
+
+    UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
+    EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;  // 현재 애니메이션 모드
+    float CurrentAnimationTime = 0.0f;                  // 현재 애니메이션 재생 시간 (초)
+    bool bIsPlaying = false;                            // 재생 중 여부
+    bool bIsLooping = true;                             // 루프 재생 여부
+
 // FOR TEST!!!
 private:
     float TestTime = 0;

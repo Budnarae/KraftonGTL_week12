@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "SkeletalMeshComponent.h"
+#include "Source/Runtime/Engine/Animation/AnimationAsset.h"
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
@@ -11,33 +12,28 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
     Super::TickComponent(DeltaTime);
-    //// FOR TEST ////
-    if (!SkeletalMesh) { return; } // 부모의 SkeletalMesh 확인
 
-    // 1. 테스트할 뼈 인덱스 (모델에 따라 1, 5, 10 등 바꿔보세요)
-    constexpr int32 TEST_BONE_INDEX = 2;
-    
-    // 3. 테스트 시간 누적
-    if (!bIsInitialized)
+    // 애니메이션 업데이트
+    if (AnimationMode == EAnimationMode::AnimationSingleNode && bIsPlaying && CurrentAnimation)
     {
-        TestBoneBasePose = CurrentLocalSpacePose[TEST_BONE_INDEX];
-        bIsInitialized = true;
+        UpdateAnimation(DeltaTime);
     }
-    TestTime += DeltaTime;
 
-    // 4. sin 함수를 이용해 -1 ~ +1 사이를 왕복하는 회전값 생성
-    // (예: Y축(Yaw)을 기준으로 1초에 1라디안(약 57도)씩 왕복)
-    float Angle = sinf(TestTime * 2.f);
-    FQuat TestRotation = FQuat::FromAxisAngle(FVector(1.f, 0.f, 0.f), Angle);
-    TestRotation.Normalize();
-
-    // 5. [중요] 원본 T-Pose에 테스트 회전을 누적
-    FTransform NewLocalPose = TestBoneBasePose;
-    NewLocalPose.Rotation = TestRotation * TestBoneBasePose.Rotation;
-    
-    // 6. [핵심] 기즈모가 하듯이, 뼈의 로컬 트랜스폼을 강제 설정
-    // (이 함수는 내부적으로 ForceRecomputePose()를 호출함)
-    SetBoneLocalTransform(TEST_BONE_INDEX, NewLocalPose);
+    //// FOR TEST ////
+    // if (!SkeletalMesh) { return; }
+    // constexpr int32 TEST_BONE_INDEX = 2;
+    // if (!bIsInitialized)
+    // {
+    //     TestBoneBasePose = CurrentLocalSpacePose[TEST_BONE_INDEX];
+    //     bIsInitialized = true;
+    // }
+    // TestTime += DeltaTime;
+    // float Angle = sinf(TestTime * 2.f);
+    // FQuat TestRotation = FQuat::FromAxisAngle(FVector(1.f, 0.f, 0.f), Angle);
+    // TestRotation.Normalize();
+    // FTransform NewLocalPose = TestBoneBasePose;
+    // NewLocalPose.Rotation = TestRotation * TestBoneBasePose.Rotation;
+    // SetBoneLocalTransform(TEST_BONE_INDEX, NewLocalPose);
     //// FOR TEST ////
 }
 
@@ -171,8 +167,84 @@ void USkeletalMeshComponent::UpdateFinalSkinningMatrices()
     {
         const FMatrix& InvBindPose = Skeleton.Bones[BoneIndex].InverseBindPose;
         const FMatrix ComponentPoseMatrix = CurrentComponentSpacePose[BoneIndex].ToMatrix();
-        
+
         TempFinalSkinningMatrices[BoneIndex] = InvBindPose * ComponentPoseMatrix;
         TempFinalSkinningNormalMatrices[BoneIndex] = TempFinalSkinningMatrices[BoneIndex].Inverse().Transpose();
     }
+}
+
+//Animation Helper
+void USkeletalMeshComponent::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
+{
+    SetAnimationMode(EAnimationMode::AnimationSingleNode);
+    SetAnimation(NewAnimToPlay);
+    Play(bLooping);
+}
+
+void USkeletalMeshComponent::StopAnimation()
+{
+    bIsPlaying = false;
+    CurrentAnimationTime = 0.0f;
+}
+
+void USkeletalMeshComponent::SetAnimationMode(EAnimationMode InAnimationMode)
+{
+    AnimationMode = InAnimationMode;
+}
+
+void USkeletalMeshComponent::SetAnimation(UAnimationAsset* NewAnimation)
+{
+    CurrentAnimation = NewAnimation;
+    CurrentAnimationTime = 0.0f;
+}
+
+void USkeletalMeshComponent::Play(bool bLooping)
+{
+    bIsPlaying = true;
+    bIsLooping = bLooping;
+    CurrentAnimationTime = 0.0f;
+}
+
+void USkeletalMeshComponent::UpdateAnimation(float DeltaTime)
+{
+    if (!CurrentAnimation || !SkeletalMesh)
+        return;
+
+    // 시간 업데이트
+    CurrentAnimationTime += DeltaTime;
+
+    // 루프 처리
+    float PlayLength = CurrentAnimation->GetPlayLength();
+    if (CurrentAnimationTime >= PlayLength)
+    {
+        if (bIsLooping)
+        {
+            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
+        }
+        else
+        {
+            CurrentAnimationTime = PlayLength;
+            bIsPlaying = false;
+        }
+    }
+
+    // 모든 본의 포즈 업데이트
+    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+    const int32 NumBones = Skeleton.Bones.Num();
+
+    for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
+    {
+        const FBone& Bone = Skeleton.Bones[BoneIndex];
+        FName BoneName = FName(Bone.Name);
+
+        // UAnimationAsset 인터페이스로 본 포즈 가져오기
+        // (AnimSequence, Montage 등 모든 타입 지원)
+        FTransform AnimPose = CurrentAnimation->GetBonePose(BoneName, CurrentAnimationTime);
+
+        // 로컬 포즈 업데이트
+        CurrentLocalSpacePose[BoneIndex] = AnimPose;
+    }
+
+    // 포즈 재계산
+    ForceRecomputePose();
 }
