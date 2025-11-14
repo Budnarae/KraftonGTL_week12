@@ -11,9 +11,9 @@ float3 SkinPosition(float3 Position, uint4 BoneIndices, float4 BoneWeights)
     [unroll]
     for (int i = 0; i < 4; i++)
     {
-        if(BoneWeights[i] > 0.0f)
+        if (BoneWeights[i] > 0.0f)
         {
-            Result += mul(float4(Position, 1.0f), BoneMatrices[BoneIndices[i]]).xyz * BoneWeights[i];;
+            Result += mul(float4(Position, 1.0f), transpose(BoneMatrices[BoneIndices[i]])).xyz * BoneWeights[i];;
         }
     }
     
@@ -29,7 +29,7 @@ float3 SkinNormal(float3 Normal, uint4 BoneIndices, float4 BoneWeights)
     {
         if (BoneWeights[i] > 0.0f)
         {
-            Result += mul(float4(Normal, 0.0f), BoneNormalMatrices[BoneIndices[i]]).xyz * BoneWeights[i];
+            Result += mul(float4(Normal, 0.0f), transpose(BoneNormalMatrices[BoneIndices[i]])).xyz * BoneWeights[i];
         }
     }
     
@@ -45,7 +45,7 @@ float4 SkinTangent(float4 Tangent, uint4 BoneIndices, float4 BoneWeights)
     {
         if (BoneWeights[i] > 0.0f)
         {
-            TangentDir += mul(float4(Tangent.xyz, 0.0f), BoneMatrices[BoneIndices[i]]).xyz * BoneWeights[i];
+            TangentDir += mul(float4(Tangent.xyz, 0.0f), transpose(BoneMatrices[BoneIndices[i]])).xyz * BoneWeights[i];
         }
     }
     
