@@ -57,11 +57,20 @@ void USkeletalMesh::ReleaseResources()
     }
 }
 
-void USkeletalMesh::CreateVertexBuffer(ID3D11Buffer** InVertexBuffer)
+void USkeletalMesh::CreateVertexBuffer(ID3D11Buffer** InVertexBuffer, bool bUseSkinningAttributes)
 {
     if (!Data) { return; }
     ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
-    HRESULT hr = D3D11RHI::CreateVertexBuffer<FVertexDynamic>(Device, Data->Vertices, InVertexBuffer);
+
+    HRESULT hr = E_FAIL;
+    if (bUseSkinningAttributes)
+    {
+        hr = D3D11RHI::CreateVertexBuffer<FSkinnedVertex>(Device, Data->Vertices, InVertexBuffer);
+    }
+    else
+    {
+        hr = D3D11RHI::CreateVertexBuffer<FVertexDynamic>(Device, Data->Vertices, InVertexBuffer);
+    }
     assert(SUCCEEDED(hr));
 }
 

@@ -1286,6 +1286,8 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 	ID3D11PixelShader* CurrentPixelShader = nullptr;
 	UMaterialInterface* CurrentMaterial = nullptr;
 	ID3D11ShaderResourceView* CurrentInstanceSRV = nullptr; // [추가] Instance SRV 캐시
+	ID3D11ShaderResourceView* CurrentVSBoneMatrixSRV = nullptr;
+	ID3D11ShaderResourceView* CurrentVSBoneNormalSRV = nullptr;
 	ID3D11Buffer* CurrentVertexBuffer = nullptr;
 	ID3D11Buffer* CurrentIndexBuffer = nullptr;
 	UINT CurrentVertexStride = 0;
@@ -1413,11 +1415,21 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 			CurrentTopology = Batch.PrimitiveTopology;
 		}
 
-		// 4. 오브젝트별 상수 버퍼 설정 (매번 변경)
+		// 4. GPU 스키닝 리소스 (VS t12, t13) 바인딩
+		if (Batch.BoneMatrixSRV != CurrentVSBoneMatrixSRV ||
+			Batch.BoneNormalMatrixSRV != CurrentVSBoneNormalSRV)
+		{
+			ID3D11ShaderResourceView* BoneSrvs[2] = { Batch.BoneMatrixSRV, Batch.BoneNormalMatrixSRV };
+			RHIDevice->GetDeviceContext()->VSSetShaderResources(12, 2, BoneSrvs);
+			CurrentVSBoneMatrixSRV = Batch.BoneMatrixSRV;
+			CurrentVSBoneNormalSRV = Batch.BoneNormalMatrixSRV;
+		}
+
+		// 5. 오브젝트별 상수 버퍼 설정 (매번 변경)
 		RHIDevice->SetAndUpdateConstantBuffer(ModelBufferType(Batch.WorldMatrix, Batch.WorldMatrix.InverseAffine().Transpose()));
 		RHIDevice->SetAndUpdateConstantBuffer(ColorBufferType(Batch.InstanceColor, Batch.ObjectID));
 
-		// 5. 드로우 콜 실행
+		// 6. 드로우 콜 실행
 		RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
 	}
 
@@ -1425,6 +1437,12 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 	if (bClearListAfterDraw)
 	{
 		InMeshBatches.Empty();
+	}
+
+	if (CurrentVSBoneMatrixSRV || CurrentVSBoneNormalSRV)
+	{
+		ID3D11ShaderResourceView* NullBoneSrvs[2] = { nullptr, nullptr };
+		RHIDevice->GetDeviceContext()->VSSetShaderResources(12, 2, NullBoneSrvs);
 	}
 }
 

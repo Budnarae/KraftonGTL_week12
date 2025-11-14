@@ -58,6 +58,10 @@ struct FMeshBatchElement
 	// 직접 텍스처를 지정해야 할 때 사용합니다.
 	ID3D11ShaderResourceView* InstanceShaderResourceView = nullptr;
 
+	// GPU 스키닝용 추가
+	ID3D11ShaderResourceView* BoneMatrixSRV = nullptr;
+	ID3D11ShaderResourceView* BoneNormalMatrixSRV = nullptr;
+
 	// 기즈모 하이라이트, 빌보드 틴트 등 인스턴스별 색상 오버라이드입니다.
 	// (기본값으로 흰색(1,1,1,1)을 설정하는 것이 일반적입니다.)
 	FLinearColor InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);

@@ -3,6 +3,8 @@
 #include "SkeletalMesh.h"
 #include "USkinnedMeshComponent.generated.h"
 
+class D3D11RHI;
+
 UCLASS(DisplayName="스킨드 메시 컴포넌트", Description="스켈레탈 메시를 렌더링하는 컴포넌트입니다")
 class USkinnedMeshComponent : public UMeshComponent
 {
@@ -58,6 +60,9 @@ protected:
     TArray<FNormalVertex> NormalSkinnedVertices;
 
 private:
+    void InitializeGpuSkinningResources(uint32 BoneCount);
+    void ReleaseGpuSkinningResources();
+
     FVector SkinVertexPosition(const FSkinnedVertex& InVertex) const;
     FVector SkinVertexNormal(const FSkinnedVertex& InVertex) const;
     FVector4 SkinVertexTangent(const FSkinnedVertex& InVertex) const;
@@ -67,10 +72,24 @@ private:
     */
     TArray<FMatrix> FinalSkinningMatrices;
     TArray<FMatrix> FinalSkinningNormalMatrices;
-    bool bSkinningMatricesDirty = true;
+    bool bSkinningMatricesDirty = true;    
     
     /**
      * @brief CPU 스키닝에서 진행하기 때문에, Component별로 VertexBuffer를 가지고 스키닝 업데이트를 진행해야함
     */
     ID3D11Buffer* VertexBuffer = nullptr;
+
+    /**
+     * @brief GPU 스키닝에서 진행할 때 필요한 Structured Buffer과 SRV
+    */
+    bool IsGpuSkinning = true;
+
+    D3D11RHI* RHIDevice = nullptr;
+
+    uint32 CurrentVertexStride = 0;
+
+    ID3D11Buffer* BoneMatrixBuffer = nullptr;
+    ID3D11Buffer* BoneNormalMatrixBuffer = nullptr;
+    ID3D11ShaderResourceView* BoneMatrixSRV = nullptr;
+    ID3D11ShaderResourceView* BoneNormalMatrixSRV = nullptr;    
 };

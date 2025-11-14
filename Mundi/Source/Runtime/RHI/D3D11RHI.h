@@ -74,6 +74,9 @@ public:
 	static HRESULT CreateVertexBufferImpl(ID3D11Device* Device, const std::vector<FNormalVertex>& SrcVertices, ID3D11Buffer** OutBuffer, D3D11_USAGE Usage, UINT CpuAccessFlags);
 
 	template<typename TVertex>
+	static HRESULT CreateVertexBufferImpl(ID3D11Device* Device, const std::vector<FSkinnedVertex>& SrcVertices,	ID3D11Buffer** OutBuffer, D3D11_USAGE Usage, UINT CpuAccessFlags);
+
+	template<typename TVertex>
 	static HRESULT CreateVertexBuffer(ID3D11Device* device, const std::vector<FNormalVertex>& srcVertices, ID3D11Buffer** outBuffer);
 	
 	template<typename TVertex>
@@ -365,6 +368,28 @@ inline HRESULT D3D11RHI::CreateVertexBufferImpl(ID3D11Device* Device, const std:
 	InitData.pSysMem = VertexArray.data();
 
 	return Device->CreateBuffer(&BufferDesc, &InitData, OutBuffer);
+}
+
+template<typename TVertex>
+inline HRESULT D3D11RHI::CreateVertexBufferImpl(ID3D11Device* Device, const std::vector<FSkinnedVertex>& SrcVertices, ID3D11Buffer** OutBuffer, D3D11_USAGE Usage, UINT CpuAccessFlags)
+{
+	// FSkinnedVertex 그대로 사용 (변환 없음)
+	D3D11_BUFFER_DESC BufferDesc = {};
+	BufferDesc.Usage = Usage;
+	BufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	BufferDesc.CPUAccessFlags = CpuAccessFlags;
+	BufferDesc.ByteWidth = static_cast<UINT>(sizeof(FSkinnedVertex) * SrcVertices.size());
+
+	D3D11_SUBRESOURCE_DATA InitData = {};
+	InitData.pSysMem = SrcVertices.data();
+
+	return Device->CreateBuffer(&BufferDesc, &InitData, OutBuffer);
+}
+
+template<>
+inline HRESULT D3D11RHI::CreateVertexBuffer<FSkinnedVertex>(ID3D11Device* device, const std::vector<FSkinnedVertex>& srcVertices, ID3D11Buffer** outBuffer)
+{
+	return CreateVertexBufferImpl<FSkinnedVertex>(device, srcVertices, outBuffer, D3D11_USAGE_DEFAULT/*GPU 읽기 전용*/, 0/*CPU 접근 불가*/);
 }
 
 template<>

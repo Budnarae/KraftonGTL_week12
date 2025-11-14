@@ -237,7 +237,7 @@ bool UShader::CompileVariantInternal(ID3D11Device* InDevice, const FString& InSh
 		{
 			Hr = InDevice->CreateVertexShader(OutVariant.VSBlob->GetBufferPointer(), OutVariant.VSBlob->GetBufferSize(), nullptr, &OutVariant.VertexShader);
 			assert(SUCCEEDED(Hr));
-			CreateInputLayout(InDevice, InShaderPath, OutVariant); // OutVariant 전달
+			CreateInputLayout(InDevice, InShaderPath, OutVariant, InMacros); // OutVariant 전달
 		}
 	}
 	else if (EndsWith(InShaderPath, "_PS.hlsl"))
@@ -258,7 +258,7 @@ bool UShader::CompileVariantInternal(ID3D11Device* InDevice, const FString& InSh
 		{
 			Hr = InDevice->CreateVertexShader(OutVariant.VSBlob->GetBufferPointer(), OutVariant.VSBlob->GetBufferSize(), nullptr, &OutVariant.VertexShader);
 			assert(SUCCEEDED(Hr));
-			CreateInputLayout(InDevice, InShaderPath, OutVariant);
+			CreateInputLayout(InDevice, InShaderPath, OutVariant, InMacros);
 		}
 		if (bPsCompiled)
 		{
@@ -310,9 +310,30 @@ ID3D11PixelShader* UShader::GetPixelShader(const TArray<FShaderMacro>& InMacros)
 	return nullptr;
 }
 
-void UShader::CreateInputLayout(ID3D11Device* Device, const FString& InShaderPath, FShaderVariant& InOutVariant)
+void UShader::CreateInputLayout(ID3D11Device* Device, const FString& InShaderPath, FShaderVariant& InOutVariant, const TArray<FShaderMacro>& InMacros)
 {
 	TArray<D3D11_INPUT_ELEMENT_DESC> descArray = UResourceManager::GetInstance().GetProperInputLayout(InShaderPath);
+	auto HasMacro = [&InMacros](const char* MacroName)
+	{
+		for (const FShaderMacro& Macro : InMacros)
+		{
+			if (Macro.Name.ToString() == MacroName)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	if (HasMacro("ENABLE_GPU_SKINNING"))
+	{
+		const UINT BoneIndexOffset = static_cast<UINT>(offsetof(FSkinnedVertex, BoneIndices));
+		const UINT BoneWeightOffset = static_cast<UINT>(offsetof(FSkinnedVertex, BoneWeights));
+
+		descArray.Add({ "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, BoneIndexOffset, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+		descArray.Add({ "BLENDWEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, BoneWeightOffset, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+	}
+
 	const D3D11_INPUT_ELEMENT_DESC* layout = descArray.data();
 	uint32 layoutCount = static_cast<uint32>(descArray.size());
 

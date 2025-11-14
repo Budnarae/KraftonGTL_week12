@@ -29,7 +29,7 @@ public:
 
     uint64 GetMeshGroupCount() const { return Data ? Data->GroupInfos.size() : 0; }
 
-    void CreateVertexBuffer(ID3D11Buffer** InVertexBuffer);
+    void CreateVertexBuffer(ID3D11Buffer** InVertexBuffer, bool bUseSkinningAttributes = false);
     void UpdateVertexBuffer(const TArray<FNormalVertex>& SkinnedVertices, ID3D11Buffer* InVertexBuffer);
     
 private:
