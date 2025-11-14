@@ -1,10 +1,13 @@
 ﻿#pragma once
+#include "ResourceBase.h"
 
-class UAnimDataModel;
-class UAnimationAsset : public UObject
+class UAnimationAsset : public UResourceBase
 {
+    DECLARE_CLASS(UAnimationAsset, UResourceBase)
 public:
+    UAnimationAsset() = default;
+    virtual ~UAnimationAsset() override = default;
 
-private:
-    UAnimDataModel* AnimationDataModel;
+    virtual void Load(const FString& InFilePath, ID3D11Device* InDevice) = 0;
+    virtual void Save(const FString& InFilePath) = 0;
 };

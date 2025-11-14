@@ -1,21 +1,20 @@
 ﻿#pragma once
 
-UCLASS()
-class UAnimationDataModel : public UResourceBase
+class UAnimDataModel : public UObject
 {
-    DECLARE_CLASS(UAnimationDataModel, UResourceBase)
+    DECLARE_CLASS(UAnimDataModel, UObject)
 public:
-    UAnimationDataModel();
-    virtual ~UAnimationDataModel() override;
+    UAnimDataModel() = default;
+    virtual ~UAnimDataModel() override;
 
-    void Load(const FString& InFilePath, ID3D11Device* InDevice);
-    
     virtual const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const {return BoneAnimationTracks;}
     float GetPlayLength() const { return PlayLength; }
     float GetFrameRate() const { return FrameRate; }
     int32 GetNumberOfFrames() const { return NumberOfFrames; }
     int32 GetNumberOfKeys() const { return NumberOfKeys; }
 
+    const FBoneAnimationTrack* FindTrackByBone(const FName& BoneName);
+    
     void Initialize(const TArray<FBoneAnimationTrack>& InBoneAnimationTracks,
                             float InPlayLength,
                             float InFrameRate)
