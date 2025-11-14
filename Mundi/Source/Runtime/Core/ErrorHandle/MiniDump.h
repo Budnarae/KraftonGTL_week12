@@ -10,8 +10,14 @@
 
 namespace ErrorHandle
 {
-    // 간단한 미니덤프 생성자
+    const static uint32 STR_BUFFER_SIZE = 1024;
+
+    // 가변 인자를 받아 포맷된 에러 메시지를 출력
+    void ShowCrashLog(const wchar_t* Format, ...);
+    // 미니덤프 생성자
     bool CreateMiniDump(EXCEPTION_POINTERS* pExceptionPointers);
+    // pdb와 연동하여 디버그 로그 출력
+    void PrintStackInfo(EXCEPTION_POINTERS* pExcpetionPointers);
     // UnHandled Exception Filter
-    LONG WINAPI MyUnhandledExceptionFilter(EXCEPTION_POINTERS* pExceptionInfo);
+    LONG WINAPI UnhandledExceptionFilter(EXCEPTION_POINTERS* pExceptionInfo);
 };

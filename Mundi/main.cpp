@@ -18,7 +18,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     _CrtSetBreakAlloc(0);
 #endif
     // 전역 예외 필터 등록: 프로그램에서 잡히지 않은 예외가 발생하면 호출된다.
-    SetUnhandledExceptionFilter(ErrorHandle::MyUnhandledExceptionFilter);
+    SetUnhandledExceptionFilter(ErrorHandle::UnhandledExceptionFilter);
 
     // 인위적 크래시 유발 - 테스트를 원할 시 이 블록의 주석을 해제하세요
     int* p = nullptr;
