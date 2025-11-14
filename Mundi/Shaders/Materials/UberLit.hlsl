@@ -96,6 +96,11 @@ SamplerState g_VSMSampler : register(s3);
 #include "../Common/LightingBuffers.hlsl"
 #include "../Common/LightingCommon.hlsl"
 
+// -- GPU Skinning 여부 ---
+#ifdef ENABLE_GPU_SKINNING
+    #include "../Common/Skinning.hlsl"
+#endif
+
 // --- 셰이더 입출력 구조체 ---
 struct VS_INPUT
 {
@@ -104,6 +109,11 @@ struct VS_INPUT
     float2 TexCoord : TEXCOORD0;
     float4 Tangent : TANGENT0;
     float4 Color : COLOR;
+    
+#ifdef ENABLE_GPU_SKINNING
+    uint4 BoneIndices : BLENDINDICES;
+    float4 BoneWeights : BLENDWEIGHT;
+#endif
 };
 
 struct PS_INPUT
@@ -128,9 +138,19 @@ struct PS_OUTPUT
 PS_INPUT mainVS(VS_INPUT Input)
 {
     PS_INPUT Out;
+   
+#ifdef ENABLE_GPU_SKINNING
+    float3 LocalPos = SkinPosition(Input.Position, Input.BoneIndices, Input.BoneWeights);
+    float3 LocalNormal = SkinNormal(Input.Normal, Input.BoneIndices, Input.BoneWeights);
+    float4 LocalTangent = SkinTangent(Input.Tangent, Input.BoneIndices, Input.BoneWeights);
+#else
+    float3 LocalPos = Input.Position;
+    float3 LocalNormal = Input.Normal;
+    float4 LocalTangent = Input.Tangent;
+#endif
     
     // 위치를 월드 공간으로 먼저 변환
-    float4 worldPos = mul(float4(Input.Position, 1.0f), WorldMatrix);
+    float4 worldPos = mul(float4(LocalPos, 1.0f), WorldMatrix);
     Out.WorldPos = worldPos.xyz;
     
     // 뷰 공간으로 변환
@@ -142,10 +162,10 @@ PS_INPUT mainVS(VS_INPUT Input)
     // 노멀을 월드 공간으로 변환
     // 비균등 스케일에서 올바른 노멀 변환을 위해 WorldInverseTranspose 사용
     // 노멀 벡터는 transpose(inverse(WorldMatrix))로 변환됨
-    float3 worldNormal = normalize(mul(Input.Normal, (float3x3) WorldInverseTranspose));
+    float3 worldNormal = normalize(mul(LocalNormal, (float3x3) WorldInverseTranspose));
     Out.Normal = worldNormal;
-    float3 Tangent = normalize(mul(Input.Tangent.xyz, (float3x3) WorldMatrix));
-    float3 BiTangent = normalize(cross(Tangent, worldNormal) * Input.Tangent.w);
+    float3 Tangent = normalize(mul(LocalTangent.xyz, (float3x3) WorldMatrix));
+    float3 BiTangent = normalize(cross(Tangent, worldNormal) * LocalTangent.w);
     row_major float3x3 TBN;
     TBN._m00_m01_m02 = Tangent;
     TBN._m10_m11_m12 = BiTangent;
