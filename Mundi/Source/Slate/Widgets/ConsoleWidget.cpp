@@ -4,11 +4,14 @@
 #include "GlobalConsole.h"
 #include "StatsOverlayD2D.h"
 #include "USlateManager.h"
+#include "Source/Runtime/Core/ErrorHandle/ErrorHandle.h"
+
 #include <windows.h>
 #include <cstdarg>
 #include <cctype>
 #include <cstring>
 #include <algorithm>
+
 
 using std::max;
 using std::min;
@@ -43,6 +46,7 @@ void UConsoleWidget::Initialize()
 	HelpCommandList.Add("HISTORY");
 	HelpCommandList.Add("CLEAR");
 	HelpCommandList.Add("CLASSIFY");
+	HelpCommandList.Add("CauseCrash");
 	HelpCommandList.Add("STAT");
 	HelpCommandList.Add("STAT FPS");
 	HelpCommandList.Add("STAT MEMORY");
@@ -303,6 +307,10 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 	else if (Stricmp(command_line, "CLASSIFY") == 0)
 	{
 		AddLog("This is a classification test command.");
+	}
+	else if (Stricmp(command_line, "CauseCrash") == 0)
+	{
+		ErrorHandle::CauseCrash();
 	}
 	else if (Stricmp(command_line, "STAT") == 0)
 	{

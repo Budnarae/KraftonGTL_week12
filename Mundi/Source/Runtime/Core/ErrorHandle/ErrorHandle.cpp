@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "MiniDump.h"
+#include "ErrorHandle.h"
 
 // 가변 인자를 받아 포맷된 에러 메시지를 출력
 void ErrorHandle::ShowCrashLog(const wchar_t* Format, ...)
@@ -276,4 +276,16 @@ LONG WINAPI ErrorHandle::UnhandledExceptionFilter(EXCEPTION_POINTERS* pException
 
     // 처리 후 기본 동작으로 전달 (프로세스 종료)
     return EXCEPTION_EXECUTE_HANDLER;
+}
+
+void ErrorHandle::CauseCrash()
+{
+    ULONG_PTR args[1] = { (ULONG_PTR)L"Crashed by CauseCrash console command." };
+		
+    RaiseException(
+        EXCEPTION_NONCONTINUABLE_EXCEPTION,
+        EXCEPTION_NONCONTINUABLE,
+        1,
+        args
+    );
 }
