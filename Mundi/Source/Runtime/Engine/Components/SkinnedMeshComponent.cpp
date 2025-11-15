@@ -134,6 +134,15 @@ void USkinnedMeshComponent::DuplicateSubObjects()
        CurrentVertexStride = IsGpuSkinning ? sizeof(FSkinnedVertex) : sizeof(FVertexDynamic);
        InitializeGpuSkinningResources(SkeletalMesh->GetBoneCount());
    }
+
+    if (IsGpuSkinning && !FinalSkinningMatrices.IsEmpty())
+    {
+        UpdateSkinningMatrices(FinalSkinningMatrices, FinalSkinningNormalMatrices);
+    }
+    else if (!IsGpuSkinning)
+    {
+        PerformSkinning();
+    }
 }
 
 void USkinnedMeshComponent::CollectMeshBatches(TArray<FMeshBatchElement>& OutMeshBatchElements, const FSceneView* View)
