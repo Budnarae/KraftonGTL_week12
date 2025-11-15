@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SkeletalMeshComponent.h"
 #include "../Animation/AnimInstance.h"
 #include "Source/Runtime/Engine/Animation/AnimationAsset.h"
@@ -7,14 +7,24 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 {
     // 테스트용 기본 메시 설정
     SetSkeletalMesh(GDataDir + "/Test.fbx");
+}
 
-    UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>(); 
+void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
+{
+    Super::OnRegister(InWorld);
+
+    const bool bNeedsAnimInstance = !AnimInstance || AnimInstance->GetSkeletalComponent() != this;
+    if (!bNeedsAnimInstance)
+    {
+        return;
+    }
+
+    UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
     SetAnimInstanceClass(NewAnimInstanceClass);
 
-    // FOR TEST
     if (AnimInstance)
     {
-        AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_Anim0"), true);   
+        AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_Anim0"), true);
     }
 }
 
@@ -82,10 +92,9 @@ void USkeletalMeshComponent::SetAnimInstanceClass(UAnimInstance* NewAnimInstance
     }
     
     AnimInstance = NewAnimInstanceClass;
-    AnimInstance->SetSkeletalComponent(this);
     if (AnimInstance)
     {
-       
+        AnimInstance->SetSkeletalComponent(this);
     }
 }
 
@@ -179,3 +188,4 @@ FTransform USkeletalMeshComponent::GetBoneWorldTransform(int32 BoneIndex)
     }
     return GetWorldTransform(); // 실패 시 컴포넌트 위치 반환
 }
+

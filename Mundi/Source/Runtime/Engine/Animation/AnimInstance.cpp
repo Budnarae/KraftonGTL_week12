@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
@@ -73,6 +73,11 @@ void UAnimInstance::Play(bool bLooping)
 //Animation Helper
 void UAnimInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
 {
+    if (!OwnerSkeletalComp || !NewAnimToPlay)
+    {
+        return;
+    }
+
     OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationSingleNode);
     SetAnimation(NewAnimToPlay);
     Play(bLooping);
@@ -83,3 +88,4 @@ void UAnimInstance::StopAnimation()
     bIsPlaying = false;
     CurrentAnimationTime = 0.0f;
 }
+

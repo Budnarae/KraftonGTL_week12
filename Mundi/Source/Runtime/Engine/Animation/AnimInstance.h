@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 class USkeletalMeshComponent;
 class UAnimInstance : public UObject
@@ -7,6 +7,7 @@ public:
     DECLARE_CLASS(UAnimInstance, UObject)
     
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent) { OwnerSkeletalComp = InSkeletalMeshComponent; }
+    USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
     
     /**
      * @brief 매 프레임 애니메이션 시간을 업데이트하고 본 포즈를 갱신합니다
@@ -72,3 +73,4 @@ private:
     bool bIsInitialized = false;
     FTransform TestBoneBasePose;
 };
+
