@@ -56,7 +56,7 @@ public:
     bool IsPlaying() const { return bIsPlaying; }
     
 private:
-    USkeletalMeshComponent* OwnerSkeletalComp;
+    USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
     
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
     

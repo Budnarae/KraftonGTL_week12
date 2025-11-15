@@ -94,7 +94,7 @@ protected:
     /** 
      * @brief 애니메이션 로직 담당
      */
-    UAnimInstance* AnimInstance;
+    UAnimInstance* AnimInstance = nullptr;
     EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;
 
 // ====================================

@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
+#include "AnimationAsset.h"
+
 void UAnimInstance::UpdateAnimation(float DeltaTime)
 {
     if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)
