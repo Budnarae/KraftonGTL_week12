@@ -3,9 +3,8 @@
 
 IMPLEMENT_CLASS(UAnimationSequence)
 
-UAnimationSequence::UAnimationSequence()
-{
-}
+UAnimationSequence::UAnimationSequence() {}
+UAnimationSequence::UAnimationSequence(const FSkeleton& InSkeleton) : Skeleton(InSkeleton) {}
 
 UAnimationSequence::~UAnimationSequence()
 {
@@ -125,4 +124,34 @@ int32 UAnimationSequence::GetNumberOfFrames() const
 int32 UAnimationSequence::GetNumberOfKeys() const
 {
     return DataModel ? DataModel->GetNumberOfKeys() : 0;
+}
+
+void UAnimationSequence::Update(const FAnimationUpdateContext& Context)
+{
+    if (!DataModel) return;
+
+    CurrentAnimationTime += Context.DeltaTime;
+    float PlayLength = GetPlayLength();
+
+    if (CurrentAnimationTime >= PlayLength)
+    {
+        if (bIsLooping)
+            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
+        else
+            CurrentAnimationTime = PlayLength;
+    }
+}
+
+void UAnimationSequence::Evaluate(FPoseContext& Output)
+{
+    const int32 NumBones = Skeleton.Bones.Num();
+
+    Output.EvaluatedPoses.clear();
+    Output.EvaluatedPoses.resize(NumBones);
+    
+    for (int32 BoneIndex = 0; BoneIndex < NumBones; BoneIndex++)
+    {
+        const FBone& Bone = Skeleton.Bones[BoneIndex];
+        Output.EvaluatedPoses[BoneIndex] = GetBonePose(Bone.Name, CurrentAnimationTime);
+    }
 }

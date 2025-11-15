@@ -89,3 +89,20 @@ void UAnimInstance::StopAnimation()
     CurrentAnimationTime = 0.0f;
 }
 
+void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
+{
+    FAnimationUpdateContext Context;
+    Context.DeltaTime = DeltaSeconds;
+
+    ASM.Update(Context);
+}
+
+void UAnimInstance::EvaluateAnimation()
+{
+    ASM.Evaluate(CurrentPose);
+}
+
+FPoseContext& UAnimInstance::GetCurrentPose()
+{
+    return CurrentPose;
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AnimationStateMachine.h"
+
 class USkeletalMeshComponent;
 class UAnimInstance : public UObject
 {
@@ -39,6 +41,21 @@ public:
      */
     void StopAnimation();
 
+    /* Unreal Style */
+    
+    // - 게임 로직 기준 Update (Tick) 단계
+    // - 파라미터 업데이트, Transition 조건에 필요한 변수 갱신
+    //
+    // 원본 Unreal에서는 virtual로 되어있음.
+    // 아마 추후 SingleNodeInstance 구현과 관련이 있는 듯 함
+    void NativeUpdateAnimation(float DeltaSeconds);
+
+    // - AnimGraph Evaluate 단계 수행
+    // - 최종 Pose 계산
+    void EvaluateAnimation();
+
+    FPoseContext& GetCurrentPose();
+
 // ====================================
 // State Query
 // ====================================
@@ -60,12 +77,15 @@ public:
     
 private:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
-    
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
     
     float CurrentAnimationTime = 0.0f;                  // 현재 애니메이션 재생 시간 (초)
     bool bIsPlaying = false;                            // 재생 중 여부
     bool bIsLooping = true;                             // 루프 재생 여부
+
+    // 현재 포즈를 저장할 변수
+    FPoseContext CurrentPose;
+    UAnimationStateMachine ASM;
     
 // FOR TEST!!!
 private:

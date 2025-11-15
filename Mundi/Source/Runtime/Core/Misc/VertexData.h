@@ -2,6 +2,7 @@
 #include "Archive.h"
 #include "Name.h"
 #include "Vector.h"
+#include "Delegates.h"
 
 // 직렬화 포맷 (FVertexDynamic와 역할이 달라서 분리됨)
 struct FNormalVertex
@@ -477,23 +478,22 @@ struct FPoseContext
 struct FAnimStateTransition
 {
     // ------------------------------------------------------------------------
-    // Transition 이름
-    // 디버깅용, 유니크 식별자
-    // ------------------------------------------------------------------------
-    FName TransitionName;
-
-    // ------------------------------------------------------------------------
     // Source / Target State
     // Transition 출발 상태와 도착 상태 포인터
     // ------------------------------------------------------------------------
     struct FAnimState* SourceState;
     struct FAnimState* TargetState;
 
+    uint32 Index{};   // Animation State Machine에서의 Index
+
     // ------------------------------------------------------------------------
     // Transition 조건
     // true가 되면 Transition 발동
     // ------------------------------------------------------------------------
-    std::function<bool()> CanEnterTransition;
+    bool CanEnterTransition = false;
+
+    // Delegete에서 TriggerTransition를 제거하기 위해 필요
+    FDelegateHandle DelegateHandle;
     
     /* 이하는 나중에 해제하여 사용할 것 */
     
@@ -501,7 +501,21 @@ struct FAnimStateTransition
     // Transition 블렌딩 시간
     // ActiveState Pose -> TargetState Pose로 자연스럽게 Blend
     // ------------------------------------------------------------------------
-    //float BlendTime = 0.2f;
+    float BlendTime = 0.2f;
+
+    // ------------------------------------------------------------------------
+    // Transition 블렌딩 경과 시간
+    // 경과 시간이 지나면 다음 State로 전환
+    // ------------------------------------------------------------------------
+    float BlendTimeElapsed = 0.f;
+
+    // ------------------------------------------------------------------------
+    // Transition 진행 상태
+    // BlendAlpha: 0.0 = SourcePose, 1.0 = TargetPose
+    // ------------------------------------------------------------------------
+    float BlendAlpha = 0.0f;
+
+    bool bIsBlending = false;
 
     // ------------------------------------------------------------------------
     // Interrupt 옵션
@@ -510,30 +524,49 @@ struct FAnimStateTransition
     //bool bCanInterrupt = true;
 
     // ------------------------------------------------------------------------
-    // Transition 진행 상태
-    // BlendAlpha: 0.0 = SourcePose, 1.0 = TargetPose
+    // Blending 시작 시 파라미터 세팅
     // ------------------------------------------------------------------------
-    //float BlendAlpha = 0.0f;
-
-public:
-
+    void StartBlending()
+    {
+        bIsBlending = true;
+        BlendTimeElapsed = 0.f;
+        BlendAlpha = 0.f;
+    }
+    
+    // TODO: Blending Helper 함수 구현 이후 Update Evaluate 구현
     // ------------------------------------------------------------------------
     // Update
     // DeltaTime 기반으로 BlendAlpha 계산
     // Condition 평가 후 Blend 진행
     // ------------------------------------------------------------------------
-    void Update(float DeltaTime)
+    void Update(const FAnimationUpdateContext& Context)
     {
-        return;
+        BlendTimeElapsed += Context.DeltaTime;
+        if (BlendTimeElapsed >= BlendTime)
+        {
+            bIsBlending = false;
+            return;
+        }
+
+        // 블렌딩은 추후 구현
     }
 
     // ------------------------------------------------------------------------
     // Evaluate
     // SourcePose와 TargetPose를 BlendAlpha 기준으로 보간
     // ------------------------------------------------------------------------
-    FPoseContext Evaluate(const FPoseContext& SourcePose, const FPoseContext& TargetPose)
+    void Evaluate(FPoseContext& Output)
     {
-        return FPoseContext{};
+        // 블렌딩은 추후 구현
+    }
+
+    // ------------------------------------------------------------------------
+    // Transition Condition Converter
+    // 특정 조건을 충족하면 외부의 delegate에서 호출
+    // ------------------------------------------------------------------------
+    void TriggerTransition()
+    {
+        CanEnterTransition = true;
     }
 };
 
@@ -541,6 +574,7 @@ class UAnimationSequence;
 
 struct FAnimState
 {
-    UAnimationSequence* AnimSequence;
-    TArray<FAnimStateTransition> Transitions;
+    FName Name{};
+    uint32 Index{};   // Animation State Machine에서의 Index
+    TArray<UAnimationSequence*> AnimSequences;
 };

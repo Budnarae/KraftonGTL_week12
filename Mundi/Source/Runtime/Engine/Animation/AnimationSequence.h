@@ -7,6 +7,7 @@ class UAnimationSequence : public UAnimationAsset
     DECLARE_CLASS(UAnimationSequence, UAnimationAsset)
 public:
     UAnimationSequence();
+    UAnimationSequence(const FSkeleton& InSkeleton);
     virtual ~UAnimationSequence() override;
 
     // ====================================
@@ -49,6 +50,14 @@ public:
      */
     int32 GetNumberOfKeys() const;
 
+    void Update(const FAnimationUpdateContext& Context);
+    void Evaluate(FPoseContext& Output);
+
 private:
     UAnimDataModel* DataModel = nullptr;
+    FSkeleton Skeleton{};
+
+    /* 재생 관련 */
+    float CurrentAnimationTime = 0.0f;  // 현재 애니메이션 재생 시간
+    bool bIsLooping = false;
 };
