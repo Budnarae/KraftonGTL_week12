@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AnimationStateMachine.h"
+#include "AnimNodeTransitionRule.h"
 
 class USkeletalMeshComponent;
 class UAnimInstance : public UObject
@@ -57,6 +58,48 @@ public:
     FPoseContext& GetCurrentPose();
 
 // ====================================
+// Transition Rule Management
+// ====================================
+public:
+    /**
+     * @brief Transition Rule 추가
+     * @param InRule 추가할 Rule 객체
+     */
+    void AddTransitionRule(UAnimNodeTransitionRule* InRule);
+
+    /**
+     * @brief 이름으로 Transition Rule 제거
+     * @param RuleName 제거할 Rule 이름
+     */
+    void RemoveTransitionRule(const FName& RuleName);
+
+    /**
+     * @brief 이름으로 Transition Rule 찾기
+     * @param RuleName 찾을 Rule 이름
+     * @return Rule 객체, 없으면 nullptr
+     */
+    UAnimNodeTransitionRule* FindTransitionRuleByName(const FName& RuleName) const;
+
+    /**
+     * @brief 모든 Transition Rule 반환
+     */
+    const TArray<UAnimNodeTransitionRule*>& GetAllTransitionRules() const { return TransitionRules; }
+
+// ====================================
+// Animation State Machine Setup
+// ====================================
+public:
+    /**
+     * @brief Animation State Machine 초기화 (테스트용)
+     */
+    void InitializeAnimationStateMachine();
+
+    /**
+     * @brief Animation State Machine 접근자
+     */
+    UAnimationStateMachine* GetAnimationStateMachine() { return &ASM; }
+
+// ====================================
 // State Query
 // ====================================
 public:
@@ -78,7 +121,7 @@ public:
 private:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
-    
+
     float CurrentAnimationTime = 0.0f;                  // 현재 애니메이션 재생 시간 (초)
     bool bIsPlaying = false;                            // 재생 중 여부
     bool bIsLooping = true;                             // 루프 재생 여부
@@ -86,7 +129,14 @@ private:
     // 현재 포즈를 저장할 변수
     FPoseContext CurrentPose;
     UAnimationStateMachine ASM;
-    
+
+    // Transition Rule 관리
+    TArray<UAnimNodeTransitionRule*> TransitionRules;
+
+    // 10초마다 애니메이션 전환 타이머
+    float TransitionTimer = 0.0f;
+    const float TransitionInterval = 10.0f;
+
 // FOR TEST!!!
 private:
     float TestTime = 0;
