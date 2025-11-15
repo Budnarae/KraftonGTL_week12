@@ -116,21 +116,31 @@ void UContentBrowserWindow::RefreshCurrentDirectory()
 
 	try
 	{
-		// 오른쪽 패널에는 파일만 표시 (폴더는 왼쪽 트리에 표시됨)
-		if (bShowFiles)
+		// 메모리 재할당 방지를 위해 reserve
+		DisplayedFiles.reserve(100);
+
+		// 오른쪽 패널에 폴더와 파일 모두 표시
+		for (const auto& entry : std::filesystem::directory_iterator(CurrentPath))
 		{
-			for (const auto& entry : std::filesystem::directory_iterator(CurrentPath))
+			if (entry.is_directory())
 			{
-				if (entry.is_regular_file())
-				{
-					FFileEntry FileEntry;
-					FileEntry.Path = entry.path();
-					FileEntry.FileName = FString(entry.path().filename().string().c_str());
-					FileEntry.Extension = FString(entry.path().extension().string().c_str());
-					FileEntry.bIsDirectory = false;
-					FileEntry.FileSize = std::filesystem::file_size(entry.path());
-					DisplayedFiles.push_back(FileEntry);
-				}
+				FFileEntry FileEntry;
+				FileEntry.Path = entry.path();
+				FileEntry.FileName = entry.path().filename().string();
+				FileEntry.Extension = "";
+				FileEntry.bIsDirectory = true;
+				FileEntry.FileSize = 0;
+				DisplayedFiles.emplace_back(FileEntry);
+			}
+			else if (bShowFiles && entry.is_regular_file())
+			{
+				FFileEntry FileEntry;
+				FileEntry.Path = entry.path();
+				FileEntry.FileName = entry.path().filename().string();
+				FileEntry.Extension = entry.path().extension().string();
+				FileEntry.bIsDirectory = false;
+				FileEntry.FileSize = std::filesystem::file_size(entry.path());
+				DisplayedFiles.emplace_back(FileEntry);
 			}
 		}
 
@@ -223,6 +233,19 @@ void UContentBrowserWindow::RenderFolderTreeNode(const std::filesystem::path& Fo
 			}
 		}
 
+		// 현재 경로가 이 폴더의 하위 경로인지 확인 (자동 펼치기 위함)
+		bool isAncestorOfCurrent = false;
+		std::filesystem::path tempPath = CurrentPath;
+		while (tempPath != tempPath.root_path() && tempPath.has_parent_path())
+		{
+			if (tempPath == FolderPath)
+			{
+				isAncestorOfCurrent = true;
+				break;
+			}
+			tempPath = tempPath.parent_path();
+		}
+
 		// 트리 노드 플래그
 		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 		if (!hasSubFolders)
@@ -232,6 +255,11 @@ void UContentBrowserWindow::RenderFolderTreeNode(const std::filesystem::path& Fo
 		if (FolderPath == CurrentPath)
 		{
 			flags |= ImGuiTreeNodeFlags_Selected;
+		}
+		// 현재 경로의 부모 폴더는 자동으로 펼치기
+		if (isAncestorOfCurrent || FolderPath == CurrentPath)
+		{
+			flags |= ImGuiTreeNodeFlags_DefaultOpen;
 		}
 
 		// 트리 노드 렌더링
@@ -348,7 +376,6 @@ void UContentBrowserWindow::RenderFileItem(FFileEntry& Entry, int Index, bool bU
 	// 썸네일 사용 여부에 따라 다른 방식으로 렌더링
 	if (bUseThumbnails)
 	{
-		// 썸네일 가져오기
 		std::string pathStr = Entry.Path.string();
 		ID3D11ShaderResourceView* thumbnailSRV = FThumbnailManager::GetInstance().GetThumbnail(pathStr);
 
@@ -431,8 +458,16 @@ void UContentBrowserWindow::HandleDragSource(FFileEntry& Entry)
 
 void UContentBrowserWindow::HandleDoubleClick(FFileEntry& Entry)
 {
+	// 폴더인 경우 해당 폴더로 이동
+	if (Entry.bIsDirectory)
+	{
+		NavigateToPath(Entry.Path);
+		UE_LOG("ContentBrowserWindow: Navigated to folder: %s", Entry.Path.filename().string().c_str());
+		return;
+	}
+
 	// 파일인 경우 뷰어 열기
-	UE_LOG("ContentBrowserWindow: Double-clicked file: %s", Entry.FileName.c_str());
+	UE_LOG("ContentBrowserWindow: Double-clicked file: %s", Entry.Path.filename().string().c_str());
 
 	// 확장자에 따라 적절한 뷰어 열기
 	std::string ext = Entry.Extension.c_str();
