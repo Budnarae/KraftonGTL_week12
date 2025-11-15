@@ -37,8 +37,8 @@ UContentBrowserWindow::UContentBrowserWindow()
 	Config.UpdateWindowFlags();
 	SetConfig(Config);
 
-	// 루트 경로를 Data 폴더로 설정
-	RootPath = std::filesystem::current_path() / "Data";
+	// 루트 경로를 Content 폴더로 설정
+	RootPath = std::filesystem::current_path() / GContentDir;
 	CurrentPath = RootPath;
 }
 
@@ -210,7 +210,7 @@ void UContentBrowserWindow::RenderFolderTreeNode(const std::filesystem::path& Fo
 	try
 	{
 		// 폴더 이름 가져오기
-		FString folderName = FolderPath == RootPath ? "Data" : FString(FolderPath.filename().string().c_str());
+		FString folderName = FolderPath == RootPath ? "Content" : FString(FolderPath.filename().string().c_str());
 
 		// 하위 폴더 확인
 		bool hasSubFolders = false;
@@ -438,22 +438,32 @@ void UContentBrowserWindow::HandleDoubleClick(FFileEntry& Entry)
 	std::string ext = Entry.Extension.c_str();
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-	if (ext == ".fbx")
+	if (ext == ".uskel" || ext == ".fbx")
 	{
 		// SkeletalMeshViewer 열기
 		std::string pathStr = Entry.Path.string();
 		USlateManager::GetInstance().OpenSkeletalMeshViewerWithFile(pathStr.c_str());
 		UE_LOG("Opening SkeletalMeshViewer for: %s", Entry.FileName.c_str());
 	}
-	else if (ext == ".obj")
+	else if (ext == ".umesh" || ext == ".obj")
 	{
 		// StaticMesh는 현재 전용 뷰어가 없으므로 로그만 출력
 		UE_LOG("StaticMesh file clicked: %s (No dedicated viewer yet)", Entry.FileName.c_str());
 	}
-	else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds" || ext == ".tga")
+	else if (ext == ".utxt" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds" || ext == ".tga")
 	{
 		// 텍스처 뷰어 (향후 구현)
 		UE_LOG("Texture file clicked: %s (Texture viewer not implemented yet)", Entry.FileName.c_str());
+	}
+	else if (ext == ".uanim")
+	{
+		// 애니메이션 파일 (향후 구현)
+		UE_LOG("Animation file clicked: %s (Animation viewer not implemented yet)", Entry.FileName.c_str());
+	}
+	else if (ext == ".umat")
+	{
+		// 머티리얼 파일 (향후 구현)
+		UE_LOG("Material file clicked: %s (Material editor not implemented yet)", Entry.FileName.c_str());
 	}
 	else
 	{
@@ -476,11 +486,15 @@ const char* UContentBrowserWindow::GetIconForFile(const FFileEntry& Entry) const
 	{
 		return "[PREFAB]";
 	}
-	else if (ext == ".fbx" || ext == ".obj")
+	else if (ext == ".uskel" || ext == ".umesh" || ext == ".fbx" || ext == ".obj")
 	{
 		return "[MESH]";
 	}
-	else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds" || ext == ".tga")
+	else if (ext == ".uanim")
+	{
+		return "[ANIM]";
+	}
+	else if (ext == ".utxt" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds" || ext == ".tga")
 	{
 		return "[IMG]";
 	}
@@ -492,7 +506,7 @@ const char* UContentBrowserWindow::GetIconForFile(const FFileEntry& Entry) const
 	{
 		return "[SND]";
 	}
-	else if (ext == ".mat")
+	else if (ext == ".umat" || ext == ".mat")
 	{
 		return "[MAT]";
 	}

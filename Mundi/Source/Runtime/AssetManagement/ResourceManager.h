@@ -146,14 +146,15 @@ bool UResourceManager::Add(const FString& InFilePath, UObject* InObject)
 {
 	// 경로 정규화: 모든 백슬래시를 슬래시로 변환하여 일관성 유지
 	FString NormalizedPath = NormalizePath(InFilePath);
+	FString PathWithoutExt = RemoveExtension(NormalizedPath);
 
 	uint8 typeIndex = static_cast<uint8>(GetResourceType<T>());
-	auto iter = Resources[typeIndex].find(NormalizedPath);
+	auto iter = Resources[typeIndex].find(PathWithoutExt);
 	if (iter == Resources[typeIndex].end())
 	{
-		Resources[typeIndex][NormalizedPath] = static_cast<T*>(InObject);
-		// 경로 저장
-		Resources[typeIndex][NormalizedPath]->SetFilePath(NormalizedPath);
+		Resources[typeIndex][PathWithoutExt] = static_cast<T*>(InObject);
+		// 원본 경로 저장 (확장자 포함)
+		Resources[typeIndex][PathWithoutExt]->SetFilePath(NormalizedPath);
 		return true;
 	}
 	return false;
@@ -164,9 +165,10 @@ T* UResourceManager::Get(const FString& InFilePath)
 {
 	// 경로 정규화: 모든 백슬래시를 슬래시로 변환하여 일관성 유지
 	FString NormalizedPath = NormalizePath(InFilePath);
+	FString PathWithoutExt = RemoveExtension(NormalizedPath);
 
 	uint8 typeIndex = static_cast<uint8>(GetResourceType<T>());
-	auto iter = Resources[typeIndex].find(NormalizedPath);
+	auto iter = Resources[typeIndex].find(PathWithoutExt);
 	if (iter != Resources[typeIndex].end())
 	{
 		return static_cast<T*>(iter->second);
@@ -185,9 +187,10 @@ inline T* UResourceManager::Load(const FString& InFilePath, Args && ...InArgs)
 
 	// 경로 정규화: 모든 백슬래시를 슬래시로 변환하여 일관성 유지
 	FString NormalizedPath = NormalizePath(InFilePath);
+	FString PathWithoutExt = RemoveExtension(NormalizedPath);
 
 	uint8 typeIndex = static_cast<uint8>(GetResourceType<T>());
-	auto iter = Resources[typeIndex].find(NormalizedPath);
+	auto iter = Resources[typeIndex].find(PathWithoutExt);
 	if (iter != Resources[typeIndex].end())
 	{
 		if constexpr (std::is_same_v<T, UShader>)
@@ -204,7 +207,7 @@ inline T* UResourceManager::Load(const FString& InFilePath, Args && ...InArgs)
 		T* Resource = NewObject<T>();
 		Resource->Load(NormalizedPath, Device, std::forward<Args>(InArgs)...);
 		Resource->SetFilePath(NormalizedPath);
-		Resources[typeIndex][NormalizedPath] = Resource;
+		Resources[typeIndex][PathWithoutExt] = Resource;
 		return Resource;
 	}
 }
@@ -214,10 +217,11 @@ inline UShader* UResourceManager::Load(const FString& InFilePath, TArray<FShader
 {
 	// 경로 정규화: 모든 백슬래시를 슬래시로 변환하여 일관성 유지
 	FString NormalizedPath = NormalizePath(InFilePath);
+	FString PathWithoutExt = RemoveExtension(NormalizedPath);
 
 	// 2. 경로 리소스 맵 검색
 	uint8 typeIndex = static_cast<uint8>(EResourceType::Shader);
-	auto iter = Resources[typeIndex].find(NormalizedPath);
+	auto iter = Resources[typeIndex].find(PathWithoutExt);
 	if (iter != Resources[typeIndex].end())
 	{
 		UShader* Shader = static_cast<UShader*>((*iter).second);
@@ -234,7 +238,7 @@ inline UShader* UResourceManager::Load(const FString& InFilePath, TArray<FShader
 		Resource->Load(NormalizedPath, Device, InMacros);
 		Resource->SetFilePath(NormalizedPath); // 이름 저장
 
-		Resources[typeIndex][NormalizedPath] = Resource;
+		Resources[typeIndex][PathWithoutExt] = Resource;
 		return Resource;
 	}
 }

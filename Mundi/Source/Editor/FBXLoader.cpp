@@ -1007,7 +1007,7 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 	// FBX 파일명 추출 (확장자 제거)
 	std::filesystem::path FbxFilePath(FbxPath);
 	FString BaseName = FbxFilePath.stem().string();  // 확장자 없는 파일명
-	FString CacheDir = ConvertDataPathToCachePath(NormalizePath(FbxPath));
+	FString CacheDir = ConvertDataPathToResourcePath(NormalizePath(FbxPath));
 	std::filesystem::path CacheDirPath(CacheDir);
 	CacheDirPath = CacheDirPath.parent_path();
 
@@ -1095,8 +1095,8 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 			BoneTracks.Add(Track);
 		}
 
-		// 개별 애니메이션 파일로 저장: BaseName_AnimName.anim.bin
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".anim.bin")).string();
+		// 개별 애니메이션 파일로 저장: BaseName_AnimName.uanim
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".uanim")).string();
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
@@ -1222,8 +1222,13 @@ FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
 {
 #ifdef USE_OBJ_CACHE
 	FString NormalizedPath = NormalizePath(FbxPath);
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString BinPathFileName = CachePathStr + ".bin";
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+
+	// 확장자 제거 (예: "Content/Models/character.fbx" → "Content/Models/character")
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
+	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
 	// 캐시 유효성 검사
 	bool bShouldRegenerate = true;
@@ -1270,7 +1275,7 @@ FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
 				if (MeshData->GroupInfos[Index].InitialMaterialName.empty())
 					continue;
 				const FString& MaterialName = MeshData->GroupInfos[Index].InitialMaterialName;
-				const FString& MaterialFilePath = ConvertDataPathToCachePath(MaterialName + ".mat.bin");
+				const FString& MaterialFilePath = ConvertDataPathToResourcePath(MaterialName + ".umat");
 				FWindowsBinReader MatReader(MaterialFilePath);
 				if (!MatReader.IsOpen())
 				{
@@ -1311,8 +1316,13 @@ void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& Fbx
 		return;
 
 	FString NormalizedPath = NormalizePath(FbxPath);
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString BinPathFileName = CachePathStr + ".bin";
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+
+	// 확장자 제거 (예: "Content/Models/character.fbx" → "Content/Models/character")
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
+	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
 	// 캐시를 저장할 디렉토리가 없으면 생성
 	std::filesystem::path CacheFileDirPath(BinPathFileName);
@@ -1330,7 +1340,7 @@ void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& Fbx
 		// 머티리얼 저장
 		for (FMaterialInfo& MaterialInfo : MaterialInfos)
 		{
-			const FString MaterialFilePath = ConvertDataPathToCachePath(MaterialInfo.MaterialName + ".mat.bin");
+			const FString MaterialFilePath = ConvertDataPathToResourcePath(MaterialInfo.MaterialName + ".umat");
 			FWindowsBinWriter MatWriter(MaterialFilePath);
 			Serialization::WriteAsset<FMaterialInfo>(MatWriter, &MaterialInfo);
 			MatWriter.Close();
@@ -1360,7 +1370,7 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 	FString BaseName = FbxFilePath.stem().string();
 
 	// 캐시 디렉토리 경로
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
 	std::filesystem::path CacheDirPath(CachePathStr);
 	CacheDirPath = CacheDirPath.parent_path();
 
@@ -1371,8 +1381,8 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 
 	try
 	{
-		// BaseName_*.anim.bin 패턴의 모든 파일 찾기
-		FString AnimFilePattern = BaseName + "_*.anim.bin";
+		// BaseName_*.uanim 패턴의 모든 파일 찾기
+		FString AnimFilePattern = BaseName + "_*.uanim";
 		auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
 
 		for (const auto& Entry : std::filesystem::directory_iterator(CacheDirPath))
@@ -1382,8 +1392,8 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 
 			FString FileName = Entry.path().filename().string();
 
-			// 패턴 매칭: BaseName_로 시작하고 .anim.bin으로 끝나는지 확인
-			if (FileName.find(BaseName + "_") == 0 && FileName.ends_with(".anim.bin"))
+			// 패턴 매칭: BaseName_로 시작하고 .uanim으로 끝나는지 확인
+			if (FileName.find(BaseName + "_") == 0 && FileName.ends_with(".uanim"))
 			{
 				// 캐시 파일이 FBX보다 최신인지 확인
 				auto animTime = std::filesystem::last_write_time(Entry.path());
@@ -1420,7 +1430,7 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 
 				Animations.Add(AnimSequence);
 
-				// 파일명에서 AnimName 추출: "BaseName_AnimName.anim.bin" → "AnimName"
+				// 파일명에서 AnimName 추출: "BaseName_AnimName.uanim" → "AnimName"
 				FString AnimNameWithExt = Entry.path().stem().string(); // "BaseName_AnimName.anim"
 				FString AnimNameFull = std::filesystem::path(AnimNameWithExt).stem().string(); // "BaseName_AnimName"
 				FString Prefix = BaseName + "_";
