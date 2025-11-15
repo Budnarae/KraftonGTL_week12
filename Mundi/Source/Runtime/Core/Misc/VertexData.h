@@ -479,10 +479,10 @@ struct FAnimStateTransition
 {
     // ------------------------------------------------------------------------
     // Source / Target State
-    // Transition 출발 상태와 도착 상태 포인터
+    // Transition 출발 상태와 도착 상태 인덱스
     // ------------------------------------------------------------------------
-    struct FAnimState* SourceState;
-    struct FAnimState* TargetState;
+    int32 SourceStateIndex = -1;
+    int32 TargetStateIndex = -1;
 
     uint32 Index{};   // Animation State Machine에서의 Index
 

@@ -47,19 +47,25 @@ public:
 
 private:
     inline const static int32 INVALID = -1;
-    
+
     // 현재 활성화된 State Index
     int32 CurrentStateIndex = INVALID;
     int32 CurrentTransitionIndex = INVALID;
 
     // Transition 중인지 여부
     bool bIsInTransition = false;
-    
+
     // State 리스트 (각 State는 내부에 AnimNode 포함)
     TArray<FAnimState> States;
 
     // Transition 리스트
     TArray<FAnimStateTransition> Transitions;
+
+    /**
+     * @brief 이름으로 State의 인덱스를 찾습니다
+     * @return State 인덱스, 찾지 못하면 -1
+     */
+    int32 FindStateIndexByName(const FName& StateName) const;
 
     /* 아래 요소가 필요하다면 주석을 해제하세요 */
     

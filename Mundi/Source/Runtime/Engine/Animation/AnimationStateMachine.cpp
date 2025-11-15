@@ -5,6 +5,16 @@
 #include "Keyboard.h"
 
 IMPLEMENT_CLASS(UAnimationStateMachine)
+
+int32 UAnimationStateMachine::FindStateIndexByName(const FName& StateName) const
+{
+    for (int32 i = 0; i < States.Num(); i++)
+    {
+        if (States[i].Name == StateName)
+            return i;
+    }
+    return -1;
+}
 /**
  * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)
  * @return 없음
@@ -14,10 +24,19 @@ void UAnimationStateMachine::Update(const FAnimationUpdateContext& Context)
     if (bIsInTransition)
     {
         Transitions[CurrentTransitionIndex].Update(Context);
+
+        // Transition 완료 처리
+        if (!Transitions[CurrentTransitionIndex].bIsBlending)
+        {
+            CurrentStateIndex = Transitions[CurrentTransitionIndex].TargetStateIndex;
+            bIsInTransition = false;
+            Transitions[CurrentTransitionIndex].CanEnterTransition = false;
+        }
     }
     else
     {
         if (CurrentStateIndex == INVALID ||
+            CurrentStateIndex >= States.Num() ||
             States[CurrentStateIndex].AnimSequences.empty())
             return;
 
@@ -25,7 +44,7 @@ void UAnimationStateMachine::Update(const FAnimationUpdateContext& Context)
         for (int32 i = 0; i < Transitions.Num(); i++)
         {
             if (Transitions[i].CanEnterTransition &&
-                Transitions[i].SourceState == &States[CurrentStateIndex])
+                Transitions[i].SourceStateIndex == CurrentStateIndex)
             {
                 CurrentTransitionIndex = i;
                 bIsInTransition = true;
@@ -52,7 +71,9 @@ void UAnimationStateMachine::Evaluate(FPoseContext& Output)
     }
     else
     {
-        if (CurrentStateIndex == INVALID || States[CurrentStateIndex].AnimSequences.empty())
+        if (CurrentStateIndex == INVALID ||
+            CurrentStateIndex >= States.Num() ||
+            States[CurrentStateIndex].AnimSequences.empty())
             return;
         // 블렌드 구현 이전까지 State의 첫번째 Sequence를 우선하여 적용합니다.
         UAnimationSequence* SequenceToEvaluate = States[CurrentStateIndex].AnimSequences.front();
@@ -68,19 +89,19 @@ void UAnimationStateMachine::AddState(const FAnimState& NewState)
 {
     // 비어있는 그래프였다면 유효한 그래프로 전환
     if (CurrentStateIndex == INVALID) CurrentStateIndex = 0;
-    
+
     // 같은 이름을 가진 State가 있으면 거부
     for (const FAnimState& State : States)
     {
         if (State.Name == NewState.Name)
         {
-            UE_LOG("[UAnimationStateMachine::AddNewState] Warning : A state with the same name already exists in the Animation State Machine.");
+            UE_LOG("[UAnimationStateMachine::AddState] Warning : A state with the same name already exists in the Animation State Machine.");
             return;
         }
     }
 
     States.push_back(NewState);
-    States.back().Index = States.Num();
+    States.back().Index = States.Num() - 1;
 }
 
 /**
@@ -89,23 +110,27 @@ void UAnimationStateMachine::AddState(const FAnimState& NewState)
  */
 void UAnimationStateMachine::DeleteState(const FName& TargetName)
 {
-    // 해당 State에 대한 Transition이 있다면 먼저 제거한다.
-    for (auto It = Transitions.begin(); It != Transitions.end(); It++)
+    // 삭제할 State의 인덱스 찾기
+    int32 TargetStateIndex = FindStateIndexByName(TargetName);
+
+    if (TargetStateIndex == -1)
     {
-        if (It->SourceState->Name == TargetName ||
-            It->TargetState->Name == TargetName)
-            Transitions.erase(It);
+        UE_LOG("[UAnimationStateMachine::DeleteState] Warning : The state you are trying to delete does not exist in the state machine.");
+        return;
     }
-    
-    for (auto It = States.begin(); It != States.end(); It++)
+
+    // 해당 State를 참조하는 Transition들을 먼저 제거
+    for (int32 i = Transitions.Num() - 1; i >= 0; i--)
     {
-        if (It->Name == TargetName)
+        if (Transitions[i].SourceStateIndex == TargetStateIndex ||
+            Transitions[i].TargetStateIndex == TargetStateIndex)
         {
-            States.erase(It);
-            return;
+            Transitions.erase(Transitions.begin() + i);
         }
     }
-    UE_LOG("[UAnimationStateMachine::AddNewState] Warning : The state you are trying to delete does not exist in the state machine.");
+
+    // State 제거
+    States.erase(States.begin() + TargetStateIndex);
 }
 
 /**
@@ -119,35 +144,30 @@ void UAnimationStateMachine::AddTransition
     const FAnimStateTransition& NewTransition
 )
 {
+    // 입력된 이름과 일치하는 State 인덱스 찾기
+    int32 SourceStateIndex = FindStateIndexByName(SourceName);
+    int32 TargetStateIndex = FindStateIndexByName(TargetName);
+
+    if (SourceStateIndex == -1 || TargetStateIndex == -1)
+    {
+        UE_LOG("[UAnimationStateMachine::AddTransition] Warning : The target state you are trying to connect with this transition does not exist in the state machine.");
+        return;
+    }
+
     // 이미 같은 노드에 대한 연결이 있으면 거부
     for (const FAnimStateTransition& Transition : Transitions)
     {
-        if (Transition.SourceState->Name == SourceName &&
-            Transition.TargetState->Name == TargetName)
+        if (Transition.SourceStateIndex == SourceStateIndex &&
+            Transition.TargetStateIndex == TargetStateIndex)
         {
-            UE_LOG("[UAnimationStateMachine::AddNewState] Warning : A transition to the same target state already exists in the state machine.");
+            UE_LOG("[UAnimationStateMachine::AddTransition] Warning : A transition to the same target state already exists in the state machine.");
             return;
         }
     }
 
-    FAnimState* SourceState = nullptr;
-    FAnimState* TargetState = nullptr;
-    // 입력된 이름과 일치하는 State가 없으면 거부
-    for (FAnimState& State : States)
-    {
-        if (State.Name == SourceName) SourceState = &State;
-        if (State.Name == TargetName) TargetState = &State;
-    }
-
-    if (!SourceState || !TargetState)
-    {
-        UE_LOG("[UAnimationStateMachine::AddNewState] Warning : The target state you are trying to connect with this transition does not exist in the state machine.");
-        return;
-    }
-
     Transitions.push_back(NewTransition);
-    Transitions.back().SourceState = SourceState;
-    Transitions.back().TargetState = TargetState;
+    Transitions.back().SourceStateIndex = SourceStateIndex;
+    Transitions.back().TargetStateIndex = TargetStateIndex;
 }
 
 /**
@@ -156,10 +176,20 @@ void UAnimationStateMachine::AddTransition
  */
 void UAnimationStateMachine::DeleteTransition(const FName& SourceName, const FName& TargetName)
 {
+    // 입력된 이름과 일치하는 State 인덱스 찾기
+    int32 SourceStateIndex = FindStateIndexByName(SourceName);
+    int32 TargetStateIndex = FindStateIndexByName(TargetName);
+
+    if (SourceStateIndex == -1 || TargetStateIndex == -1)
+    {
+        UE_LOG("[UAnimationStateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
+        return;
+    }
+
     for (auto It = Transitions.begin(); It != Transitions.end(); It++)
     {
-        if (It->SourceState->Name == SourceName &&
-            It->TargetState->Name == TargetName)
+        if (It->SourceStateIndex == SourceStateIndex &&
+            It->TargetStateIndex == TargetStateIndex)
         {
             Transitions.erase(It);
             return;
