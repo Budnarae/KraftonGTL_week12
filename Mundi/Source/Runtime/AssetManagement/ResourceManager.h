@@ -15,6 +15,7 @@
 #include "ObjectFactory.h"
 #include "Object.h"
 #include "SkeletalMesh.h"
+#include "Source/Runtime/Engine/Animation/AnimationAsset.h"
 // ... 기타 include ...
 
 // --- 전방 선언 ---
@@ -259,7 +260,7 @@ EResourceType UResourceManager::GetResourceType()
     	return EResourceType::Material;
 	if (T::StaticClass() == USound::StaticClass())
 		return EResourceType::Sound;
-	if (T::StaticClass() == USound::StaticClass())
+	if (T::StaticClass()->IsChildOf(UAnimationAsset::StaticClass()))
 		return EResourceType::Animation;
 
     return EResourceType::None;

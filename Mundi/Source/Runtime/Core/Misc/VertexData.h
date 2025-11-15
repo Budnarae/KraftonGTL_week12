@@ -426,3 +426,20 @@ struct FBoneAnimationTrack
         return Ar;
     }
 };
+
+namespace Serialization {
+    template<>
+    inline void WriteArray<FBoneAnimationTrack>(FArchive& Ar, const TArray<FBoneAnimationTrack>& Arr) {
+        uint32 Count = (uint32)Arr.size();
+        Ar << Count;
+        for (auto& Track : Arr) Ar << const_cast<FBoneAnimationTrack&>(Track);
+    }
+
+    template<>
+    inline void ReadArray<FBoneAnimationTrack>(FArchive& Ar, TArray<FBoneAnimationTrack>& Arr) {
+        uint32 Count;
+        Ar << Count;
+        Arr.resize(Count);
+        for (auto& Track : Arr) Ar << Track;
+    }
+}
