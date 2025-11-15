@@ -263,6 +263,7 @@
     <ClCompile Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.cpp" />
     <ClCompile Include="Source\Runtime\Core\Misc\VertexData.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationAsset.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimBlend.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimDataModel.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationSequence.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimInstance.cpp" />
@@ -668,6 +669,7 @@
     <ClInclude Include="Source\Runtime\Core\Object\FireballActor.h" />
     <ClInclude Include="Source\Runtime\Core\Object\Property.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationAsset.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimBlend.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimDataModel.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationSequence.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
@@ -880,7 +882,8 @@
     <ClInclude Include="ThirdParty\Lua\include\lualib.h" />
     <ClInclude Include="Generated\UMeshComponent.generated.h" />
     <ClInclude Include="Generated\ASkinnedMeshActor.generated.h" />
-    <ClInclude Include="Generated\ASkeletalMeshActor.generated.h" /></ItemGroup>
+    <ClInclude Include="Generated\ASkeletalMeshActor.generated.h" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />

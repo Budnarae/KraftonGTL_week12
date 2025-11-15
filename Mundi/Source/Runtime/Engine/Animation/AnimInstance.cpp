@@ -1,16 +1,73 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
+#include "AnimBlend.h"
+#include "AnimationSequence.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
+void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
+{
+    TestSeqA = &InSeqA;
+    TestSeqB = &InSeqB;
+    IsBlending = true;
+}
+
+void UAnimInstance::UpdateBlendedAnimation(float DeltaTime)
+{
+    if (!OwnerSkeletalComp || !TestSeqA || !TestSeqB || !IsBlending)
+    {
+        return;
+    }
+
+    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
+    {
+        return;
+    }
+
+    // 1) 시간 업데이트
+    CurrentAnimationTime += DeltaTime;
+    float PlayLength = CurrentAnimation->GetPlayLength();
+
+    if (CurrentAnimationTime >= PlayLength)
+    {
+        if (bIsLooping)
+        {
+            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
+        }
+        else
+        {
+            CurrentAnimationTime = PlayLength;
+            bIsPlaying = false;
+        }
+    }
+
+    // 2) 모든 본의 로컬 포즈 업데이트
+    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+    const int32 NumBones = Skeleton.Bones.Num();
+
+    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+    LocalPose.SetNum(NumBones);
+    
+    FPoseContext TSeqA, TSeqB, Out;
+    TestSeqA->EvaluatePose(DeltaTime, Skeleton, TSeqA);
+    TestSeqB->EvaluatePose(DeltaTime, Skeleton, TSeqB);
+
+    FAnimBlend::Blend(TSeqA, TSeqB, Alpha, Out);
+    
+    LocalPose = Out.EvaluatedPoses;
+
+    // 포즈 재계산 => 스키닝
+    OwnerSkeletalComp->ForceRecomputePose();
+}
+
 void UAnimInstance::UpdateAnimation(float DeltaTime)
 {
     if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)
     {
         return;
     }
-        
 
     USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
     if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())

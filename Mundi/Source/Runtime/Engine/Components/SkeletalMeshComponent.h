@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "SkinnedMeshComponent.h"
 #include "USkeletalMeshComponent.generated.h"
 
@@ -121,5 +121,10 @@ protected:
      * @brief CPU 스키닝에 전달할 최종 노말 스키닝 행렬
      */
     TArray<FMatrix> TempFinalSkinningNormalMatrices;
+
+    // FOR TEST
+    UAnimationSequence* SeqA = nullptr;
+    UAnimationSequence* SeqB = nullptr;
 };
+
 

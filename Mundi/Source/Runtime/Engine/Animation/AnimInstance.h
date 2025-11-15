@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 class USkeletalMeshComponent;
+class UAnimationSequence;
 class UAnimInstance : public UObject
 {
 public:
@@ -8,7 +9,17 @@ public:
     
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent) { OwnerSkeletalComp = InSkeletalMeshComponent; }
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
-    
+
+    // FOR TEST
+    void PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB);
+    void UpdateBlendedAnimation(float DeltaTime);
+    UPROPERTY(EditAnywhere, Category = "Animation", Range = "0, 1")
+    float Alpha = 0.0;
+
+    UAnimationSequence* TestSeqA = nullptr;
+    UAnimationSequence* TestSeqB = nullptr;
+    bool IsBlending = false;
+
     /**
      * @brief 매 프레임 애니메이션 시간을 업데이트하고 본 포즈를 갱신합니다
      * @param DeltaTime 프레임 델타 타임
