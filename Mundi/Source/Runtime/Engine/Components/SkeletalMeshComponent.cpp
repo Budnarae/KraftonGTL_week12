@@ -12,7 +12,10 @@ USkeletalMeshComponent::USkeletalMeshComponent()
     SetAnimInstanceClass(NewAnimInstanceClass);
 
     // FOR TEST
-    AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_Anim0"), true);
+    if (AnimInstance)
+    {
+        AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_Anim0"), true);   
+    }
 }
 
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
@@ -79,9 +82,10 @@ void USkeletalMeshComponent::SetAnimInstanceClass(UAnimInstance* NewAnimInstance
     }
     
     AnimInstance = NewAnimInstanceClass;
+    AnimInstance->SetSkeletalComponent(this);
     if (AnimInstance)
     {
-        AnimInstance->SetSkeletalComponent(this);
+       
     }
 }
 

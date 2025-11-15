@@ -3,6 +3,7 @@
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
 
+IMPLEMENT_CLASS(UAnimInstance)
 void UAnimInstance::UpdateAnimation(float DeltaTime)
 {
     if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)

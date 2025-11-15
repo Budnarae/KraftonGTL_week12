@@ -4,6 +4,8 @@ class USkeletalMeshComponent;
 class UAnimInstance : public UObject
 {
 public:
+    DECLARE_CLASS(UAnimInstance, UObject)
+    
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent) { OwnerSkeletalComp = InSkeletalMeshComponent; }
     
     /**
