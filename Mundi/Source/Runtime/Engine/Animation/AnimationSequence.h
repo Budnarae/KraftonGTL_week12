@@ -30,6 +30,11 @@ public:
     UAnimDataModel* GetDataModel() const { return DataModel; }
 
     /**
+     * @brief DataModel을 설정합니다
+     */
+    void SetDataModel(UAnimDataModel* InDataModel) { DataModel = InDataModel; }
+
+    /**
      * @brief 모든 본의 애니메이션 트랙을 반환합니다
      */
     const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const;
