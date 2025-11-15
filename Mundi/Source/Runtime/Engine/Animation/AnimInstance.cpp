@@ -6,6 +6,18 @@
 #include "AnimationSequence.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
+UAnimInstance::~UAnimInstance()
+{
+    if (TestSeqA)
+    {
+        TestSeqA = nullptr;
+    }
+    if (TestSeqB)
+    {
+        TestSeqB = nullptr;
+    }
+}
+
 void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
 {
     TestSeqA = &InSeqA;
@@ -13,7 +25,7 @@ void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationS
     IsBlending = true;
 }
 
-void UAnimInstance::UpdateBlendedAnimation(float DeltaTime)
+void UAnimInstance::UpdateBlendedAnimation(float DeltaTime, float Alpha)
 {
     if (!OwnerSkeletalComp || !TestSeqA || !TestSeqB || !IsBlending)
     {
@@ -26,22 +38,7 @@ void UAnimInstance::UpdateBlendedAnimation(float DeltaTime)
         return;
     }
 
-    // 1) 시간 업데이트
-    CurrentAnimationTime += DeltaTime;
-    float PlayLength = CurrentAnimation->GetPlayLength();
-
-    if (CurrentAnimationTime >= PlayLength)
-    {
-        if (bIsLooping)
-        {
-            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
-        }
-        else
-        {
-            CurrentAnimationTime = PlayLength;
-            bIsPlaying = false;
-        }
-    }
+    CurTime += DeltaTime;
 
     // 2) 모든 본의 로컬 포즈 업데이트
     const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
@@ -51,8 +48,8 @@ void UAnimInstance::UpdateBlendedAnimation(float DeltaTime)
     LocalPose.SetNum(NumBones);
     
     FPoseContext TSeqA, TSeqB, Out;
-    TestSeqA->EvaluatePose(DeltaTime, Skeleton, TSeqA);
-    TestSeqB->EvaluatePose(DeltaTime, Skeleton, TSeqB);
+    TestSeqA->EvaluatePose(CurTime, Skeleton, TSeqA);
+    TestSeqB->EvaluatePose(CurTime, Skeleton, TSeqB);
 
     FAnimBlend::Blend(TSeqA, TSeqB, Alpha, Out);
     

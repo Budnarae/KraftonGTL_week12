@@ -29,10 +29,10 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
         FPoseContext Start, End, Blended;
 
         // FOR TEST
-        // SeqA = RESOURCE.Load<UAnimationSequence>("", true);
-        // SeqB = RESOURCE.Load<UAnimationSequence>("", true);
+        SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
+        SeqB = RESOURCE.Load<UAnimationSequence>("Standard Walk_mixamo.com");
 
-        // AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
+        AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
     }
 }
 
@@ -43,7 +43,7 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
     if (AnimationMode == EAnimationMode::AnimationSingleNode && AnimInstance)
     {
         // FOR TEST
-        AnimInstance->UpdateBlendedAnimation(DeltaTime);
+        AnimInstance->UpdateBlendedAnimation(DeltaTime, Alpha);
         AnimInstance->UpdateAnimation(DeltaTime);
     }
 

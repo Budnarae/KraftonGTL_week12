@@ -115,6 +115,8 @@ void UAnimationSequence::EvaluatePose(float Time, const FSkeleton& Skeleton, FPo
         return;
     }
 
+    float CurTime = fmod(Time, GetPlayLength());
+
     const int32 BoneNum = Skeleton.Bones.Num();
     OutContext.EvaluatedPoses.SetNum(BoneNum);
 
@@ -123,7 +125,7 @@ void UAnimationSequence::EvaluatePose(float Time, const FSkeleton& Skeleton, FPo
         const FBone CurBone = Skeleton.Bones[BoneIndex];
         const FName BoneName(CurBone.Name);
 
-        OutContext.EvaluatedPoses[BoneIndex] = GetBonePose(BoneName, Time);
+        OutContext.EvaluatedPoses[BoneIndex] = GetBonePose(BoneName, CurTime);
     }
 }
 

@@ -14,6 +14,10 @@ public:
     USkeletalMeshComponent();
     ~USkeletalMeshComponent() override = default;
 
+    // FOR TEST
+    UPROPERTY(EditAnywhere, Category = "Animation", Range = "0, 1")
+    float Alpha = 0.0;
+
     void OnRegister(UWorld* InWorld) override;
     void TickComponent(float DeltaTime) override;
     void SetSkeletalMesh(const FString& PathFileName) override;
