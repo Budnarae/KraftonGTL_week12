@@ -13,14 +13,16 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 {
     Super::OnRegister(InWorld);
 
-    const bool bNeedsAnimInstance = !AnimInstance || AnimInstance->GetSkeletalComponent() != this;
-    if (!bNeedsAnimInstance)
+    if (AnimInstance && AnimInstance->GetSkeletalComponent() != this)
     {
-        return;
+        AnimInstance = nullptr;
     }
 
-    UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
-    SetAnimInstanceClass(NewAnimInstanceClass);
+    if (!AnimInstance)
+    {
+        UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
+        SetAnimInstanceClass(NewAnimInstanceClass);
+    }
 
     if (AnimInstance)
     {
@@ -85,12 +87,12 @@ void USkeletalMeshComponent::SetSkeletalMesh(const FString& PathFileName)
 
 void USkeletalMeshComponent::SetAnimInstanceClass(UAnimInstance* NewAnimInstanceClass)
 {
-    if (AnimInstance)
+    if (AnimInstance && AnimInstance->GetSkeletalComponent() == this)
     {
-        delete AnimInstance;
+        DeleteObject(AnimInstance);
         AnimInstance = nullptr;
     }
-    
+
     AnimInstance = NewAnimInstanceClass;
     if (AnimInstance)
     {
