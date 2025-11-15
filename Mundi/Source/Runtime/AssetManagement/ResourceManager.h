@@ -256,9 +256,11 @@ EResourceType UResourceManager::GetResourceType()
 	if (T::StaticClass() == UTexture::StaticClass())
 		return EResourceType::Texture;
     if (T::StaticClass() == UMaterial::StaticClass())
-        return EResourceType::Material;
-    if (T::StaticClass() == USound::StaticClass())
-        return EResourceType::Sound;
+    	return EResourceType::Material;
+	if (T::StaticClass() == USound::StaticClass())
+		return EResourceType::Sound;
+	if (T::StaticClass() == USound::StaticClass())
+		return EResourceType::Animation;
 
     return EResourceType::None;
 }

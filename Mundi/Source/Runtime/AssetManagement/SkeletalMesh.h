@@ -10,7 +10,10 @@ public:
     virtual ~USkeletalMesh() override;
     
     void Load(const FString& InFilePath, ID3D11Device* InDevice);
-    
+
+    // LoadFbxAssets를 통해 미리 로드된 데이터로 초기화
+    void InitFromData(FSkeletalMeshData* InData, ID3D11Device* InDevice);
+
     const FSkeletalMeshData* GetSkeletalMeshData() const { return Data; }
     const FString& GetPathFileName() const { if (Data) return Data->PathFileName; return FString(); }
     const FSkeleton* GetSkeleton() const { return Data ? &Data->Skeleton : nullptr; }

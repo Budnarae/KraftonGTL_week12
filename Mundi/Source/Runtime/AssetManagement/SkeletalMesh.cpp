@@ -42,6 +42,28 @@ void USkeletalMesh::Load(const FString& InFilePath, ID3D11Device* InDevice)
     VertexStride = sizeof(FVertexDynamic);
 }
 
+void USkeletalMesh::InitFromData(FSkeletalMeshData* InData, ID3D11Device* InDevice)
+{
+    if (Data)
+    {
+        ReleaseResources();
+    }
+
+    Data = InData;
+
+    if (!Data || Data->Vertices.empty() || Data->Indices.empty())
+    {
+        UE_LOG("ERROR: Invalid SkeletalMeshData provided to InitFromData");
+        return;
+    }
+
+    // GPU 버퍼 생성
+    CreateIndexBuffer(Data, InDevice);
+    VertexCount = static_cast<uint32>(Data->Vertices.size());
+    IndexCount = static_cast<uint32>(Data->Indices.size());
+    VertexStride = sizeof(FVertexDynamic);
+}
+
 void USkeletalMesh::ReleaseResources()
 {
     if (IndexBuffer)

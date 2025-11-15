@@ -1,13 +1,18 @@
 ﻿#include "pch.h"
 #include "ObjectFactory.h"
 #include "FbxLoader.h"
-#include "fbxsdk/fileio/fbxiosettings.h"
 #include "fbxsdk/scene/geometry/fbxcluster.h"
+#include "fbxsdk/scene/animation/fbxanimstack.h"
+#include "fbxsdk/scene/animation/fbxanimlayer.h"
+#include "fbxsdk/scene/animation/fbxanimcurve.h"
 #include "ObjectIterator.h"
 #include "WindowsBinReader.h"
 #include "WindowsBinWriter.h"
 #include "PathUtils.h"
 #include <filesystem>
+
+#include "Source/Runtime/Engine/Animation/AnimationSequence.h"
+#include "Source/Runtime/Engine/Animation/AnimDataModel.h"
 
 IMPLEMENT_CLASS(UFbxLoader)
 
@@ -50,8 +55,39 @@ void UFbxLoader::PreLoad()
 			if (ProcessedFiles.find(PathStr) == ProcessedFiles.end())
 			{
 				ProcessedFiles.insert(PathStr);
-				FbxLoader.LoadFbxMesh(PathStr);
-				++LoadedCount;
+
+				// FBX에서 메시와 애니메이션 모두 로드
+				FFbxAssetData* AssetData = FbxLoader.LoadFbxAssets(PathStr);
+				if (AssetData)
+				{
+					// 파일명 추출 (확장자 제거)
+					FString FileName = Path.stem().string();
+
+					// 메시 등록
+					if (AssetData->MeshData)
+					{
+						// USkeletalMesh 생성 및 리소스 매니저에 등록
+						USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
+						ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
+						SkeletalMesh->InitFromData(AssetData->MeshData, Device);
+
+						RESOURCE.Add<USkeletalMesh>(PathStr, SkeletalMesh);
+						UE_LOG("USkeletalMesh(filename: '%s') is successfully created!", PathStr.c_str());
+					}
+
+					// 애니메이션 등록
+					for (int AnimIndex = 0; AnimIndex < AssetData->AnimationSequences.Num(); AnimIndex++)
+					{
+						UAnimationSequence* AnimSeq = AssetData->AnimationSequences[AnimIndex];
+						// 애니메이션 이름 생성: 파일명_애니메이션인덱스
+						FString AnimName = FileName + "_Anim" + std::to_string(AnimIndex);
+						RESOURCE.Add<UAnimationSequence>(AnimName, AnimSeq);
+						UE_LOG("UAnimationSequence(name: '%s') is successfully created!", AnimName.c_str());
+					}
+
+					delete AssetData; // 구조체 자체는 삭제 (내부 포인터는 리소스 매니저가 관리)
+					++LoadedCount;
+				}
 			}
 		}
 		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
@@ -106,247 +142,35 @@ FSkeletalMeshData* UFbxLoader::LoadFbxMeshAsset(const FString& FilePath)
 {
 	MaterialInfos.clear();
 	FString NormalizedPath = NormalizePath(FilePath);
-	FSkeletalMeshData* MeshData = nullptr;
-#ifdef USE_OBJ_CACHE
-	// 1. 캐시 파일 경로 설정
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString BinPathFileName = CachePathStr + ".bin";
 
-	// 캐시를 저장할 디렉토리가 없으면 생성
-	std::filesystem::path CacheFileDirPath(BinPathFileName);
-	if (CacheFileDirPath.has_parent_path())
+	// 캐시에서 로드 시도
+	FSkeletalMeshData* MeshData = TryLoadMeshFromCache(FilePath);
+	if (MeshData)
 	{
-		std::filesystem::create_directories(CacheFileDirPath.parent_path());
+		return MeshData;
 	}
 
-	bool bLoadedFromCache = false;
-	
-
-	// 2. 캐시 유효성 검사
-	bool bShouldRegenerate = true;
-	if (std::filesystem::exists(BinPathFileName))
-	{
-		try
-		{
-			auto binTime = std::filesystem::last_write_time(BinPathFileName);
-			auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
-
-			// FBX 파일이 캐시보다 오래되었으면 캐시 사용
-			if (fbxTime <= binTime)
-			{
-				bShouldRegenerate = false;
-			}
-		}
-		catch (const std::filesystem::filesystem_error& e)
-		{
-			UE_LOG("Filesystem error during cache validation: %s. Forcing regeneration.", e.what());
-			bShouldRegenerate = true;
-		}
-	}
-
-	// 3. 캐시에서 로드 시도
-	if (!bShouldRegenerate)
-	{
-		UE_LOG("Attempting to load FBX '%s' from cache.", NormalizedPath.c_str());
-		try
-		{
-			MeshData = new FSkeletalMeshData();
-			MeshData->PathFileName = NormalizedPath;
-
-			FWindowsBinReader Reader(BinPathFileName);
-			if (!Reader.IsOpen())
-			{
-				throw std::runtime_error("Failed to open bin file for reading.");
-			}
-			Reader << *MeshData;
-			Reader.Close();
-
-			for (int Index = 0; Index < MeshData->GroupInfos.Num(); Index++)
-			{
-				if (MeshData->GroupInfos[Index].InitialMaterialName.empty())
-					continue;
-				const FString& MaterialName = MeshData->GroupInfos[Index].InitialMaterialName;
-				const FString& MaterialFilePath = ConvertDataPathToCachePath(MaterialName + ".mat.bin");
-				FWindowsBinReader MatReader(MaterialFilePath);
-				if (!MatReader.IsOpen())
-				{
-					throw std::runtime_error("Failed to open material bin file for reading.");
-				}
-				// for bin Load
-				FMaterialInfo MaterialInfo{};
-				Serialization::ReadAsset<FMaterialInfo>(MatReader, &MaterialInfo);
-
-				UMaterial* NewMaterial = NewObject<UMaterial>();
-
-				UMaterial* Default = UResourceManager::GetInstance().GetDefaultMaterial();
-				NewMaterial->SetMaterialInfo(MaterialInfo);
-				NewMaterial->SetShader(Default->GetShader());
-				NewMaterial->SetShaderMacros(Default->GetShaderMacros());
-				UResourceManager::GetInstance().Add<UMaterial>(MaterialInfo.MaterialName, NewMaterial);
-			}
-
-			MeshData->CacheFilePath = BinPathFileName;
-			bLoadedFromCache = true;
-
-			UE_LOG("Successfully loaded FBX '%s' from cache.", NormalizedPath.c_str());
-			return MeshData;
-		}
-		catch (const std::exception& e)
-		{
-			UE_LOG("Error loading FBX from cache: %s. Cache might be corrupt or incompatible.", e.what());
-			UE_LOG("Deleting corrupt cache and forcing regeneration for '%s'.", NormalizedPath.c_str());
-
-			std::filesystem::remove(BinPathFileName);
-			if (MeshData)
-			{
-				delete MeshData;
-				MeshData = nullptr;
-			}
-			bLoadedFromCache = false;
-		}
-	}
-
-	// 4. 캐시 로드 실패 시 FBX 파싱
+	// 캐시 로드 실패 시 FBX 파싱
 	UE_LOG("Regenerating cache for FBX '%s'...", NormalizedPath.c_str());
-#endif // USE_OBJ_CACHE
 
-	// 임포트 옵션 세팅 ( 에니메이션 임포트 여부, 머티리얼 임포트 여부 등등 IO에 대한 세팅 )
-	// IOSROOT = IOSetting 객체의 기본 이름( Fbx매니저가 이름으로 관리하고 디버깅 시 매니저 내부의 객체를 이름으로 식별 가능)
-	// 하지만 매니저 자체의 기본 설정이 있기 때문에 아직 안씀
-	//FbxIOSettings* IoSetting = FbxIOSettings::Create(SdkManager, IOSROOT);
-	//SdkManager->SetIOSettings(IoSetting);
-
-	// 로드할때마다 임포터 생성
-	FbxImporter* Importer = FbxImporter::Create(SdkManager, "");
-
-	// 원하는 IO 세팅과 Fbx파일로 Importer initialize
-	if (!Importer->Initialize(NormalizedPath.c_str(), -1, SdkManager->GetIOSettings()))
+	// Scene 생성 및 전처리
+	FbxScene* Scene = CreateAndPrepareFbxScene(FilePath);
+	if (!Scene)
 	{
-		UE_LOG("Call to FbxImporter::Initialize() Falied\n");
-		UE_LOG("[FbxImporter::Initialize()] Error Reports: %s\n\n", Importer->GetStatus().GetErrorString());
 		return nullptr;
 	}
 
-	// 임포터가 씬에 데이터를 채워줄 것임. 이름은 IoSetting과 마찬가지로 매니저가 이름으로 관리하고 Export될 때 표시할 씬 이름.
-	FbxScene* Scene = FbxScene::Create(SdkManager, "My Scene");
-
-	// 임포트해서 Fbx를 씬에 넣어줌
-	Importer->Import(Scene);
-
-	// 임포트 후 제거
-	Importer->Destroy();
-
-	FbxAxisSystem UnrealImportAxis(FbxAxisSystem::eZAxis, FbxAxisSystem::eParityEven, FbxAxisSystem::eLeftHanded);
-	FbxAxisSystem SourceSetup = Scene->GetGlobalSettings().GetAxisSystem();
-
-	FbxSystemUnit::m.ConvertScene(Scene);
-	
-	if (SourceSetup != UnrealImportAxis)
-	{
-		UE_LOG("Fbx 축 변환 완료!\n");
-		UnrealImportAxis.DeepConvertScene(Scene);
-	}
-
-	// 매시의 폴리곤이 삼각형이 아닐 수가 있음, Converter가 모두 삼각화해줌.
-	FbxGeometryConverter IGeometryConverter(SdkManager);
-	if (IGeometryConverter.Triangulate(Scene, true))
-	{
-		UE_LOG("Fbx 씬 삼각화 완료\n");
-	}
-	else
-	{
-		UE_LOG("Fbx 씬 삼각화가 실패했습니다, 매시가 깨질 수 있습니다\n");
-	}
-
-	MeshData = new FSkeletalMeshData();
-	MeshData->PathFileName = NormalizedPath;
-
-	// Fbx파일에 씬은 하나만 존재하고 씬에 매쉬, 라이트, 카메라 등등의 element들이 트리 구조로 저장되어 있음.
-	// 씬 Export 시에 루트 노드 말고 Child 노드만 저장됨. 노드 하나가 여러 Element를 저장할 수 있고 Element는 FbxNodeAttribute 클래스로 정의되어 있음.
-	// 루트 노드 얻어옴
-	FbxNode* RootNode = Scene->GetRootNode();
-
-	// 뼈의 인덱스를 부여, 기본적으로 Fbx는 정점이 아니라 뼈 중심으로 데이터가 저장되어 있음(뼈가 몇번 ControlPoint에 영향을 주는지)
-	// 정점이 몇번 뼈의 영향을 받는지 표현하려면 직접 뼈 인덱스를 만들어야함.
+	// 메시 추출
 	TMap<FbxNode*, int32> BoneToIndex;
+	MeshData = ExtractMeshFromScene(Scene, BoneToIndex);
 
-	// 머티리얼도 인덱스가 따로 없어서(있긴 한데 순서가 뒤죽박죽이고 모든 노드를 순회하기 전까지 머티리얼 개수를 몰라서) 직접 만들어줘야함
-	// FbxSurfaceMaterial : 진짜 머티리얼 , FbxGeometryElementMaterial : 인덱싱용, 폴리곤이 어떤 머티리얼 슬롯을 쓰는지 알려줌
-	TMap<FbxSurfaceMaterial*, int32> MaterialToIndex;
-
-	// 머티리얼마다 정점 Index를 할당해 줄 것임. 머티리얼 정렬을 해놔야 렌더링 비용이 적게 드니까. 
-	// 최종적으로 이 맵의 Array들을 합쳐서 MeshData.Indices에 저장하고 GroupInfos를 채워줄 것임.
-	TMap<int32, TArray<uint32>> MaterialGroupIndexList;
-
-	// 머티리얼이 어떤 노드는 있는데 어떤 노드는 없을 수 있음, 이때 머티리얼이 없는 노드의 Index를 저장해놓고 나중에 머티리얼이 있는 노드의 index를
-	// 그룹별 정렬하게 되면 인덱스가 꼬임. 그래서 머티리얼이 없는 경우 그냥 0번 그룹을 쓰도록 하고 머티리얼 인덱스 0번을 nullptr에 할당함
-	MaterialGroupIndexList.Add(0, TArray<uint32>());
-	MaterialToIndex.Add(nullptr, 0);
-	MeshData->GroupInfos.Add(FGroupInfo());
-	if (RootNode)
+	if (MeshData)
 	{
-		// 2번의 패스로 나눠서 처음엔 뼈의 인덱스를 결정하고 2번째 패스에서 뼈가 영향을 미치는 정점들을 구하고 정점마다 뼈 인덱스를 할당해 줄 것임(동시에 TPose 역행렬도 구함)
-		for (int Index = 0; Index < RootNode->GetChildCount(); Index++)
-		{
-			LoadSkeletonFromNode(RootNode->GetChild(Index), *MeshData, -1, BoneToIndex);
-		}
-		for (int Index = 0; Index < RootNode->GetChildCount(); Index++)
-		{
-			LoadMeshFromNode(RootNode->GetChild(Index), *MeshData, MaterialGroupIndexList, BoneToIndex, MaterialToIndex);
-		}
-		
-		// 여러 루트 본이 있으면 가상 루트 생성
-		EnsureSingleRootBone(*MeshData);
+		MeshData->PathFileName = NormalizedPath;
+
+		// 캐시 저장
+		SaveMeshToCache(MeshData, FilePath);
 	}
-
-	// 머티리얼이 있는 경우 플래그 설정
-	if (MeshData->GroupInfos.Num() > 1)
-	{
-		MeshData->bHasMaterial = true;
-	}
-	// 있든없든 항상 기본 머티리얼 포함 머티리얼 그룹별로 인덱스 저장하므로 Append 해줘야함
-	uint32 Count = 0;
-	for (auto& Element : MaterialGroupIndexList)
-	{
-		int32 MatrialIndex = Element.first;
-
-		const TArray<uint32>& IndexList = Element.second;
-
-		// 최종 인덱스 배열에 리스트 추가
-		MeshData->Indices.Append(IndexList);
-
-		// 그룹info에 Startindex와 Count 추가
-		MeshData->GroupInfos[MatrialIndex].StartIndex = Count;
-		MeshData->GroupInfos[MatrialIndex].IndexCount = IndexList.Num();
-		Count += IndexList.Num();
-	}
-
-#ifdef USE_OBJ_CACHE
-	// 5. 캐시 저장
-	try
-	{
-		FWindowsBinWriter Writer(BinPathFileName);
-		Writer << *MeshData;
-		Writer.Close();
-
-		for (FMaterialInfo& MaterialInfo : MaterialInfos)
-		{
-			
-			const FString MaterialFilePath = ConvertDataPathToCachePath(MaterialInfo.MaterialName + ".mat.bin");
-			FWindowsBinWriter MatWriter(MaterialFilePath);
-			Serialization::WriteAsset<FMaterialInfo>(MatWriter, &MaterialInfo);
-			MatWriter.Close();
-		}
-
-		MeshData->CacheFilePath = BinPathFileName;
-
-		UE_LOG("Cache regeneration complete for FBX '%s'.", NormalizedPath.c_str());
-	}
-	catch (const std::exception& e)
-	{
-		UE_LOG("Failed to save FBX cache: %s", e.what());
-	}
-#endif // USE_OBJ_CACHE
 
 	return MeshData;
 }
@@ -358,7 +182,6 @@ void UFbxLoader::LoadMeshFromNode(FbxNode* InNode,
 	TMap<FbxNode*, int32>& BoneToIndex, 
 	TMap<FbxSurfaceMaterial*, int32>& MaterialToIndex)
 {
-
 	// 부모노드로부터 상대좌표 리턴
 	/*FbxDouble3 Translation = InNode->LclTranslation.Get();
 	FbxDouble3 Rotation = InNode->LclRotation.Get();
@@ -495,22 +318,6 @@ void UFbxLoader::LoadSkeletonFromNode(FbxNode* InNode, FSkeletalMeshData& MeshDa
 	}
 }
 
-// 예시 코드
-void UFbxLoader::LoadMeshFromAttribute(FbxNodeAttribute* InAttribute, FSkeletalMeshData& MeshData)
-{
-
-	/*if (!InAttribute)
-	{
-		return;
-	}*/
-	//FbxString TypeName = GetAttributeTypeName(InAttribute);
-	// 타입과 별개로 Element 자체의 이름도 있음
-	//FbxString AttributeName = InAttribute->GetName();
-
-	// Buffer함수로 FbxString->char* 변환
-	//UE_LOG("<Attribute Type = %s, Name = %s\n", TypeName.Buffer(), AttributeName.Buffer());
-}
-
 void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int32, TArray<uint32>>& MaterialGroupIndexList, TMap<FbxNode*, int32>& BoneToIndex, TArray<int32> MaterialSlotToIndex, int32 DefaultMaterialIndex)
 {
 	// 위에서 뼈 인덱스를 구했으므로 일단 ControlPoint에 대응되는 뼈 인덱스와 가중치부터 할당할 것임(이후 MeshData를 채우면서 ControlPoint를 순회할 것이므로)
@@ -573,7 +380,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				// GetLink -> 아까 저장한 노드 To Index맵의 노드 (Cluster에 대응되는 뼈 인덱스를 ControlPointIndex에 대응시키는 과정)
 				// ControlPointIndex = 클러스터가 저장하는 ControlPointIndex 배열에 대한 Index
 				TArray<IndexWeight>& IndexWeightArray = ControlPointToBoneWeight[Indices[ControlPointIndex]];
-				IndexWeightArray.Add(IndexWeight(BoneToIndex[Cluster->GetLink()], Weights[ControlPointIndex]));
+				IndexWeightArray.Add(IndexWeight(BoneToIndex[Cluster->GetLink()], static_cast<float>(Weights[ControlPointIndex])));
 			}
 		}
 	}
@@ -628,7 +435,10 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 
 			const FbxVector4& Position = FbxSceneWorld.MultT(ControlPoints[ControlPointIndex]);
 			//const FbxVector4& Position = ControlPoints[ControlPointIndex];
-			SkinnedVertex.Position = FVector(Position.mData[0], Position.mData[1], Position.mData[2]);
+			SkinnedVertex.Position = FVector(
+				static_cast<float>(Position.mData[0]),
+				static_cast<float>(Position.mData[1]),
+				static_cast<float>(Position.mData[2]));
 
 
 			if (ControlPointToBoneWeight.Contains(ControlPointIndex))
@@ -647,7 +457,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				{
 					// ControlPoint에 대응하는 뼈 인덱스, 가중치를 모두 저장
 					SkinnedVertex.BoneIndices[BoneIndex] = ControlPointToBoneWeight[ControlPointIndex][BoneIndex].BoneIndex;
-					SkinnedVertex.BoneWeights[BoneIndex] = ControlPointToBoneWeight[ControlPointIndex][BoneIndex].BoneWeight/TotalWeights;
+					SkinnedVertex.BoneWeights[BoneIndex] = ControlPointToBoneWeight[ControlPointIndex][BoneIndex].BoneWeight/static_cast<float>(TotalWeights);
 				}
 			}
 
@@ -687,7 +497,11 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				{
 					// 바로 참조 가능.
 					const FbxColor& Color = VertexColors->GetDirectArray().GetAt(MappingIndex);
-					SkinnedVertex.Color = FVector4(Color.mRed, Color.mGreen, Color.mBlue, Color.mAlpha);
+					SkinnedVertex.Color = FVector4(
+						static_cast<float>(Color.mRed),
+						static_cast<float>(Color.mGreen),
+						static_cast<float>(Color.mBlue),
+						static_cast<float>(Color.mAlpha));
 				}
 				break;
 				//인덱스 배열로 간접참조해야함
@@ -695,7 +509,11 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				{
 					int Id = VertexColors->GetIndexArray().GetAt(MappingIndex);
 					const FbxColor& Color = VertexColors->GetDirectArray().GetAt(Id);
-					SkinnedVertex.Color = FVector4(Color.mRed, Color.mGreen, Color.mBlue, Color.mAlpha);
+					SkinnedVertex.Color = FVector4(
+						static_cast<float>(Color.mRed),
+						static_cast<float>(Color.mGreen),
+						static_cast<float>(Color.mBlue),
+						static_cast<float>(Color.mAlpha));
 				}
 				break;
 				//외의 경우는 일단 배제
@@ -730,7 +548,10 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				{
 					const FbxVector4& Normal = Normals->GetDirectArray().GetAt(MappingIndex);
 					FbxVector4 NormalWorld = FbxSceneWorldInverseTranspose.MultT(FbxVector4(Normal.mData[0], Normal.mData[1], Normal.mData[2], 0.0f));
-					SkinnedVertex.Normal = FVector(NormalWorld.mData[0], NormalWorld.mData[1], NormalWorld.mData[2]);
+					SkinnedVertex.Normal = FVector(
+						static_cast<float>(NormalWorld.mData[0]),
+						static_cast<float>(NormalWorld.mData[1]),
+						static_cast<float>(NormalWorld.mData[2]));
 				}
 				break;
 				case FbxGeometryElement::eIndexToDirect:
@@ -738,7 +559,10 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 					int Id = Normals->GetIndexArray().GetAt(MappingIndex);
 					const FbxVector4& Normal = Normals->GetDirectArray().GetAt(Id);
 					FbxVector4 NormalWorld = FbxSceneWorldInverseTranspose.MultT(FbxVector4(Normal.mData[0], Normal.mData[1], Normal.mData[2], 0.0f));
-					SkinnedVertex.Normal = FVector(NormalWorld.mData[0], NormalWorld.mData[1], NormalWorld.mData[2]);
+					SkinnedVertex.Normal = FVector(
+						static_cast<float>(NormalWorld.mData[0]),
+						static_cast<float>(NormalWorld.mData[1]),
+						static_cast<float>(NormalWorld.mData[2]));
 				}
 				break;
 				default:
@@ -771,7 +595,11 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				{
 					const FbxVector4& Tangent = Tangents->GetDirectArray().GetAt(MappingIndex);
 					FbxVector4 TangentWorld = FbxSceneWorld.MultT(FbxVector4(Tangent.mData[0], Tangent.mData[1], Tangent.mData[2], 0.0f));
-					SkinnedVertex.Tangent = FVector4(TangentWorld.mData[0], TangentWorld.mData[1], TangentWorld.mData[2], Tangent.mData[3]);
+					SkinnedVertex.Tangent = FVector4(
+						static_cast<float>(TangentWorld.mData[0]),
+						static_cast<float>(TangentWorld.mData[1]),
+						static_cast<float>(TangentWorld.mData[2]),
+						static_cast<float>(Tangent.mData[3]));
 				}
 				break;
 				case FbxGeometryElement::eIndexToDirect:
@@ -779,7 +607,11 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 					int Id = Tangents->GetIndexArray().GetAt(MappingIndex);
 					const FbxVector4& Tangent = Tangents->GetDirectArray().GetAt(Id);
 					FbxVector4 TangentWorld = FbxSceneWorld.MultT(FbxVector4(Tangent.mData[0], Tangent.mData[1], Tangent.mData[2], 0.0f));
-					SkinnedVertex.Tangent = FVector4(TangentWorld.mData[0], TangentWorld.mData[1], TangentWorld.mData[2], Tangent.mData[3]);
+					SkinnedVertex.Tangent = FVector4(
+						static_cast<float>(TangentWorld.mData[0]),
+						static_cast<float>(TangentWorld.mData[1]),
+						static_cast<float>(TangentWorld.mData[2]),
+						static_cast<float>(Tangent.mData[3]));
 				}
 				break;
 				default:
@@ -819,14 +651,14 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 					case FbxGeometryElement::eDirect:
 					{
 						const FbxVector2& UV = UVs->GetDirectArray().GetAt(ControlPointIndex);
-						SkinnedVertex.UV = FVector2D(UV.mData[0], 1 - UV.mData[1]);
+						SkinnedVertex.UV = FVector2D(static_cast<float>(UV.mData[0]), 1 - static_cast<float>(UV.mData[1]));
 					}
 					break;
 					case FbxGeometryElement::eIndexToDirect:
 					{
 						int Id = UVs->GetIndexArray().GetAt(ControlPointIndex);
 						const FbxVector2& UV = UVs->GetDirectArray().GetAt(Id);
-						SkinnedVertex.UV = FVector2D(UV.mData[0], 1 - UV.mData[1]);
+						SkinnedVertex.UV = FVector2D(static_cast<float>(UV.mData[0]), 1 - static_cast<float>(UV.mData[1]));
 					}
 					break;
 					default:
@@ -842,7 +674,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 					case FbxGeometryElement::eIndexToDirect:
 					{
 						const FbxVector2& UV = UVs->GetDirectArray().GetAt(TextureUvIndex);
-						SkinnedVertex.UV = FVector2D(UV.mData[0], 1 - UV.mData[1]);
+						SkinnedVertex.UV = FVector2D(static_cast<float>(UV.mData[0]), 1 - static_cast<float>(UV.mData[1]));
 					}
 					break;
 					default:
@@ -986,7 +818,6 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
     }
 }
 
-
 // 머티리얼 파싱해서 FMaterialInfo에 매핑
 void UFbxLoader::ParseMaterial(FbxSurfaceMaterial* Material, FMaterialInfo& MaterialInfo)
 {
@@ -1004,42 +835,57 @@ void UFbxLoader::ParseMaterial(FbxSurfaceMaterial* Material, FMaterialInfo& Mate
 		FbxSurfacePhong* SurfacePhong = (FbxSurfacePhong*)Material;
 
 		Double3Prop = SurfacePhong->Diffuse;
-		MaterialInfo.DiffuseColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]);
+		MaterialInfo.DiffuseColor = FVector(
+			static_cast<float>(Double3Prop.Get()[0]),
+			static_cast<float>(Double3Prop.Get()[1]),
+			static_cast<float>(Double3Prop.Get()[2]));
 
 		Double3Prop = SurfacePhong->Ambient;
-		MaterialInfo.AmbientColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]);
+		MaterialInfo.AmbientColor = FVector(
+			static_cast<float>(Double3Prop.Get()[0]),
+			static_cast<float>(Double3Prop.Get()[1]),
+			static_cast<float>(Double3Prop.Get()[2]));
 
 		// SurfacePhong->Reflection : 환경 반사, 퐁 모델에선 필요없음
 		Double3Prop = SurfacePhong->Specular;
 		DoubleProp = SurfacePhong->SpecularFactor;
-		MaterialInfo.SpecularColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]) * DoubleProp.Get();
+		MaterialInfo.SpecularColor = FVector(
+			static_cast<float>(Double3Prop.Get()[0]),
+			static_cast<float>(Double3Prop.Get()[1]),
+			static_cast<float>(Double3Prop.Get()[2])) * static_cast<float>(DoubleProp.Get());
 
 		// HDR 안 써서 의미 없음
 	/*	Double3Prop = SurfacePhong->Emissive;
 		MaterialInfo.EmissiveColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]);*/
 
 		DoubleProp = SurfacePhong->Shininess;
-		MaterialInfo.SpecularExponent = DoubleProp.Get();
+		MaterialInfo.SpecularExponent =static_cast<float>(DoubleProp.Get());
 
 		DoubleProp = SurfacePhong->TransparencyFactor;
-		MaterialInfo.Transparency = DoubleProp.Get();
+		MaterialInfo.Transparency = static_cast<float>(DoubleProp.Get());
 	}
 	else if (Material->GetClassId().Is(FbxSurfaceLambert::ClassId))
 	{
 		FbxSurfaceLambert* SurfacePhong = (FbxSurfaceLambert*)Material;
 
 		Double3Prop = SurfacePhong->Diffuse;
-		MaterialInfo.DiffuseColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]);
+		MaterialInfo.DiffuseColor = FVector(
+			static_cast<float>(Double3Prop.Get()[0]),
+			static_cast<float>(Double3Prop.Get()[1]),
+			static_cast<float>(Double3Prop.Get()[2]));
 
 		Double3Prop = SurfacePhong->Ambient;
-		MaterialInfo.AmbientColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]);
+		MaterialInfo.AmbientColor = FVector(
+			static_cast<float>(Double3Prop.Get()[0]),
+			static_cast<float>(Double3Prop.Get()[1]),
+			static_cast<float>(Double3Prop.Get()[2]));
 
 		// HDR 안 써서 의미 없음
 	/*	Double3Prop = SurfacePhong->Emissive;
 		MaterialInfo.EmissiveColor = FVector(Double3Prop.Get()[0], Double3Prop.Get()[1], Double3Prop.Get()[2]);*/
 
 		DoubleProp = SurfacePhong->TransparencyFactor;
-		MaterialInfo.Transparency = DoubleProp.Get();
+		MaterialInfo.Transparency = static_cast<float>(DoubleProp.Get());
 	}
 
 
@@ -1091,42 +937,11 @@ FString UFbxLoader::ParseTexturePath(FbxProperty& Property)
 	return FString();
 }
 
-FbxString UFbxLoader::GetAttributeTypeName(FbxNodeAttribute* InAttribute)
-{
-	// 테스트코드
-	// Attribute타입에 대한 자료형, 이것으로 Skeleton만 빼낼 수 있을 듯
-	/*FbxNodeAttribute::EType Type = InAttribute->GetAttributeType();
-	switch (Type) {
-	case FbxNodeAttribute::eUnknown: return "unidentified";
-	case FbxNodeAttribute::eNull: return "null";
-	case FbxNodeAttribute::eMarker: return "marker";
-	case FbxNodeAttribute::eSkeleton: return "skeleton";
-	case FbxNodeAttribute::eMesh: return "mesh";
-	case FbxNodeAttribute::eNurbs: return "nurbs";
-	case FbxNodeAttribute::ePatch: return "patch";
-	case FbxNodeAttribute::eCamera: return "camera";
-	case FbxNodeAttribute::eCameraStereo: return "stereo";
-	case FbxNodeAttribute::eCameraSwitcher: return "camera switcher";
-	case FbxNodeAttribute::eLight: return "light";
-	case FbxNodeAttribute::eOpticalReference: return "optical reference";
-	case FbxNodeAttribute::eOpticalMarker: return "marker";
-	case FbxNodeAttribute::eNurbsCurve: return "nurbs curve";
-	case FbxNodeAttribute::eTrimNurbsSurface: return "trim nurbs surface";
-	case FbxNodeAttribute::eBoundary: return "boundary";
-	case FbxNodeAttribute::eNurbsSurface: return "nurbs surface";
-	case FbxNodeAttribute::eShape: return "shape";
-	case FbxNodeAttribute::eLODGroup: return "lodgroup";
-	case FbxNodeAttribute::eSubDiv: return "subdiv";
-	default: return "unknown";
-	}*/
-	return "test";
-}
-
 void UFbxLoader::EnsureSingleRootBone(FSkeletalMeshData& MeshData)
 {
 	if (MeshData.Skeleton.Bones.IsEmpty())
 		return;
-    
+
 	// 루트 본 개수 세기
 	TArray<int32> RootBoneIndices;
 	for (int32 i = 0; i < MeshData.Skeleton.Bones.size(); ++i)
@@ -1136,7 +951,7 @@ void UFbxLoader::EnsureSingleRootBone(FSkeletalMeshData& MeshData)
 			RootBoneIndices.Add(i);
 		}
 	}
-    
+
 	// 루트 본이 2개 이상이면 가상 루트 생성
 	if (RootBoneIndices.Num() > 1)
 	{
@@ -1144,14 +959,14 @@ void UFbxLoader::EnsureSingleRootBone(FSkeletalMeshData& MeshData)
 		FBone VirtualRoot;
 		VirtualRoot.Name = "VirtualRoot";
 		VirtualRoot.ParentIndex = -1;
-        
+
 		// 항등 행렬로 초기화 (원점에 위치, 회전/스케일 없음)
 		VirtualRoot.BindPose = FMatrix::Identity();
 		VirtualRoot.InverseBindPose = FMatrix::Identity();
-        
+
 		// 가상 루트를 배열 맨 앞에 삽입
 		MeshData.Skeleton.Bones.Insert(VirtualRoot, 0);
-        
+
 		// 기존 본들의 인덱스가 모두 +1 씩 밀림
 		// 모든 본의 ParentIndex 업데이트
 		for (int32 i = 1; i < MeshData.Skeleton.Bones.size(); ++i)
@@ -1165,7 +980,7 @@ void UFbxLoader::EnsureSingleRootBone(FSkeletalMeshData& MeshData)
 				MeshData.Skeleton.Bones[i].ParentIndex = 0; // 가상 루트를 부모로 설정
 			}
 		}
-        
+
 		// Vertex의 BoneIndex도 모두 +1 해줘야 함
 		for (auto& Vertex : MeshData.Vertices)
 		{
@@ -1174,8 +989,514 @@ void UFbxLoader::EnsureSingleRootBone(FSkeletalMeshData& MeshData)
 				Vertex.BoneIndices[i] += 1;
 			}
 		}
-        
+
 		UE_LOG("UFbxLoader: Created virtual root bone. Found %d root bones.", RootBoneIndices.Num());
 	}
+}
+
+void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, TArray<UAnimationSequence*>& OutAnimSequences)
+{
+	if (!InScene)
+		return;
+
+	int AnimStackCount = InScene->GetSrcObjectCount<FbxAnimStack>();
+
+	for (int AnimStackIndex = 0; AnimStackIndex < AnimStackCount; AnimStackIndex++)
+	{
+		FbxAnimStack* AnimStack = InScene->GetSrcObject<FbxAnimStack>(AnimStackIndex);
+		if (!AnimStack)
+			continue;
+
+		FString AnimName = AnimStack->GetName();
+		UE_LOG("Loading animation: %s", AnimName.c_str());
+
+		// AnimLayer 가져오기 (보통 0번만 사용)
+		FbxAnimLayer* AnimLayer = AnimStack->GetMember<FbxAnimLayer>(0);
+		if (!AnimLayer)
+			continue;
+
+		// 애니메이션 시간 범위 구하기
+		FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
+		FbxTime StartTime = TimeSpan.GetStart();
+		FbxTime StopTime = TimeSpan.GetStop();
+		FbxTime Duration = StopTime - StartTime;
+
+		double PlayLength = Duration.GetSecondDouble();
+		float FrameRate = 30.0f; // 기본 프레임레이트
+
+		// Scene의 프레임레이트 가져오기
+		FbxTime::EMode TimeMode = InScene->GetGlobalSettings().GetTimeMode();
+		FrameRate = static_cast<float>(FbxTime::GetFrameRate(TimeMode));
+
+		// 본별 애니메이션 트랙 생성
+		TArray<FBoneAnimationTrack> BoneTracks;
+
+		// Scene의 AnimStack 설정
+		InScene->SetCurrentAnimationStack(AnimStack);
+
+		// 전체 프레임 수 계산
+		FbxLongLong FrameCount = Duration.GetFrameCount(TimeMode);
+
+		for (const auto& BonePair : BoneToIndex)
+		{
+			FbxNode* BoneNode = BonePair.first;
+			int32 BoneIndex = BonePair.second;
+
+			FBoneAnimationTrack Track;
+			Track.Name = FName(Skeleton.Bones[BoneIndex].Name);
+
+			// [샘플링 방식] 일정한 프레임 간격으로 EvaluateLocalTransform 호출
+			// 처음부터 끝까지 모든 프레임을 샘플링
+			for (FbxLongLong Frame = 0; Frame <= FrameCount; Frame++)
+			{
+				FbxTime CurrentTime;
+				CurrentTime.SetFrame(StartTime.GetFrameCount(TimeMode) + Frame, TimeMode);
+
+				// [핵심] SDK가 알아서 보간/오일러→쿼터니언 변환/피벗 계산을 다 해줌
+				FbxAMatrix LocalTransform = BoneNode->EvaluateLocalTransform(CurrentTime);
+
+				// 행렬에서 T, R, S 추출
+				FbxVector4 Translation = LocalTransform.GetT();
+				FbxQuaternion Rotation = LocalTransform.GetQ();  // 쿼터니언으로 안전하게 받음
+				FbxVector4 Scale = LocalTransform.GetS();
+
+				// 트랙에 추가
+				Track.InternalTrack.PosKeys.Add(FVector(
+					static_cast<float>(Translation[0]),
+					static_cast<float>(Translation[1]),
+					static_cast<float>(Translation[2])));
+				Track.InternalTrack.RotKeys.Add(FVector4(
+					static_cast<float>(Rotation[0]),
+					static_cast<float>(Rotation[1]),
+					static_cast<float>(Rotation[2]),
+					static_cast<float>(Rotation[3])));
+				Track.InternalTrack.ScaleKeys.Add(FVector(
+					static_cast<float>(Scale[0]),
+					static_cast<float>(Scale[1]),
+					static_cast<float>(Scale[2])));
+			}
+
+			BoneTracks.Add(Track);
+		}
+
+		// UAnimationSequence 생성
+		UAnimationSequence* AnimSequence = NewObject<UAnimationSequence>();
+		UAnimDataModel* DataModel = NewObject<UAnimDataModel>();
+		DataModel->Initialize(BoneTracks, static_cast<float>(PlayLength), FrameRate);
+
+		// DataModel 연결
+		AnimSequence->SetDataModel(DataModel);
+
+		OutAnimSequences.Add(AnimSequence);
+
+		UE_LOG("Animation '%s' loaded: %.2f seconds, %.2f fps, %d bone tracks",
+			AnimName.c_str(), PlayLength, FrameRate, BoneTracks.Num());
+	}
+}
+
+FbxScene* UFbxLoader::CreateAndPrepareFbxScene(const FString& FilePath)
+{
+	FString NormalizedPath = NormalizePath(FilePath);
+
+	// FBX 임포터 생성
+	FbxImporter* Importer = FbxImporter::Create(SdkManager, "");
+
+	if (!Importer->Initialize(NormalizedPath.c_str(), -1, SdkManager->GetIOSettings()))
+	{
+		UE_LOG("Call to FbxImporter::Initialize() Failed\n");
+		UE_LOG("[FbxImporter::Initialize()] Error Reports: %s\n\n", Importer->GetStatus().GetErrorString());
+		return nullptr;
+	}
+
+	// Scene 생성 및 임포트
+	FbxScene* Scene = FbxScene::Create(SdkManager, "My Scene");
+	Importer->Import(Scene);
+	Importer->Destroy();
+
+	// 축 변환
+	FbxAxisSystem UnrealImportAxis(FbxAxisSystem::eZAxis, FbxAxisSystem::eParityEven, FbxAxisSystem::eLeftHanded);
+	FbxAxisSystem SourceSetup = Scene->GetGlobalSettings().GetAxisSystem();
+	FbxSystemUnit::m.ConvertScene(Scene);
+
+	if (SourceSetup != UnrealImportAxis)
+	{
+		UE_LOG("Fbx 축 변환 완료!\n");
+		UnrealImportAxis.DeepConvertScene(Scene);
+	}
+
+	// 삼각화
+	FbxGeometryConverter IGeometryConverter(SdkManager);
+	if (IGeometryConverter.Triangulate(Scene, true))
+	{
+		UE_LOG("Fbx 씬 삼각화 완료\n");
+	}
+	else
+	{
+		UE_LOG("Fbx 씬 삼각화가 실패했습니다, 매시가 깨질 수 있습니다\n");
+	}
+
+	return Scene;
+}
+
+FSkeletalMeshData* UFbxLoader::ExtractMeshFromScene(FbxScene* InScene, TMap<FbxNode*, int32>& OutBoneToIndex)
+{
+	if (!InScene)
+		return nullptr;
+
+	FSkeletalMeshData* MeshData = new FSkeletalMeshData();
+
+	FbxNode* RootNode = InScene->GetRootNode();
+	TMap<FbxSurfaceMaterial*, int32> MaterialToIndex;
+	TMap<int32, TArray<uint32>> MaterialGroupIndexList;
+
+	// 기본 머티리얼 설정
+	MaterialGroupIndexList.Add(0, TArray<uint32>());
+	MaterialToIndex.Add(nullptr, 0);
+	MeshData->GroupInfos.Add(FGroupInfo());
+
+	if (RootNode)
+	{
+		// 스켈레톤 로드
+		for (int Index = 0; Index < RootNode->GetChildCount(); Index++)
+		{
+			LoadSkeletonFromNode(RootNode->GetChild(Index), *MeshData, -1, OutBoneToIndex);
+		}
+
+		// 메시 로드
+		for (int Index = 0; Index < RootNode->GetChildCount(); Index++)
+		{
+			LoadMeshFromNode(RootNode->GetChild(Index), *MeshData, MaterialGroupIndexList, OutBoneToIndex, MaterialToIndex);
+		}
+
+		EnsureSingleRootBone(*MeshData);
+	}
+
+	// 머티리얼 그룹 인덱스 처리
+	if (MeshData->GroupInfos.Num() > 1)
+	{
+		MeshData->bHasMaterial = true;
+	}
+
+	uint32 Count = 0;
+	for (auto& Element : MaterialGroupIndexList)
+	{
+		int32 MaterialIndex = Element.first;
+		const TArray<uint32>& IndexList = Element.second;
+		MeshData->Indices.Append(IndexList);
+		MeshData->GroupInfos[MaterialIndex].StartIndex = Count;
+		MeshData->GroupInfos[MaterialIndex].IndexCount = IndexList.Num();
+		Count += IndexList.Num();
+	}
+
+	return MeshData;
+}
+
+FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
+{
+#ifdef USE_OBJ_CACHE
+	FString NormalizedPath = NormalizePath(FbxPath);
+	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
+	const FString BinPathFileName = CachePathStr + ".bin";
+
+	// 캐시 유효성 검사
+	bool bShouldRegenerate = true;
+	if (std::filesystem::exists(BinPathFileName))
+	{
+		try
+		{
+			auto binTime = std::filesystem::last_write_time(BinPathFileName);
+			auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
+
+			// FBX 파일이 캐시보다 오래되었으면 캐시 사용
+			if (fbxTime <= binTime)
+			{
+				bShouldRegenerate = false;
+			}
+		}
+		catch (const std::filesystem::filesystem_error& e)
+		{
+			UE_LOG("Filesystem error during cache validation: %s. Forcing regeneration.", e.what());
+			bShouldRegenerate = true;
+		}
+	}
+
+	// 캐시에서 로드 시도
+	if (!bShouldRegenerate)
+	{
+		UE_LOG("Attempting to load FBX '%s' from cache.", NormalizedPath.c_str());
+		try
+		{
+			FSkeletalMeshData* MeshData = new FSkeletalMeshData();
+			MeshData->PathFileName = NormalizedPath;
+
+			FWindowsBinReader Reader(BinPathFileName);
+			if (!Reader.IsOpen())
+			{
+				throw std::runtime_error("Failed to open bin file for reading.");
+			}
+			Reader << *MeshData;
+			Reader.Close();
+
+			// 머티리얼 로드
+			for (int Index = 0; Index < MeshData->GroupInfos.Num(); Index++)
+			{
+				if (MeshData->GroupInfos[Index].InitialMaterialName.empty())
+					continue;
+				const FString& MaterialName = MeshData->GroupInfos[Index].InitialMaterialName;
+				const FString& MaterialFilePath = ConvertDataPathToCachePath(MaterialName + ".mat.bin");
+				FWindowsBinReader MatReader(MaterialFilePath);
+				if (!MatReader.IsOpen())
+				{
+					throw std::runtime_error("Failed to open material bin file for reading.");
+				}
+				FMaterialInfo MaterialInfo{};
+				Serialization::ReadAsset<FMaterialInfo>(MatReader, &MaterialInfo);
+
+				UMaterial* NewMaterial = NewObject<UMaterial>();
+				UMaterial* Default = UResourceManager::GetInstance().GetDefaultMaterial();
+				NewMaterial->SetMaterialInfo(MaterialInfo);
+				NewMaterial->SetShader(Default->GetShader());
+				NewMaterial->SetShaderMacros(Default->GetShaderMacros());
+				UResourceManager::GetInstance().Add<UMaterial>(MaterialInfo.MaterialName, NewMaterial);
+			}
+
+			MeshData->CacheFilePath = BinPathFileName;
+
+			UE_LOG("Successfully loaded FBX '%s' from cache.", NormalizedPath.c_str());
+			return MeshData;
+		}
+		catch (const std::exception& e)
+		{
+			UE_LOG("Error loading FBX from cache: %s. Cache might be corrupt or incompatible.", e.what());
+			UE_LOG("Deleting corrupt cache and forcing regeneration for '%s'.", NormalizedPath.c_str());
+			std::filesystem::remove(BinPathFileName);
+		}
+	}
+#endif // USE_OBJ_CACHE
+
+	return nullptr;
+}
+
+void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& FbxPath)
+{
+#ifdef USE_OBJ_CACHE
+	if (!MeshData)
+		return;
+
+	FString NormalizedPath = NormalizePath(FbxPath);
+	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
+	const FString BinPathFileName = CachePathStr + ".bin";
+
+	// 캐시를 저장할 디렉토리가 없으면 생성
+	std::filesystem::path CacheFileDirPath(BinPathFileName);
+	if (CacheFileDirPath.has_parent_path())
+	{
+		std::filesystem::create_directories(CacheFileDirPath.parent_path());
+	}
+
+	try
+	{
+		FWindowsBinWriter Writer(BinPathFileName);
+		Writer << *MeshData;
+		Writer.Close();
+
+		// 머티리얼 저장
+		for (FMaterialInfo& MaterialInfo : MaterialInfos)
+		{
+			const FString MaterialFilePath = ConvertDataPathToCachePath(MaterialInfo.MaterialName + ".mat.bin");
+			FWindowsBinWriter MatWriter(MaterialFilePath);
+			Serialization::WriteAsset<FMaterialInfo>(MatWriter, &MaterialInfo);
+			MatWriter.Close();
+		}
+
+		MeshData->CacheFilePath = BinPathFileName;
+
+		UE_LOG("Cache saved for FBX '%s'.", NormalizedPath.c_str());
+	}
+	catch (const std::exception& e)
+	{
+		UE_LOG("Failed to save FBX cache: %s", e.what());
+	}
+#endif // USE_OBJ_CACHE
+}
+
+TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString& FbxPath)
+{
+	TArray<UAnimationSequence*> Animations;
+
+#ifdef USE_OBJ_CACHE
+	FString NormalizedPath = NormalizePath(FbxPath);
+	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
+	const FString AnimsCacheFileName = CachePathStr + ".anims.bin";
+
+	// 캐시 유효성 검사
+	if (std::filesystem::exists(AnimsCacheFileName))
+	{
+		try
+		{
+			auto animsTime = std::filesystem::last_write_time(AnimsCacheFileName);
+			auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
+
+			// FBX 파일이 캐시보다 오래되었으면 캐시 사용
+			if (fbxTime <= animsTime)
+			{
+				UE_LOG("Attempting to load animations from cache for '%s'.", NormalizedPath.c_str());
+
+				FWindowsBinReader Reader(AnimsCacheFileName);
+				if (!Reader.IsOpen())
+				{
+					throw std::runtime_error("Failed to open anims cache file for reading.");
+				}
+
+				// 애니메이션 개수 읽기
+				int32 AnimCount = 0;
+				Reader << AnimCount;
+
+				// 각 애니메이션 로드
+				for (int32 i = 0; i < AnimCount; i++)
+				{
+					TArray<FBoneAnimationTrack> BoneTracks;
+					float PlayLength = 0.0f;
+					float FrameRate = 0.0f;
+
+					// 데이터 읽기
+					Reader << PlayLength;
+					Reader << FrameRate;
+					Serialization::ReadArray(Reader, BoneTracks);
+
+					// UAnimationSequence 생성
+					UAnimationSequence* AnimSequence = NewObject<UAnimationSequence>();
+					UAnimDataModel* DataModel = NewObject<UAnimDataModel>();
+					DataModel->Initialize(BoneTracks, PlayLength, FrameRate);
+					AnimSequence->SetDataModel(DataModel);
+
+					Animations.Add(AnimSequence);
+				}
+
+				Reader.Close();
+
+				UE_LOG("Successfully loaded %d animations from cache.", AnimCount);
+				return Animations;
+			}
+		}
+		catch (const std::exception& e)
+		{
+			UE_LOG("Error loading animations from cache: %s. Cache might be corrupt.", e.what());
+			std::filesystem::remove(AnimsCacheFileName);
+			Animations.clear();
+		}
+	}
+#endif // USE_OBJ_CACHE
+
+	return Animations;
+}
+
+void UFbxLoader::SaveAnimationsToCache(const TArray<UAnimationSequence*>& Animations, const FString& FbxPath)
+{
+#ifdef USE_OBJ_CACHE
+	if (Animations.IsEmpty())
+		return;
+
+	FString NormalizedPath = NormalizePath(FbxPath);
+	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
+	const FString AnimsCacheFileName = CachePathStr + ".anims.bin";
+
+	// 캐시를 저장할 디렉토리가 없으면 생성
+	std::filesystem::path CacheFileDirPath(AnimsCacheFileName);
+	if (CacheFileDirPath.has_parent_path())
+	{
+		std::filesystem::create_directories(CacheFileDirPath.parent_path());
+	}
+
+	try
+	{
+		FWindowsBinWriter Writer(AnimsCacheFileName);
+
+		// 애니메이션 개수 저장
+		int32 AnimCount = Animations.Num();
+		Writer << AnimCount;
+
+		// 각 애니메이션 저장
+		for (UAnimationSequence* AnimSeq : Animations)
+		{
+			if (!AnimSeq || !AnimSeq->GetDataModel())
+				continue;
+
+			UAnimDataModel* DataModel = AnimSeq->GetDataModel();
+			const TArray<FBoneAnimationTrack>& BoneTracks = DataModel->GetBoneAnimationTracks();
+			float PlayLength = DataModel->GetPlayLength();
+			float FrameRate = DataModel->GetFrameRate();
+
+			// 데이터 저장
+			Writer << PlayLength;
+			Writer << FrameRate;
+			Serialization::WriteArray(Writer, BoneTracks);
+		}
+
+		Writer.Close();
+
+		UE_LOG("Animations cache saved for FBX '%s' (%d animations).", NormalizedPath.c_str(), AnimCount);
+	}
+	catch (const std::exception& e)
+	{
+		UE_LOG("Failed to save animations cache: %s", e.what());
+	}
+#endif // USE_OBJ_CACHE
+}
+
+FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
+{
+	MaterialInfos.clear();
+	FString NormalizedPath = NormalizePath(FilePath);
+
+	FFbxAssetData* AssetData = new FFbxAssetData();
+
+#ifdef USE_OBJ_CACHE
+	// 캐시에서 로드 시도
+	FSkeletalMeshData* CachedMeshData = TryLoadMeshFromCache(FilePath);
+
+	if (CachedMeshData)
+	{
+		// 메시 캐시 로드 성공 - 애니메이션도 시도
+		TArray<UAnimationSequence*> CachedAnimations = TryLoadAnimationsFromCache(FilePath);
+
+		AssetData->MeshData = CachedMeshData;
+		AssetData->AnimationSequences = CachedAnimations;
+
+		UE_LOG("FBX Assets loaded from cache: Mesh with %d animations", AssetData->AnimationSequences.Num());
+		return AssetData;
+	}
+
+	UE_LOG("Regenerating FBX assets for '%s'...", NormalizedPath.c_str());
+#endif
+
+	// Scene 생성 및 전처리
+	FbxScene* Scene = CreateAndPrepareFbxScene(FilePath);
+	if (!Scene)
+	{
+		delete AssetData;
+		return nullptr;
+	}
+
+	// 메시 추출
+	TMap<FbxNode*, int32> BoneToIndex;
+	FSkeletalMeshData* MeshData = ExtractMeshFromScene(Scene, BoneToIndex);
+
+	if (MeshData)
+	{
+		MeshData->PathFileName = NormalizedPath;
+		AssetData->MeshData = MeshData;
+
+		// 애니메이션 로드
+		LoadAnimationsFromScene(Scene, BoneToIndex, MeshData->Skeleton, AssetData->AnimationSequences);
+
+		// 캐시 저장
+		SaveMeshToCache(MeshData, FilePath);
+		SaveAnimationsToCache(AssetData->AnimationSequences, FilePath);
+	}
+
+	UE_LOG("FBX Assets loaded: Mesh with %d animations", AssetData->AnimationSequences.Num());
+
+	return AssetData;
 }
 
