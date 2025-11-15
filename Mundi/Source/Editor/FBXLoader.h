@@ -9,6 +9,7 @@ struct FFbxAssetData
 {
 	FSkeletalMeshData* MeshData = nullptr;
 	TArray<UAnimationSequence*> AnimationSequences;
+	TArray<FString> AnimationNames; // AnimStack의 실제 이름들
 };
 
 class UFbxLoader : public UObject
@@ -39,7 +40,7 @@ private:
 
 	void LoadSkeletonFromNode(FbxNode* InNode, FSkeletalMeshData& MeshData, int32 ParentNodeIndex, TMap<FbxNode*, int32>& BoneToIndex);
 
-	void LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, TArray<UAnimationSequence*>& OutAnimSequences);
+	void LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, const FString& FbxPath, TArray<UAnimationSequence*>& OutAnimSequences, TArray<FString>& OutAnimationNames);
 
 	// Scene 생성 및 전처리 (축 변환, 삼각화)
 	FbxScene* CreateAndPrepareFbxScene(const FString& FilePath);
@@ -50,8 +51,7 @@ private:
 	// 캐시 관련 헬퍼
 	FSkeletalMeshData* TryLoadMeshFromCache(const FString& FbxPath);
 	void SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& FbxPath);
-	TArray<UAnimationSequence*> TryLoadAnimationsFromCache(const FString& FbxPath);
-	void SaveAnimationsToCache(const TArray<UAnimationSequence*>& Animations, const FString& FbxPath);
+	TArray<UAnimationSequence*> TryLoadAnimationsFromCache(const FString& FbxPath, TArray<FString>& OutAnimationNames);
 	
 	void LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int32, TArray<uint32>>& MaterialGroupIndexList, TMap<FbxNode*, int32>& BoneToIndex, TArray<int32> MaterialSlotToIndex, int32 DefaultMaterialIndex = 0);
 

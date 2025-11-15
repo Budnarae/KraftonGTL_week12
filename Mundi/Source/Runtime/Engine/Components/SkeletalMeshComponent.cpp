@@ -5,7 +5,8 @@
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
     // 테스트용 기본 메시 설정
-    SetSkeletalMesh(GDataDir + "/Test.fbx"); 
+    SetSkeletalMesh(GDataDir + "/Test.fbx");
+    //PlayAnimation(RESOURCE.Load<UAnimationAsset>("",true));
 }
 
 
@@ -19,22 +20,22 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
         UpdateAnimation(DeltaTime);
     }
 
-    // FOR TEST ////
-     if (!SkeletalMesh) { return; }
-     constexpr int32 TEST_BONE_INDEX = 2;
-     if (!bIsInitialized)
-     {
-         TestBoneBasePose = CurrentLocalSpacePose[TEST_BONE_INDEX];
-         bIsInitialized = true;
-     }
-     TestTime += DeltaTime;
-     float Angle = sinf(TestTime * 2.f);
-     FQuat TestRotation = FQuat::FromAxisAngle(FVector(1.f, 0.f, 0.f), Angle);
-     TestRotation.Normalize();
-     FTransform NewLocalPose = TestBoneBasePose;
-     NewLocalPose.Rotation = TestRotation * TestBoneBasePose.Rotation;
-     SetBoneLocalTransform(TEST_BONE_INDEX, NewLocalPose);
-    // FOR TEST ////
+    // // FOR TEST ////
+    //  if (!SkeletalMesh) { return; }
+    //  constexpr int32 TEST_BONE_INDEX = 2;
+    //  if (!bIsInitialized)
+    //  {
+    //      TestBoneBasePose = CurrentLocalSpacePose[TEST_BONE_INDEX];
+    //      bIsInitialized = true;
+    //  }
+    //  TestTime += DeltaTime;
+    //  float Angle = sinf(TestTime * 2.f);
+    //  FQuat TestRotation = FQuat::FromAxisAngle(FVector(1.f, 0.f, 0.f), Angle);
+    //  TestRotation.Normalize();
+    //  FTransform NewLocalPose = TestBoneBasePose;
+    //  NewLocalPose.Rotation = TestRotation * TestBoneBasePose.Rotation;
+    //  SetBoneLocalTransform(TEST_BONE_INDEX, NewLocalPose);
+    // // FOR TEST ////
 }
 
 void USkeletalMeshComponent::SetSkeletalMesh(const FString& PathFileName)

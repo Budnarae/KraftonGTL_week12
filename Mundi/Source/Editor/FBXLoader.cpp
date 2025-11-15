@@ -79,8 +79,11 @@ void UFbxLoader::PreLoad()
 					for (int AnimIndex = 0; AnimIndex < AssetData->AnimationSequences.Num(); AnimIndex++)
 					{
 						UAnimationSequence* AnimSeq = AssetData->AnimationSequences[AnimIndex];
-						// 애니메이션 이름 생성: 파일명_애니메이션인덱스
-						FString AnimName = FileName + "_Anim" + std::to_string(AnimIndex);
+						// 애니메이션 이름 생성: 파일명_실제AnimStack이름
+						FString AnimStackName = (AnimIndex < AssetData->AnimationNames.Num())
+							? AssetData->AnimationNames[AnimIndex]
+							: ("Anim" + std::to_string(AnimIndex));
+						FString AnimName = FileName + "_" + AnimStackName;
 						RESOURCE.Add<UAnimationSequence>(AnimName, AnimSeq);
 						UE_LOG("UAnimationSequence(name: '%s') is successfully created!", AnimName.c_str());
 					}
@@ -994,12 +997,25 @@ void UFbxLoader::EnsureSingleRootBone(FSkeletalMeshData& MeshData)
 	}
 }
 
-void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, TArray<UAnimationSequence*>& OutAnimSequences)
+void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, const FString& FbxPath, TArray<UAnimationSequence*>& OutAnimSequences, TArray<FString>& OutAnimationNames)
 {
 	if (!InScene)
 		return;
 
 	int AnimStackCount = InScene->GetSrcObjectCount<FbxAnimStack>();
+
+	// FBX 파일명 추출 (확장자 제거)
+	std::filesystem::path FbxFilePath(FbxPath);
+	FString BaseName = FbxFilePath.stem().string();  // 확장자 없는 파일명
+	FString CacheDir = ConvertDataPathToCachePath(NormalizePath(FbxPath));
+	std::filesystem::path CacheDirPath(CacheDir);
+	CacheDirPath = CacheDirPath.parent_path();
+
+	// 캐시 디렉토리 생성
+	if (!CacheDirPath.empty())
+	{
+		std::filesystem::create_directories(CacheDirPath);
+	}
 
 	for (int AnimStackIndex = 0; AnimStackIndex < AnimStackCount; AnimStackIndex++)
 	{
@@ -1079,7 +1095,20 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 			BoneTracks.Add(Track);
 		}
 
-		// UAnimationSequence 생성
+		// 개별 애니메이션 파일로 저장: BaseName_AnimName.anim.bin
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".anim.bin")).string();
+
+		FWindowsBinWriter Writer(AnimFileName);
+		float PlayLengthFloat = static_cast<float>(PlayLength);
+		Writer << PlayLengthFloat;
+		Writer << FrameRate;
+		Serialization::WriteArray(Writer, BoneTracks);
+		Writer.Close();
+
+		UE_LOG("Animation '%s' saved to: %s (%.2fs, %.2f fps, %d tracks)",
+			AnimName.c_str(), AnimFileName.c_str(), PlayLength, FrameRate, BoneTracks.Num());
+
+		// UAnimationSequence 생성 (메모리에)
 		UAnimationSequence* AnimSequence = NewObject<UAnimationSequence>();
 		UAnimDataModel* DataModel = NewObject<UAnimDataModel>();
 		DataModel->Initialize(BoneTracks, static_cast<float>(PlayLength), FrameRate);
@@ -1088,9 +1117,7 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 		AnimSequence->SetDataModel(DataModel);
 
 		OutAnimSequences.Add(AnimSequence);
-
-		UE_LOG("Animation '%s' loaded: %.2f seconds, %.2f fps, %d bone tracks",
-			AnimName.c_str(), PlayLength, FrameRate, BoneTracks.Num());
+		OutAnimationNames.Add(AnimName); // AnimStack의 실제 이름 저장
 	}
 }
 
@@ -1320,128 +1347,106 @@ void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& Fbx
 #endif // USE_OBJ_CACHE
 }
 
-TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString& FbxPath)
+TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString& FbxPath, TArray<FString>& OutAnimationNames)
 {
 	TArray<UAnimationSequence*> Animations;
+	OutAnimationNames.clear();
 
 #ifdef USE_OBJ_CACHE
 	FString NormalizedPath = NormalizePath(FbxPath);
+
+	// FBX 파일명 추출
+	std::filesystem::path FbxFilePath(FbxPath);
+	FString BaseName = FbxFilePath.stem().string();
+
+	// 캐시 디렉토리 경로
 	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString AnimsCacheFileName = CachePathStr + ".anims.bin";
+	std::filesystem::path CacheDirPath(CachePathStr);
+	CacheDirPath = CacheDirPath.parent_path();
 
-	// 캐시 유효성 검사
-	if (std::filesystem::exists(AnimsCacheFileName))
+	if (!std::filesystem::exists(CacheDirPath))
 	{
-		try
-		{
-			auto animsTime = std::filesystem::last_write_time(AnimsCacheFileName);
-			auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
-
-			// FBX 파일이 캐시보다 오래되었으면 캐시 사용
-			if (fbxTime <= animsTime)
-			{
-				UE_LOG("Attempting to load animations from cache for '%s'.", NormalizedPath.c_str());
-
-				FWindowsBinReader Reader(AnimsCacheFileName);
-				if (!Reader.IsOpen())
-				{
-					throw std::runtime_error("Failed to open anims cache file for reading.");
-				}
-
-				// 애니메이션 개수 읽기
-				int32 AnimCount = 0;
-				Reader << AnimCount;
-
-				// 각 애니메이션 로드
-				for (int32 i = 0; i < AnimCount; i++)
-				{
-					TArray<FBoneAnimationTrack> BoneTracks;
-					float PlayLength = 0.0f;
-					float FrameRate = 0.0f;
-
-					// 데이터 읽기
-					Reader << PlayLength;
-					Reader << FrameRate;
-					Serialization::ReadArray(Reader, BoneTracks);
-
-					// UAnimationSequence 생성
-					UAnimationSequence* AnimSequence = NewObject<UAnimationSequence>();
-					UAnimDataModel* DataModel = NewObject<UAnimDataModel>();
-					DataModel->Initialize(BoneTracks, PlayLength, FrameRate);
-					AnimSequence->SetDataModel(DataModel);
-
-					Animations.Add(AnimSequence);
-				}
-
-				Reader.Close();
-
-				UE_LOG("Successfully loaded %d animations from cache.", AnimCount);
-				return Animations;
-			}
-		}
-		catch (const std::exception& e)
-		{
-			UE_LOG("Error loading animations from cache: %s. Cache might be corrupt.", e.what());
-			std::filesystem::remove(AnimsCacheFileName);
-			Animations.clear();
-		}
-	}
-#endif // USE_OBJ_CACHE
-
-	return Animations;
-}
-
-void UFbxLoader::SaveAnimationsToCache(const TArray<UAnimationSequence*>& Animations, const FString& FbxPath)
-{
-#ifdef USE_OBJ_CACHE
-	if (Animations.IsEmpty())
-		return;
-
-	FString NormalizedPath = NormalizePath(FbxPath);
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString AnimsCacheFileName = CachePathStr + ".anims.bin";
-
-	// 캐시를 저장할 디렉토리가 없으면 생성
-	std::filesystem::path CacheFileDirPath(AnimsCacheFileName);
-	if (CacheFileDirPath.has_parent_path())
-	{
-		std::filesystem::create_directories(CacheFileDirPath.parent_path());
+		return Animations;  // 캐시 디렉토리 없음
 	}
 
 	try
 	{
-		FWindowsBinWriter Writer(AnimsCacheFileName);
+		// BaseName_*.anim.bin 패턴의 모든 파일 찾기
+		FString AnimFilePattern = BaseName + "_*.anim.bin";
+		auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
 
-		// 애니메이션 개수 저장
-		int32 AnimCount = Animations.Num();
-		Writer << AnimCount;
-
-		// 각 애니메이션 저장
-		for (UAnimationSequence* AnimSeq : Animations)
+		for (const auto& Entry : std::filesystem::directory_iterator(CacheDirPath))
 		{
-			if (!AnimSeq || !AnimSeq->GetDataModel())
+			if (!Entry.is_regular_file())
 				continue;
 
-			UAnimDataModel* DataModel = AnimSeq->GetDataModel();
-			const TArray<FBoneAnimationTrack>& BoneTracks = DataModel->GetBoneAnimationTracks();
-			float PlayLength = DataModel->GetPlayLength();
-			float FrameRate = DataModel->GetFrameRate();
+			FString FileName = Entry.path().filename().string();
 
-			// 데이터 저장
-			Writer << PlayLength;
-			Writer << FrameRate;
-			Serialization::WriteArray(Writer, BoneTracks);
+			// 패턴 매칭: BaseName_로 시작하고 .anim.bin으로 끝나는지 확인
+			if (FileName.find(BaseName + "_") == 0 && FileName.ends_with(".anim.bin"))
+			{
+				// 캐시 파일이 FBX보다 최신인지 확인
+				auto animTime = std::filesystem::last_write_time(Entry.path());
+				if (fbxTime > animTime)
+				{
+					// FBX가 더 최신이면 캐시 무효
+					continue;
+				}
+
+				// 개별 애니메이션 파일 읽기
+				FString AnimFilePath = Entry.path().string();
+				FWindowsBinReader Reader(AnimFilePath);
+				if (!Reader.IsOpen())
+				{
+					UE_LOG("Failed to open animation cache: %s", AnimFilePath.c_str());
+					continue;
+				}
+
+				TArray<FBoneAnimationTrack> BoneTracks;
+				float PlayLength = 0.0f;
+				float FrameRate = 0.0f;
+
+				// 데이터 읽기
+				Reader << PlayLength;
+				Reader << FrameRate;
+				Serialization::ReadArray(Reader, BoneTracks);
+				Reader.Close();
+
+				// UAnimationSequence 생성
+				UAnimationSequence* AnimSequence = NewObject<UAnimationSequence>();
+				UAnimDataModel* DataModel = NewObject<UAnimDataModel>();
+				DataModel->Initialize(BoneTracks, PlayLength, FrameRate);
+				AnimSequence->SetDataModel(DataModel);
+
+				Animations.Add(AnimSequence);
+
+				// 파일명에서 AnimName 추출: "BaseName_AnimName.anim.bin" → "AnimName"
+				FString AnimNameWithExt = Entry.path().stem().string(); // "BaseName_AnimName.anim"
+				FString AnimNameFull = std::filesystem::path(AnimNameWithExt).stem().string(); // "BaseName_AnimName"
+				FString Prefix = BaseName + "_";
+				FString AnimName = (AnimNameFull.find(Prefix) == 0)
+					? AnimNameFull.substr(Prefix.length())
+					: AnimNameFull;
+				OutAnimationNames.Add(AnimName);
+
+				UE_LOG("Loaded animation from cache: %s (%.2fs, %.2f fps)",
+					FileName.c_str(), PlayLength, FrameRate);
+			}
 		}
 
-		Writer.Close();
-
-		UE_LOG("Animations cache saved for FBX '%s' (%d animations).", NormalizedPath.c_str(), AnimCount);
+		if (Animations.Num() > 0)
+		{
+			UE_LOG("Successfully loaded %d animations from cache.", Animations.Num());
+		}
 	}
 	catch (const std::exception& e)
 	{
-		UE_LOG("Failed to save animations cache: %s", e.what());
+		UE_LOG("Error loading animations from cache: %s", e.what());
+		Animations.clear();
 	}
 #endif // USE_OBJ_CACHE
+
+	return Animations;
 }
 
 FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
@@ -1458,7 +1463,7 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 	if (CachedMeshData)
 	{
 		// 메시 캐시 로드 성공 - 애니메이션도 시도
-		TArray<UAnimationSequence*> CachedAnimations = TryLoadAnimationsFromCache(FilePath);
+		TArray<UAnimationSequence*> CachedAnimations = TryLoadAnimationsFromCache(FilePath, AssetData->AnimationNames);
 
 		AssetData->MeshData = CachedMeshData;
 		AssetData->AnimationSequences = CachedAnimations;
@@ -1487,12 +1492,11 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 		MeshData->PathFileName = NormalizedPath;
 		AssetData->MeshData = MeshData;
 
-		// 애니메이션 로드
-		LoadAnimationsFromScene(Scene, BoneToIndex, MeshData->Skeleton, AssetData->AnimationSequences);
+		// 애니메이션 로드 (개별 파일로 자동 저장됨)
+		LoadAnimationsFromScene(Scene, BoneToIndex, MeshData->Skeleton, FilePath, AssetData->AnimationSequences, AssetData->AnimationNames);
 
 		// 캐시 저장
 		SaveMeshToCache(MeshData, FilePath);
-		SaveAnimationsToCache(AssetData->AnimationSequences, FilePath);
 	}
 
 	UE_LOG("FBX Assets loaded: Mesh with %d animations", AssetData->AnimationSequences.Num());
