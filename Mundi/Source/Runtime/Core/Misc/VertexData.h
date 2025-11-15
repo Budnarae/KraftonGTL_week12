@@ -443,3 +443,104 @@ namespace Serialization {
         for (auto& Track : Arr) Ar << Track;
     }
 }
+
+struct FAnimationUpdateContext
+{
+    // ------------------------------------------------------------------------
+    // DeltaTime
+    // 현재 Tick 동안 경과한 시간 (초)
+    // 모든 AnimNode Update에서 참조
+    // ------------------------------------------------------------------------
+    float DeltaTime{};
+
+    // ------------------------------------------------------------------------
+    // bIsSkeletonInitialised
+    // SkeletalMesh가 초기화되었는지 여부
+    // Update 수행 전 체크
+    // ------------------------------------------------------------------------
+    // bool bIsSkeletonInitialized;
+
+    // ------------------------------------------------------------------------
+    // bEnableRootMotion
+    // RootMotion 적용 여부
+    // ------------------------------------------------------------------------
+    // bool bEnableRootMotion;
+
+    /* 추후 필요한 정보를 추가 */
+};
+
+struct FPoseContext
+{
+    TArray<FTransform> EvaluatedPoses;
+};
+
+struct FAnimStateTransition
+{
+    // ------------------------------------------------------------------------
+    // Transition 이름
+    // 디버깅용, 유니크 식별자
+    // ------------------------------------------------------------------------
+    FName TransitionName;
+
+    // ------------------------------------------------------------------------
+    // Source / Target State
+    // Transition 출발 상태와 도착 상태 포인터
+    // ------------------------------------------------------------------------
+    struct FAnimState* SourceState;
+    struct FAnimState* TargetState;
+
+    // ------------------------------------------------------------------------
+    // Transition 조건
+    // true가 되면 Transition 발동
+    // ------------------------------------------------------------------------
+    std::function<bool()> CanEnterTransition;
+    
+    /* 이하는 나중에 해제하여 사용할 것 */
+    
+    // ------------------------------------------------------------------------
+    // Transition 블렌딩 시간
+    // ActiveState Pose -> TargetState Pose로 자연스럽게 Blend
+    // ------------------------------------------------------------------------
+    //float BlendTime = 0.2f;
+
+    // ------------------------------------------------------------------------
+    // Interrupt 옵션
+    // 다른 Transition으로 중단 가능한지 여부
+    // ------------------------------------------------------------------------
+    //bool bCanInterrupt = true;
+
+    // ------------------------------------------------------------------------
+    // Transition 진행 상태
+    // BlendAlpha: 0.0 = SourcePose, 1.0 = TargetPose
+    // ------------------------------------------------------------------------
+    //float BlendAlpha = 0.0f;
+
+public:
+
+    // ------------------------------------------------------------------------
+    // Update
+    // DeltaTime 기반으로 BlendAlpha 계산
+    // Condition 평가 후 Blend 진행
+    // ------------------------------------------------------------------------
+    void Update(float DeltaTime)
+    {
+        return;
+    }
+
+    // ------------------------------------------------------------------------
+    // Evaluate
+    // SourcePose와 TargetPose를 BlendAlpha 기준으로 보간
+    // ------------------------------------------------------------------------
+    FPoseContext Evaluate(const FPoseContext& SourcePose, const FPoseContext& TargetPose)
+    {
+        return FPoseContext{};
+    }
+};
+
+class UAnimationSequence;
+
+struct FAnimState
+{
+    UAnimationSequence* AnimSequence;
+    TArray<FAnimStateTransition> Transitions;
+};
