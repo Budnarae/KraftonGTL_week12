@@ -2,6 +2,7 @@
 
 class UAnimationStateMachine : public UObject
 {
+    DECLARE_CLASS(UAnimationStateMachine, UObject)
 public:
     /**
      * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)

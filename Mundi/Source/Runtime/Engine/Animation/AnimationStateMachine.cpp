@@ -4,6 +4,7 @@
 
 #include "Keyboard.h"
 
+IMPLEMENT_CLASS(UAnimationStateMachine)
 /**
  * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)
  * @return 없음
