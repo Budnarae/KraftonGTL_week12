@@ -40,7 +40,8 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
     Super::TickComponent(DeltaTime);
 
-    if (AnimationMode == EAnimationMode::AnimationSingleNode && AnimInstance)
+    if (AnimInstance && (AnimationMode == EAnimationMode::AnimationSingleNode ||
+                         AnimationMode == EAnimationMode::AnimationBlueprint))
     {
         // FOR TEST
         AnimInstance->UpdateBlendedAnimation(DeltaTime, Alpha);

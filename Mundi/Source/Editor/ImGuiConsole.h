@@ -68,6 +68,36 @@ struct ExampleAppConsole
         Items.clear();
     }
 
+    void    CopyToClipboard()
+    {
+        // 모든 로그를 하나의 문자열로 합침
+        std::string clipboardText;
+        for (int i = 0; i < Items.Size; i++)
+        {
+            if (!Filter.PassFilter(Items[i]))
+                continue;
+            clipboardText += Items[i];
+            clipboardText += "\n";
+        }
+
+        if (clipboardText.empty())
+            return;
+
+        // Windows 클립보드에 복사
+        if (OpenClipboard(nullptr))
+        {
+            EmptyClipboard();
+            HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, clipboardText.size() + 1);
+            if (hMem)
+            {
+                memcpy(GlobalLock(hMem), clipboardText.c_str(), clipboardText.size() + 1);
+                GlobalUnlock(hMem);
+                SetClipboardData(CF_TEXT, hMem);
+            }
+            CloseClipboard();
+        }
+    }
+
     void VAddLog(const char* fmt, va_list args)
     {
         char buf[1024];
@@ -121,7 +151,7 @@ struct ExampleAppConsole
         ImGui::SameLine();
         if (ImGui::SmallButton("Clear")) { ClearLog(); }
         ImGui::SameLine();
-        bool copy_to_clipboard = ImGui::SmallButton("Copy");
+        if (ImGui::SmallButton("Copy")) { CopyToClipboard(); }
         //static float t = 0.0f; if (ImGui::GetTime() - t > 0.02f) { t = ImGui::GetTime(); AddLog("Spam %f", t); }
 
         ImGui::Separator();
@@ -176,8 +206,6 @@ struct ExampleAppConsole
             // - Split them into same height items would be simpler and facilitate random-seeking into your list.
             // - Consider using manual call to IsRectVisible() and skipping extraneous decoration from your items.
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
-            if (copy_to_clipboard)
-                ImGui::LogToClipboard();
             for (const char* item : Items)
             {
                 if (!Filter.PassFilter(item))
@@ -195,8 +223,6 @@ struct ExampleAppConsole
                 if (has_color)
                     ImGui::PopStyleColor();
             }
-            if (copy_to_clipboard)
-                ImGui::LogFinish();
 
             // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
             // Using A scrollbar or mouse-wheel will take away from the bottom edge.
