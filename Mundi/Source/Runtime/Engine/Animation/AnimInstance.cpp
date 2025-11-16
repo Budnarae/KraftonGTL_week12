@@ -32,47 +32,6 @@ UAnimInstance::~UAnimInstance()
     }
 }
 
-void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
-{
-    TestSeqA = &InSeqA;
-    TestSeqB = &InSeqB;
-    IsBlending = true;
-}
-
-void UAnimInstance::UpdateBlendedAnimation(float DeltaTime, float Alpha)
-{
-    if (!OwnerSkeletalComp || !TestSeqA || !TestSeqB || !IsBlending)
-    {
-        return;
-    }
-
-    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
-    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
-    {
-        return;
-    }
-
-    CurTime += DeltaTime;
-
-    // 2) 모든 본의 로컬 포즈 업데이트
-    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
-    const int32 NumBones = Skeleton.Bones.Num();
-
-    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-    LocalPose.SetNum(NumBones);
-    
-    FPoseContext TSeqA, TSeqB, Out;
-    TestSeqA->EvaluatePose(CurTime, Skeleton, TSeqA);
-    TestSeqB->EvaluatePose(CurTime, Skeleton, TSeqB);
-
-    FAnimBlend::Blend(TSeqA, TSeqB, Alpha, Out);
-    
-    LocalPose = Out.EvaluatedPoses;
-
-    // 포즈 재계산 => 스키닝
-    OwnerSkeletalComp->ForceRecomputePose();
-}
-
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
 {
     OwnerSkeletalComp = InSkeletalMeshComponent;
@@ -113,93 +72,8 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
         LocalPose = CurrentPose.EvaluatedPoses;
         OwnerSkeletalComp->ForceRecomputePose();
     }
-
-    // ====================================
-    // SingleNode 방식 Regacy 코드
-    // ====================================
-    /*
-    if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)
-    {
-        return;
-    }
-
-    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
-    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
-    {
-        return;
-    }
-
-    // 1) 시간 업데이트
-    CurrentAnimationTime += DeltaTime;
-    float PlayLength = CurrentAnimation->GetPlayLength();
-
-    if (CurrentAnimationTime >= PlayLength)
-    {
-        if (bIsLooping)
-        {
-            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
-        }
-        else
-        {
-            CurrentAnimationTime = PlayLength;
-            bIsPlaying = false;
-        }
-    }
-
-    // 2) 모든 본의 로컬 포즈 업데이트
-    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
-    const int32 NumBones = Skeleton.Bones.Num();
-
-    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-    LocalPose.SetNum(NumBones);
-
-    for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
-    {
-        const FBone& Bone = Skeleton.Bones[BoneIndex];
-        FName BoneName = FName(Bone.Name);
-
-        // UAnimationAsset 인터페이스로 본 포즈 가져오기
-        // (AnimSequence, Montage 등 모든 타입 지원)
-        FTransform AnimPose = CurrentAnimation->GetBonePose(BoneName, CurrentAnimationTime);
-        LocalPose[BoneIndex] = AnimPose;
-    }
-
-    // 포즈 재계산 => 스키닝
-    OwnerSkeletalComp->ForceRecomputePose();
-    */
 }
 
-void UAnimInstance::SetAnimation(UAnimationAsset* NewAnimation)
-{
-    CurrentAnimation = NewAnimation;
-    CurrentAnimationTime = 0.0f;
-}
-
-void UAnimInstance::Play(bool bLooping)
-{
-    bIsPlaying = true;
-    bIsLooping = bLooping;
-    CurrentAnimationTime = 0.0f;
-}
-
-//Animation Helper
-void UAnimInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
-{
-    if (!OwnerSkeletalComp || !NewAnimToPlay)
-    {
-        return;
-    }
-
-    OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationSingleNode);
-    SetAnimation(NewAnimToPlay);
-    Play(bLooping);
-}
-
-void UAnimInstance::StopAnimation()
-{
-    bIsPlaying = false;
-    CurrentAnimationTime = 0.0f;
-}
 
 void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
@@ -250,6 +124,39 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 void UAnimInstance::EvaluateAnimation()
 {
     ASM.Evaluate(CurrentPose);
+}
+
+
+void UAnimInstance::SetAnimation(UAnimationAsset* NewAnimation)
+{
+    CurrentAnimation = NewAnimation;
+    CurrentAnimationTime = 0.0f;
+}
+
+void UAnimInstance::Play(bool bLooping)
+{
+    bIsPlaying = true;
+    bIsLooping = bLooping;
+    CurrentAnimationTime = 0.0f;
+}
+
+//Animation Helper
+void UAnimInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
+{
+    if (!OwnerSkeletalComp || !NewAnimToPlay)
+    {
+        return;
+    }
+
+    OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationSingleNode);
+    SetAnimation(NewAnimToPlay);
+    Play(bLooping);
+}
+
+void UAnimInstance::StopAnimation()
+{
+    bIsPlaying = false;
+    CurrentAnimationTime = 0.0f;
 }
 
 FPoseContext& UAnimInstance::GetCurrentPose()
@@ -412,4 +319,45 @@ void UAnimInstance::InitializeAnimationStateMachine()
     {
         TransitionCtoA->SetBlendTime(0.3f);
     }
+}
+
+void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
+{
+    TestSeqA = &InSeqA;
+    TestSeqB = &InSeqB;
+    IsBlending = true;
+}
+
+void UAnimInstance::UpdateBlendedAnimation(float DeltaTime, float Alpha)
+{
+    if (!OwnerSkeletalComp || !TestSeqA || !TestSeqB || !IsBlending)
+    {
+        return;
+    }
+
+    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
+    {
+        return;
+    }
+
+    CurTime += DeltaTime;
+
+    // 2) 모든 본의 로컬 포즈 업데이트
+    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+    const int32 NumBones = Skeleton.Bones.Num();
+
+    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+    LocalPose.SetNum(NumBones);
+
+    FPoseContext TSeqA, TSeqB, Out;
+    TestSeqA->EvaluatePose(CurTime, Skeleton, TSeqA);
+    TestSeqB->EvaluatePose(CurTime, Skeleton, TSeqB);
+
+    FAnimBlend::Blend(TSeqA, TSeqB, Alpha, Out);
+
+    LocalPose = Out.EvaluatedPoses;
+
+    // 포즈 재계산 => 스키닝
+    OwnerSkeletalComp->ForceRecomputePose();
 }

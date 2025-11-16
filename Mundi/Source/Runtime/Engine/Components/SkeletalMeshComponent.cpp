@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "SkeletalMeshComponent.h"
 #include "../Animation/AnimInstance.h"
 #include "Source/Runtime/Engine/Animation/AnimationAsset.h"
@@ -32,17 +32,6 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
         UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
         SetAnimInstanceClass(NewAnimInstanceClass);
     }
-
-    if (AnimInstance)
-    {        
-        // UAnimationSequence* SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
-        // AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_mixamo.com"), true);
-        // FOR TEST
-        // UAnimationSequence* SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
-        // UAnimationSequence* SeqB = RESOURCE.Load<UAnimationSequence>("Standard Walk_mixamo.com");
-
-        // AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
-    }
 }
 
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
@@ -52,27 +41,8 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
     if (AnimInstance && (AnimationMode == EAnimationMode::AnimationSingleNode ||
                          AnimationMode == EAnimationMode::AnimationBlueprint))
     {
-        // FOR TEST
-        AnimInstance->UpdateBlendedAnimation(DeltaTime, Alpha);
         AnimInstance->UpdateAnimation(DeltaTime);
     }
-
-    // // FOR TEST ////
-    //  if (!SkeletalMesh) { return; }
-    //  constexpr int32 TEST_BONE_INDEX = 2;
-    //  if (!bIsInitialized)
-    //  {
-    //      TestBoneBasePose = CurrentLocalSpacePose[TEST_BONE_INDEX];
-    //      bIsInitialized = true;
-    //  }
-    //  TestTime += DeltaTime;
-    //  float Angle = sinf(TestTime * 2.f);
-    //  FQuat TestRotation = FQuat::FromAxisAngle(FVector(1.f, 0.f, 0.f), Angle);
-    //  TestRotation.Normalize();
-    //  FTransform NewLocalPose = TestBoneBasePose;
-    //  NewLocalPose.Rotation = TestRotation * TestBoneBasePose.Rotation;
-    //  SetBoneLocalTransform(TEST_BONE_INDEX, NewLocalPose);
-    // // FOR TEST ////
 }
 
 void USkeletalMeshComponent::SetSkeletalMesh(const FString& PathFileName)

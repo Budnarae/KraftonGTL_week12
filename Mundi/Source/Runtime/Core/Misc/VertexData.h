@@ -472,7 +472,19 @@ struct FAnimationUpdateContext
 
 struct FPoseContext
 {
+    const FSkeleton* Skeleton = nullptr;
     TArray<FTransform> EvaluatedPoses;
+
+    FPoseContext() = default;
+
+    FPoseContext(const FSkeleton* InSkeleton)
+        : Skeleton(InSkeleton)
+    {
+        if (Skeleton)
+        {
+            EvaluatedPoses.SetNum(Skeleton->Bones.Num());
+        }
+    }
 };
 
 // 전방 선언

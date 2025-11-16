@@ -209,6 +209,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AnimNode.cpp" />
     <ClCompile Include="Generated\AActor.generated.cpp" />
     <ClCompile Include="Generated\AAmbientLightActor.generated.cpp" />
     <ClCompile Include="Generated\ACameraActor.generated.cpp" />
@@ -677,6 +678,7 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimDataModel.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationSequence.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNode.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\FloatComparisonRule.h" />
     <ClInclude Include="Source\Runtime\Engine\Audio\Sound.h" />
