@@ -34,8 +34,8 @@ void UTexture::Load(const FString& InFilePath, ID3D11Device* InDevice, bool bSRG
 		std::string Extension = SourcePath.extension().string();
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
 
-		// DDS가 아닌 경우 → DDS 캐시 확인 및 생성
-		if (Extension != ".dds")
+		// DDS 또는 UTXT가 아닌 경우 → Content 캐시 확인 및 생성
+		if (Extension != ".dds" && Extension != ".utxt")
 		{
 			FString DDSCachePath = FTextureConverter::GetDDSCachePath(InFilePath);
 
@@ -97,9 +97,9 @@ void UTexture::Load(const FString& InFilePath, ID3D11Device* InDevice, bool bSRG
 	for (auto& ch : ext) ch = static_cast<wchar_t>(::towlower(ch));
 
 	HRESULT hr = E_FAIL;
-	if (ext == L".dds")
+	if (ext == L".dds" || ext == L".utxt")
 	{
-		// DDS 로딩: Ex 버전 사용하여 sRGB 지정
+		// DDS 로딩: Ex 버전 사용하여 sRGB 지정 (.utxt는 DDS 포맷)
 		hr = DirectX::CreateDDSTextureFromFileEx(
 			InDevice,
 			WFilePath.c_str(),

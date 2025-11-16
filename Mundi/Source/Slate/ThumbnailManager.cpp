@@ -57,11 +57,20 @@ ID3D11ShaderResourceView* FThumbnailManager::GetThumbnail(const std::string& Fil
 		return It->second.SRV;
 	}
 
+	// 파일시스템으로 디렉토리 확인
+	if (std::filesystem::is_directory(FilePath))
+	{
+		// 폴더 아이콘
+		FThumbnailData* FolderData = CreateDefaultThumbnail(".folder");
+		return FolderData ? FolderData->SRV : nullptr;
+	}
+
 	// 확장자 추출
 	size_t DotPos = FilePath.find_last_of('.');
 	if (DotPos == std::string::npos)
 	{
-		return nullptr;
+		// 확장자 없는 파일
+		return CreateDefaultThumbnail("")->SRV;
 	}
 
 	std::string Extension = FilePath.substr(DotPos);
@@ -75,7 +84,7 @@ ID3D11ShaderResourceView* FThumbnailManager::GetThumbnail(const std::string& Fil
 		ThumbnailData = CreateFBXThumbnail(FilePath);
 	}
 	else if (Extension == ".png" || Extension == ".jpg" || Extension == ".jpeg" ||
-	         Extension == ".dds" || Extension == ".tga")
+	         Extension == ".dds" || Extension == ".tga" || Extension == ".utxt")
 	{
 		ThumbnailData = CreateImageThumbnail(FilePath);
 	}
@@ -169,19 +178,27 @@ FThumbnailData* FThumbnailManager::CreateDefaultThumbnail(const std::string& Ext
 	Data.Width = ThumbnailSize;
 	Data.Height = ThumbnailSize;
 
-	// 확장자별 색상 결정
+	// 확장자별 색상 결정 (0xAABBGGRR 포맷)
 	uint32_t Color = 0xFF808080; // 기본 회색
-	if (Extension == ".fbx" || Extension == ".obj")
+	if (Extension == ".folder")
 	{
-		Color = 0xFF4080FF; // 파란색 (메시)
+		Color = 0xFF00FFFF; // 노란색 (폴더) - R=255, G=255, B=0
+	}
+	else if (Extension == ".uskel" || Extension == ".umesh")
+	{
+		Color = 0xFFFF8040; // 파란색 (메시) - R=64, G=128, B=255
 	}
 	else if (Extension == ".prefab")
 	{
-		Color = 0xFF40FF80; // 초록색 (프리팹)
+		Color = 0xFF80FF40; // 초록색 (프리팹) - R=64, G=255, B=128
 	}
-	else if (Extension == ".mat")
+	else if (Extension == ".uanim")
 	{
-		Color = 0xFFFF8040; // 주황색 (머티리얼)
+		Color = 0xFF00FF00; // 찐 초록색 (애니메이션) - R=0, G=255, B=0
+	}
+	else if (Extension == ".umat")
+	{
+		Color = 0xFF4080FF; // 주황색 (머티리얼) - R=255, G=128, B=64
 	}
 
 	// 텍스처 데이터 생성 (단색)

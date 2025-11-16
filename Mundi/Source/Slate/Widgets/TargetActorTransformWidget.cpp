@@ -337,7 +337,7 @@ void UTargetActorTransformWidget::RenderHeader(AActor* SelectedActor, UActorComp
 
 	if (ImGui::Button("to Prefab", ImVec2(80, 25)))
 	{
-		std::filesystem::path PrefabPath = FPlatformProcess::OpenSaveFileDialog(UTF8ToWide(GDataDir) + L"/Prefabs", L"prefab", L"Prefab Files", UTF8ToWide(SelectedActor->ObjectName.ToString()));
+		std::filesystem::path PrefabPath = FPlatformProcess::OpenSaveFileDialog(UTF8ToWide(GPrefabDir), L"prefab", L"Prefab Files", UTF8ToWide(SelectedActor->ObjectName.ToString()));
 		JSON ActorJson;
 		ActorJson["Type"] = SelectedActor->GetClass()->Name;
 		SelectedActor->Serialize(false, ActorJson);

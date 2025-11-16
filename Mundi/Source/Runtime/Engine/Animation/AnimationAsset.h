@@ -17,7 +17,7 @@ public:
     // ====================================
 
     virtual void Load(const FString& InFilePath, ID3D11Device* InDevice) = 0;
-    virtual void Save(const FString& InFilePath) = 0;
+    virtual bool Save(const FString& InFilePath = "") override = 0;
 
     // ====================================
     // 애니메이션 재생 인터페이스

@@ -8,8 +8,11 @@
 
 namespace fs = std::filesystem;
 
-extern const FString GDataDir;
-extern const FString GCacheDir;
+extern const FString GDataDir;      // Raw 소스 파일
+extern const FString GContentDir;   // 콘텐츠 루트 폴더
+extern const FString GResourceDir;  // 처리된 에셋
+extern const FString GPrefabDir;    // 프리팹 파일
+extern const FString GScriptDir;    // 스크립트 파일
 
 // ============================================================================
 // 경로 정규화 유틸리티 함수
@@ -27,6 +30,25 @@ inline FString NormalizePath(const FString& InPath)
 	FString Result = InPath;
 	std::replace(Result.begin(), Result.end(), '\\', '/');
 	return Result;
+}
+
+/**
+ * @brief 경로에서 확장자를 제거합니다.
+ * @details "Data/Models/cube.obj" -> "Data/Models/cube"
+ * @param InPath 확장자를 제거할 경로
+ * @return 확장자가 제거된 경로
+ */
+inline FString RemoveExtension(const FString& InPath)
+{
+	fs::path Path(InPath);
+	if (Path.has_parent_path())
+	{
+		return Path.parent_path().string() + "/" + Path.stem().string();
+	}
+	else
+	{
+		return Path.stem().string();
+	}
 }
 
 // ============================================================================
@@ -102,7 +124,7 @@ inline FString WideToUTF8(const FWideString& InWideStr)
 	return result;
 }
 
-inline FString ConvertDataPathToCachePath(const FString& InAssetPath)
+inline FString ConvertDataPathToResourcePath(const FString& InAssetPath)
 {
 	FString DataDirPrefix = GDataDir + "/";
 
@@ -111,16 +133,16 @@ inline FString ConvertDataPathToCachePath(const FString& InAssetPath)
 	if (InAssetPath.length() >= DataDirPrefix.length() &&
 		_strnicmp(InAssetPath.c_str(), DataDirPrefix.c_str(), DataDirPrefix.length()) == 0)
 	{
-		// "GCacheDir/" 접두사를 제거하고 GCacheDir/"... " 접두사를 붙임
-		return GCacheDir + "/" + InAssetPath.substr(DataDirPrefix.length());
+		// "Data/" 접두사를 제거하고 "Resources/" 접두사를 붙임
+		return GResourceDir + "/" + InAssetPath.substr(DataDirPrefix.length());
 	}
 
 	// Data/로 시작하지 않는 경로 (예: 절대 경로, Data 외부의 상대 경로)
-	// GetDDSCachePath의 기존 정책을 따라 파일명만 사용
+	// 파일명만 사용
 	FWideString WPath = UTF8ToWide(InAssetPath);
 	fs::path FileName = fs::path(WPath).filename();
 
-	return GCacheDir + "/" + WideToUTF8(FileName.wstring());
+	return GResourceDir + "/" + WideToUTF8(FileName.wstring());
 }
 
 /**
