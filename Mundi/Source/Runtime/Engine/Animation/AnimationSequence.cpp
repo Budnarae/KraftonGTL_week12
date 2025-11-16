@@ -107,6 +107,28 @@ const TArray<FBoneAnimationTrack>& UAnimationSequence::GetBoneAnimationTracks() 
     return DataModel ? DataModel->GetBoneAnimationTracks() : Empty;
 }
 
+void UAnimationSequence::EvaluatePose(float Time, const FSkeleton& Skeleton, FPoseContext& OutContext) const
+{
+    if (!DataModel)
+    {
+        OutContext.EvaluatedPoses.SetNum(0);
+        return;
+    }
+
+    float CurTime = fmod(Time, GetPlayLength());
+
+    const int32 BoneNum = Skeleton.Bones.Num();
+    OutContext.EvaluatedPoses.SetNum(BoneNum);
+
+    for (int32 BoneIndex = 0; BoneIndex < BoneNum; BoneIndex++)
+    {
+        const FBone CurBone = Skeleton.Bones[BoneIndex];
+        const FName BoneName(CurBone.Name);
+
+        OutContext.EvaluatedPoses[BoneIndex] = GetBonePose(BoneName, CurTime);
+    }
+}
+
 float UAnimationSequence::GetPlayLength() const
 {
     return DataModel ? DataModel->GetPlayLength() : 0.0f;

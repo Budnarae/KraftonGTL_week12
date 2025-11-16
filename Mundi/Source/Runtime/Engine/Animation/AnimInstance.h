@@ -1,13 +1,25 @@
-#pragma once
+﻿#pragma once
 
 class USkeletalMeshComponent;
+class UAnimationSequence;
 class UAnimInstance : public UObject
 {
 public:
     DECLARE_CLASS(UAnimInstance, UObject)
     
+    virtual ~UAnimInstance();
+
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent) { OwnerSkeletalComp = InSkeletalMeshComponent; }
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
+
+    // FOR TEST
+    void PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB);
+    void UpdateBlendedAnimation(float DeltaTime, float Alpha);
+
+    UAnimationSequence* TestSeqA = nullptr;
+    UAnimationSequence* TestSeqB = nullptr;
+    bool IsBlending = false;
+    float CurTime = 0.0;
     
     /**
      * @brief 매 프레임 애니메이션 시간을 업데이트하고 본 포즈를 갱신합니다
