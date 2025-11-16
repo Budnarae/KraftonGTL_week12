@@ -62,8 +62,8 @@ public:
      */
     int32 GetNumberOfKeys() const;
 
-    void Update(const FAnimationUpdateContext& Context);
-    void Evaluate(FPoseContext& Output);
+    void Update(const FAnimationUpdateContext& Context) override;
+    void Evaluate(FPoseContext& Output) override;
 
 private:
     UAnimDataModel* DataModel = nullptr;

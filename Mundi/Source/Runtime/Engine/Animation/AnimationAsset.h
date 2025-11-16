@@ -42,4 +42,7 @@ public:
      * @return 프레임레이트 (fps)
      */
     virtual float GetFrameRate() const = 0;
+
+    virtual void Update(const FAnimationUpdateContext& Context) = 0;
+    virtual void Evaluate(FPoseContext& Output) = 0;
 };
