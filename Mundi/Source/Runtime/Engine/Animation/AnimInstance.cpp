@@ -12,11 +12,23 @@ UAnimInstance::~UAnimInstance()
 {
     if (TestSeqA)
     {
+        delete TestSeqA;
         TestSeqA = nullptr;
     }
     if (TestSeqB)
     {
+        delete TestSeqB;
         TestSeqB = nullptr;
+    }
+    if (OwnerSkeletalComp)
+    {
+        delete OwnerSkeletalComp;
+        OwnerSkeletalComp = nullptr;
+    }
+    if (CurrentAnimation)
+    {
+        delete CurrentAnimation;
+        CurrentAnimation = nullptr;
     }
 }
 

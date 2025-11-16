@@ -10,6 +10,7 @@ UAnimationSequence::~UAnimationSequence()
 {
     if (DataModel)
     {
+        DeleteObject(DataModel);
         DataModel = nullptr;
     }
 }
