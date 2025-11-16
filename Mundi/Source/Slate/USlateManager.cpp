@@ -175,44 +175,33 @@ void USlateManager::Initialize(ID3D11Device* InDevice, UWorld* InWorld, const FR
     }
 }
 
-void USlateManager::OpenSkeletalMeshViewer()
+// === 통합 뷰어 관리 API ===
+void USlateManager::CloseViewer(SViewerWindowBase* Viewer)
 {
-    if (SkeletalViewerWindow)
-        return;
+    if (!Viewer) return;
 
-    SkeletalViewerWindow = new SSkeletalMeshViewerWindow();
-
-    // Open as a detached window at a default size and position
-    const float toolbarHeight = 50.0f;
-    const float availableHeight = Rect.GetHeight() - toolbarHeight;
-    const float w = Rect.GetWidth() * 0.6f;
-    const float h = availableHeight * 0.7f;
-    const float x = Rect.Left + (Rect.GetWidth() - w) * 0.5f;
-    const float y = Rect.Top + toolbarHeight + (availableHeight - h) * 0.5f;
-    SkeletalViewerWindow->Initialize(x, y, w, h, World, Device);
-}
-
-void USlateManager::OpenSkeletalMeshViewerWithFile(const char* FilePath)
-{
-    // 뷰어가 이미 열려있으면 그냥 사용, 아니면 새로 열기
-    if (!SkeletalViewerWindow)
+    // 배열에서 제거
+    for (int i = 0; i < Viewers.Num(); ++i)
     {
-        OpenSkeletalMeshViewer();
-    }
-
-    // Load the skeletal mesh into the viewer
-    if (SkeletalViewerWindow && FilePath && FilePath[0] != '\0')
-    {
-        SkeletalViewerWindow->LoadSkeletalMesh(FilePath);
-        UE_LOG("Opening SkeletalMeshViewer with file: %s", FilePath);
+        if (Viewers[i] == Viewer)
+        {
+            delete Viewers[i];
+            Viewers.RemoveAt(i);
+            return;
+        }
     }
 }
 
-void USlateManager::CloseSkeletalMeshViewer()
+void USlateManager::CloseAllViewers()
 {
-    if (!SkeletalViewerWindow) return;
-    delete SkeletalViewerWindow;
-    SkeletalViewerWindow = nullptr;
+    for (SViewerWindowBase* Viewer : Viewers)
+    {
+        if (Viewer)
+        {
+            delete Viewer;
+        }
+    }
+    Viewers.Empty();
 }
 
 void USlateManager::SwitchLayout(EViewportLayoutMode NewMode)
@@ -408,18 +397,49 @@ void USlateManager::Render()
         ImGui::PopStyleVar(3);
     }
     
-    // Render detached viewer on top
-    if (SkeletalViewerWindow)
+    // === 뷰어 렌더링 (새로운 통합 시스템) ===
+    // 닫힌 뷰어 정리
+    for (int i = Viewers.Num() - 1; i >= 0; --i)
     {
-        SkeletalViewerWindow->OnRender();
+        if (Viewers[i] && !Viewers[i]->IsOpen())
+        {
+            delete Viewers[i];
+            Viewers.RemoveAt(i);
+        }
+    }
+
+    // 열린 뷰어 렌더링
+    for (SViewerWindowBase* Viewer : Viewers)
+    {
+        if (Viewer && Viewer->IsOpen())
+        {
+            Viewer->OnRender();
+        }
+    }
+
+    // === 모든 뷰어 렌더링 ===
+    for (SViewerWindowBase* Viewer : Viewers)
+    {
+        if (Viewer && Viewer->IsOpen())
+        {
+            Viewer->OnRender();
+        }
     }
 }
 
 void USlateManager::RenderAfterUI()
 {
-    if (SkeletalViewerWindow)
+    // 뷰어의 뷰포트 렌더링 (SSkeletalMeshViewerWindow 전용)
+    for (SViewerWindowBase* Viewer : Viewers)
     {
-        SkeletalViewerWindow->OnRenderViewport();
+        if (Viewer && Viewer->IsOpen())
+        {
+            SSkeletalMeshViewerWindow* SkeletalViewer = dynamic_cast<SSkeletalMeshViewerWindow*>(Viewer);
+            if (SkeletalViewer)
+            {
+                SkeletalViewer->OnRenderViewport();
+            }
+        }
     }
 }
 
@@ -437,9 +457,13 @@ void USlateManager::Update(float DeltaSeconds)
         TopPanel->OnUpdate(DeltaSeconds);
     }
 
-    if (SkeletalViewerWindow)
+    // === 뷰어 업데이트 ===
+    for (SViewerWindowBase* Viewer : Viewers)
     {
-        SkeletalViewerWindow->OnUpdate(DeltaSeconds);
+        if (Viewer && Viewer->IsOpen())
+        {
+            Viewer->OnUpdate(DeltaSeconds);
+        }
     }
 
     // 콘솔 애니메이션 업데이트
@@ -503,23 +527,27 @@ void USlateManager::ProcessInput()
 {
     const FVector2D MousePosition = INPUT.GetMousePosition();
 
-    if (SkeletalViewerWindow && SkeletalViewerWindow->Rect.Contains(MousePosition))
+    // 뷰어 마우스 입력 처리
+    for (SViewerWindowBase* Viewer : Viewers)
     {
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        if (Viewer && Viewer->IsOpen() && Viewer->IsHover(MousePosition))
         {
-            OnMouseDown(MousePosition, 0);
-        }
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-        {
-            OnMouseDown(MousePosition, 1);
-        }
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-        {
-            OnMouseUp(MousePosition, 0);
-        }
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-        {
-            OnMouseUp(MousePosition, 1);
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                OnMouseDown(MousePosition, 0);
+            }
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                OnMouseDown(MousePosition, 1);
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                OnMouseUp(MousePosition, 0);
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            {
+                OnMouseUp(MousePosition, 1);
+            }
         }
     }
 
@@ -566,9 +594,13 @@ void USlateManager::ProcessInput()
     }
 
     // ESC closes the Skeletal Mesh Viewer if open
-    if (ImGui::IsKeyPressed(ImGuiKey_Escape) && SkeletalViewerWindow)
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
     {
-        CloseSkeletalMeshViewer();
+        auto* Viewer = FindViewer<SSkeletalMeshViewerWindow>();
+        if (Viewer && Viewer->IsOpen())
+        {
+            CloseViewer(Viewer);
+        }
     }
 
     // 단축키로 기즈모 모드 변경
@@ -579,10 +611,13 @@ void USlateManager::ProcessInput()
 void USlateManager::OnMouseMove(FVector2D MousePos)
 {
     // Route to detached viewer if hovered
-    if (SkeletalViewerWindow && SkeletalViewerWindow->IsHover(MousePos))
+    for (SViewerWindowBase* Viewer : Viewers)
     {
-        SkeletalViewerWindow->OnMouseMove(MousePos);
-        return;
+        if (Viewer && Viewer->IsOpen() && Viewer->IsHover(MousePos))
+        {
+            Viewer->OnMouseMove(MousePos);
+            return;
+        }
     }
 
     if (ActiveViewport)
@@ -597,12 +632,16 @@ void USlateManager::OnMouseMove(FVector2D MousePos)
 
 void USlateManager::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
-    if (SkeletalViewerWindow && SkeletalViewerWindow->Rect.Contains(MousePos))
+    // Route to detached viewer if clicked
+    for (SViewerWindowBase* Viewer : Viewers)
     {
-        SkeletalViewerWindow->OnMouseDown(MousePos, Button);
-        return;
+        if (Viewer && Viewer->IsOpen() && Viewer->Rect.Contains(MousePos))
+        {
+            Viewer->OnMouseDown(MousePos, Button);
+            return;
+        }
     }
-    
+
     if (ActiveViewport)
     {
     }
@@ -638,10 +677,14 @@ void USlateManager::OnMouseUp(FVector2D MousePos, uint32 Button)
         INPUT.ReleaseCursor();
     }
 
-    if (SkeletalViewerWindow && SkeletalViewerWindow->Rect.Contains(MousePos))
+    // Route to detached viewer if clicked
+    for (SViewerWindowBase* Viewer : Viewers)
     {
-        SkeletalViewerWindow->OnMouseUp(MousePos, Button);
-        // do not return; still allow panels to finish mouse up
+        if (Viewer && Viewer->IsOpen() && Viewer->Rect.Contains(MousePos))
+        {
+            Viewer->OnMouseUp(MousePos, Button);
+            // do not return; still allow panels to finish mouse up
+        }
     }
 
     if (ActiveViewport)
@@ -705,11 +748,9 @@ void USlateManager::Shutdown()
     MainViewport = nullptr;
     ActiveViewport = nullptr;
 
-    if (SkeletalViewerWindow)
-    {
-        delete SkeletalViewerWindow;
-        SkeletalViewerWindow = nullptr;
-    }
+    // === 모든 뷰어 정리 ===
+    CloseAllViewers();
+    UE_LOG("USlateManager: All viewers closed");
 }
 
 void USlateManager::SetPIEWorld(UWorld* InWorld)

@@ -19,28 +19,44 @@ SSkeletalMeshViewerWindow::SSkeletalMeshViewerWindow()
 
 SSkeletalMeshViewerWindow::~SSkeletalMeshViewerWindow()
 {
-    // Clean up tabs if any
-    for (int i = 0; i < Tabs.Num(); ++i)
+    // 모든 탭 정리
+    for (ViewerTabStateBase* Tab : Tabs)
     {
-        ViewerState* State = Tabs[i];
-        SkeletalViewerBootstrap::DestroyViewerState(State);
+        if (Tab)
+        {
+            DestroyTabState(Tab);
+        }
     }
     Tabs.Empty();
-    ActiveState = nullptr;
 }
 
+// 베이스 클래스 Initialize 오버라이드 (기본 크기/위치 사용)
+bool SSkeletalMeshViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
+{
+    // 기본 위치와 크기
+    const float DefaultWidth = 1200.0f;
+    const float DefaultHeight = 800.0f;
+    const float StartX = 200.0f;  // 화면 왼쪽에서 200px
+    const float StartY = 100.0f;  // 화면 위에서 100px
+
+    return Initialize(StartX, StartY, DefaultWidth, DefaultHeight, InWorld, InDevice);
+}
+
+// 커스텀 Initialize (위치/크기 지정)
 bool SSkeletalMeshViewerWindow::Initialize(float StartX, float StartY, float Width, float Height, UWorld* InWorld, ID3D11Device* InDevice)
 {
-    World = InWorld;
-    Device = InDevice;
-    
+    // 베이스 클래스 초기화
+    if (!SViewerWindowBase::Initialize(InDevice, InWorld))
+        return false;
+
     SetRect(StartX, StartY, StartX + Width, StartY + Height);
 
     // Create first tab/state
     OpenNewTab("Viewer 1");
-    if (ActiveState && ActiveState->Viewport)
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (State && State->Viewport)
     {
-        ActiveState->Viewport->Resize((uint32)StartX, (uint32)StartY, (uint32)Width, (uint32)Height);
+        State->Viewport->Resize((uint32)StartX, (uint32)StartY, (uint32)Width, (uint32)Height);
     }
 
     bRequestFocus = true;
@@ -73,32 +89,9 @@ void SSkeletalMeshViewerWindow::OnRender()
     if (ImGui::Begin("Skeletal Mesh Viewer", &bIsOpen, flags))
     {
         bViewerVisible = true;
-        // Render tab bar and switch active state
-        if (ImGui::BeginTabBar("SkeletalViewerTabs", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable))
-        {
-            for (int i = 0; i < Tabs.Num(); ++i)
-            {
-                ViewerState* State = Tabs[i];
-                bool open = true;
-                if (ImGui::BeginTabItem(State->Name.ToString().c_str(), &open))
-                {
-                    ActiveTabIndex = i;
-                    ActiveState = State;
-                    ImGui::EndTabItem();
-                }
-                if (!open)
-                {
-                    CloseTab(i);
-                    break;
-                }
-            }
-            if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
-            {
-                char label[32]; sprintf_s(label, "Viewer %d", Tabs.Num() + 1);
-                OpenNewTab(label);
-            }
-            ImGui::EndTabBar();
-        }
+
+        // 베이스 클래스의 탭 바 렌더링
+        RenderTabBar();
         ImVec2 pos = ImGui::GetWindowPos();
         ImVec2 size = ImGui::GetWindowSize();
         Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
@@ -119,7 +112,8 @@ void SSkeletalMeshViewerWindow::OnRender()
         ImGui::BeginChild("LeftPanel", ImVec2(leftWidth, totalHeight), true, ImGuiWindowFlags_NoScrollbar);
         ImGui::PopStyleVar();
 
-        if (ActiveState)
+        ViewerState* State = static_cast<ViewerState*>(ActiveState);
+        if (State)
         {
             // Asset Browser Section
             ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.25f, 0.35f, 0.50f, 0.8f));
@@ -141,7 +135,7 @@ void SSkeletalMeshViewerWindow::OnRender()
             ImGui::BeginGroup();
             ImGui::Text("Mesh Path:");
             ImGui::PushItemWidth(-1.0f);
-            ImGui::InputTextWithHint("##MeshPath", "Browse for FBX file...", ActiveState->MeshPathBuffer, sizeof(ActiveState->MeshPathBuffer));
+            ImGui::InputTextWithHint("##MeshPath", "Browse for FBX file...", State->MeshPathBuffer, sizeof(State->MeshPathBuffer));
             ImGui::PopItemWidth();
 
             ImGui::Spacing();
@@ -158,7 +152,7 @@ void SSkeletalMeshViewerWindow::OnRender()
                 if (!widePath.empty())
                 {
                     std::string s = widePath.string();
-                    strncpy_s(ActiveState->MeshPathBuffer, s.c_str(), sizeof(ActiveState->MeshPathBuffer) - 1);
+                    strncpy_s(State->MeshPathBuffer, s.c_str(), sizeof(State->MeshPathBuffer) - 1);
                 }
             }
 
@@ -169,24 +163,24 @@ void SSkeletalMeshViewerWindow::OnRender()
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.50f, 0.30f, 1.0f));
             if (ImGui::Button("Load FBX", ImVec2(buttonWidth, 32)))
             {
-                FString Path = ActiveState->MeshPathBuffer;
+                FString Path = State->MeshPathBuffer;
                 if (!Path.empty())
                 {
                     USkeletalMesh* Mesh = UResourceManager::GetInstance().Load<USkeletalMesh>(Path);
-                    if (Mesh && ActiveState->PreviewActor)
+                    if (Mesh && State->PreviewActor)
                     {
-                        ActiveState->PreviewActor->SetSkeletalMesh(Path);
-                        ActiveState->CurrentMesh = Mesh;
-                        ActiveState->LoadedMeshPath = Path;  // Track for resource unloading
-                        if (auto* Skeletal = ActiveState->PreviewActor->GetSkeletalMeshComponent())
+                        State->PreviewActor->SetSkeletalMesh(Path);
+                        State->CurrentMesh = Mesh;
+                        State->LoadedMeshPath = Path;  // Track for resource unloading
+                        if (auto* Skeletal = State->PreviewActor->GetSkeletalMeshComponent())
                         {
-                            Skeletal->SetVisibility(ActiveState->bShowMesh);
+                            Skeletal->SetVisibility(State->bShowMesh);
                         }
-                        ActiveState->bBoneLinesDirty = true;
-                        if (auto* LineComp = ActiveState->PreviewActor->GetBoneLineComponent())
+                        State->bBoneLinesDirty = true;
+                        if (auto* LineComp = State->PreviewActor->GetBoneLineComponent())
                         {
                             LineComp->ClearLines();
-                            LineComp->SetLineVisible(ActiveState->bShowBones);
+                            LineComp->SetLineVisible(State->bShowBones);
                         }
                     }
                 }
@@ -208,24 +202,24 @@ void SSkeletalMeshViewerWindow::OnRender()
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.25f, 0.30f, 0.35f, 0.8f));
             ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.40f, 0.70f, 1.00f, 1.0f));
 
-            if (ImGui::Checkbox("Show Mesh", &ActiveState->bShowMesh))
+            if (ImGui::Checkbox("Show Mesh", &State->bShowMesh))
             {
-                if (ActiveState->PreviewActor && ActiveState->PreviewActor->GetSkeletalMeshComponent())
+                if (State->PreviewActor && State->PreviewActor->GetSkeletalMeshComponent())
                 {
-                    ActiveState->PreviewActor->GetSkeletalMeshComponent()->SetVisibility(ActiveState->bShowMesh);
+                    State->PreviewActor->GetSkeletalMeshComponent()->SetVisibility(State->bShowMesh);
                 }
             }
 
             ImGui::SameLine();
-            if (ImGui::Checkbox("Show Bones", &ActiveState->bShowBones))
+            if (ImGui::Checkbox("Show Bones", &State->bShowBones))
             {
-                if (ActiveState->PreviewActor && ActiveState->PreviewActor->GetBoneLineComponent())
+                if (State->PreviewActor && State->PreviewActor->GetBoneLineComponent())
                 {
-                    ActiveState->PreviewActor->GetBoneLineComponent()->SetLineVisible(ActiveState->bShowBones);
+                    State->PreviewActor->GetBoneLineComponent()->SetLineVisible(State->bShowBones);
                 }
-                if (ActiveState->bShowBones)
+                if (State->bShowBones)
                 {
-                    ActiveState->bBoneLinesDirty = true;
+                    State->bBoneLinesDirty = true;
                 }
             }
             ImGui::PopStyleColor(2);
@@ -241,7 +235,7 @@ void SSkeletalMeshViewerWindow::OnRender()
             ImGui::Text("Bone Hierarchy:");
             ImGui::Spacing();
 
-            if (!ActiveState->CurrentMesh)
+            if (!State->CurrentMesh)
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
                 ImGui::TextWrapped("No skeletal mesh loaded.");
@@ -249,7 +243,7 @@ void SSkeletalMeshViewerWindow::OnRender()
             }
             else
             {
-                const FSkeleton* Skeleton = ActiveState->CurrentMesh->GetSkeleton();
+                const FSkeleton* Skeleton = State->CurrentMesh->GetSkeleton();
                 if (!Skeleton || Skeleton->Bones.IsEmpty())
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
@@ -276,19 +270,19 @@ void SSkeletalMeshViewerWindow::OnRender()
                     {
                         const bool bLeaf = Children[Index].IsEmpty();
                         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanFullWidth;
-                        
+
                         if (bLeaf)
                         {
                             flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
                         }
-                        
+
                         // 펼쳐진 노드는 명시적으로 열린 상태로 설정
-                        if (ActiveState->ExpandedBoneIndices.count(Index) > 0)
+                        if (State->ExpandedBoneIndices.count(Index) > 0)
                         {
                             ImGui::SetNextItemOpen(true);
                         }
-                        
-                        if (ActiveState->SelectedBoneIndex == Index)
+
+                        if (State->SelectedBoneIndex == Index)
                         {
                             flags |= ImGuiTreeNodeFlags_Selected;
                         }
@@ -296,7 +290,7 @@ void SSkeletalMeshViewerWindow::OnRender()
                         ImGui::PushID(Index);
                         const char* Label = Bones[Index].Name.c_str();
 
-                        if (ActiveState->SelectedBoneIndex == Index)
+                        if (State->SelectedBoneIndex == Index)
                         {
                             ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.35f, 0.55f, 0.85f, 0.8f));
                             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.40f, 0.60f, 0.90f, 1.0f));
@@ -305,10 +299,10 @@ void SSkeletalMeshViewerWindow::OnRender()
 
                         bool open = ImGui::TreeNodeEx((void*)(intptr_t)Index, flags, "%s", Label ? Label : "<noname>");
 
-                        if (ActiveState->SelectedBoneIndex == Index)
+                        if (State->SelectedBoneIndex == Index)
                         {
                             ImGui::PopStyleColor(3);
-                            
+
                             // 선택된 본까지 스크롤
                             ImGui::SetScrollHereY(0.5f);
                         }
@@ -317,32 +311,32 @@ void SSkeletalMeshViewerWindow::OnRender()
                         if (ImGui::IsItemToggledOpen())
                         {
                             if (open)
-                                ActiveState->ExpandedBoneIndices.insert(Index);
+                                State->ExpandedBoneIndices.insert(Index);
                             else
-                                ActiveState->ExpandedBoneIndices.erase(Index);
+                                State->ExpandedBoneIndices.erase(Index);
                         }
 
                         if (ImGui::IsItemClicked())
                         {
-                            if (ActiveState->SelectedBoneIndex != Index)
+                            if (State->SelectedBoneIndex != Index)
                             {
-                                ActiveState->SelectedBoneIndex = Index;
-                                ActiveState->bBoneLinesDirty = true;
-                                
-                                ExpandToSelectedBone(ActiveState, Index);
+                                State->SelectedBoneIndex = Index;
+                                State->bBoneLinesDirty = true;
 
-                                if (ActiveState->PreviewActor && ActiveState->World)
+                                ExpandToSelectedBone(State, Index);
+
+                                if (State->PreviewActor && State->World)
                                 {
-                                    ActiveState->PreviewActor->RepositionAnchorToBone(Index);
-                                    if (USceneComponent* Anchor = ActiveState->PreviewActor->GetBoneGizmoAnchor())
+                                    State->PreviewActor->RepositionAnchorToBone(Index);
+                                    if (USceneComponent* Anchor = State->PreviewActor->GetBoneGizmoAnchor())
                                     {
-                                        ActiveState->World->GetSelectionManager()->SelectActor(ActiveState->PreviewActor);
-                                        ActiveState->World->GetSelectionManager()->SelectComponent(Anchor);
+                                        State->World->GetSelectionManager()->SelectActor(State->PreviewActor);
+                                        State->World->GetSelectionManager()->SelectComponent(Anchor);
                                     }
                                 }
                             }
                         }
-                        
+
                         if (!bLeaf && open)
                         {
                             for (int32 Child : Children[Index])
@@ -407,12 +401,12 @@ void SSkeletalMeshViewerWindow::OnRender()
         ImGui::Spacing();
 
         // === 선택된 본의 트랜스폼 편집 UI ===
-        if (ActiveState->SelectedBoneIndex >= 0 && ActiveState->CurrentMesh)
+        if (State && State->SelectedBoneIndex >= 0 && State->CurrentMesh)
         {
-            const FSkeleton* Skeleton = ActiveState->CurrentMesh->GetSkeleton();
-            if (Skeleton && ActiveState->SelectedBoneIndex < Skeleton->Bones.size())
+            const FSkeleton* Skeleton = State->CurrentMesh->GetSkeleton();
+            if (Skeleton && State->SelectedBoneIndex < Skeleton->Bones.size())
             {
-                const FBone& SelectedBone = Skeleton->Bones[ActiveState->SelectedBoneIndex];
+                const FBone& SelectedBone = Skeleton->Bones[State->SelectedBoneIndex];
 
                 // Selected bone header with icon-like prefix
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.90f, 0.40f, 1.0f));
@@ -430,9 +424,9 @@ void SSkeletalMeshViewerWindow::OnRender()
                 ImGui::PopStyleColor();
 
                 // 본의 현재 트랜스폼 가져오기 (편집 중이 아닐 때만)
-                if (!ActiveState->bBoneRotationEditing)
+                if (!State->bBoneRotationEditing)
                 {
-                    UpdateBoneTransformFromSkeleton(ActiveState);
+                    UpdateBoneTransformFromSkeleton(State);
                 }
 
                 ImGui::Spacing();
@@ -445,16 +439,16 @@ void SSkeletalMeshViewerWindow::OnRender()
                 ImGui::PushItemWidth(-1);
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.28f, 0.20f, 0.20f, 0.6f));
                 bool bLocationChanged = false;
-                bLocationChanged |= ImGui::DragFloat("##BoneLocX", &ActiveState->EditBoneLocation.X, 0.1f, 0.0f, 0.0f, "X: %.3f");
-                bLocationChanged |= ImGui::DragFloat("##BoneLocY", &ActiveState->EditBoneLocation.Y, 0.1f, 0.0f, 0.0f, "Y: %.3f");
-                bLocationChanged |= ImGui::DragFloat("##BoneLocZ", &ActiveState->EditBoneLocation.Z, 0.1f, 0.0f, 0.0f, "Z: %.3f");
+                bLocationChanged |= ImGui::DragFloat("##BoneLocX", &State->EditBoneLocation.X, 0.1f, 0.0f, 0.0f, "X: %.3f");
+                bLocationChanged |= ImGui::DragFloat("##BoneLocY", &State->EditBoneLocation.Y, 0.1f, 0.0f, 0.0f, "Y: %.3f");
+                bLocationChanged |= ImGui::DragFloat("##BoneLocZ", &State->EditBoneLocation.Z, 0.1f, 0.0f, 0.0f, "Z: %.3f");
                 ImGui::PopStyleColor();
                 ImGui::PopItemWidth();
 
                 if (bLocationChanged)
                 {
-                    ApplyBoneTransform(ActiveState);
-                    ActiveState->bBoneLinesDirty = true;
+                    ApplyBoneTransform(State);
+                    State->bBoneLinesDirty = true;
                 }
 
                 ImGui::Spacing();
@@ -470,24 +464,24 @@ void SSkeletalMeshViewerWindow::OnRender()
 
                 if (ImGui::IsAnyItemActive())
                 {
-                    ActiveState->bBoneRotationEditing = true;
+                    State->bBoneRotationEditing = true;
                 }
 
-                bRotationChanged |= ImGui::DragFloat("##BoneRotX", &ActiveState->EditBoneRotation.X, 0.5f, -180.0f, 180.0f, "X: %.2f°");
-                bRotationChanged |= ImGui::DragFloat("##BoneRotY", &ActiveState->EditBoneRotation.Y, 0.5f, -180.0f, 180.0f, "Y: %.2f°");
-                bRotationChanged |= ImGui::DragFloat("##BoneRotZ", &ActiveState->EditBoneRotation.Z, 0.5f, -180.0f, 180.0f, "Z: %.2f°");
+                bRotationChanged |= ImGui::DragFloat("##BoneRotX", &State->EditBoneRotation.X, 0.5f, -180.0f, 180.0f, "X: %.2f°");
+                bRotationChanged |= ImGui::DragFloat("##BoneRotY", &State->EditBoneRotation.Y, 0.5f, -180.0f, 180.0f, "Y: %.2f°");
+                bRotationChanged |= ImGui::DragFloat("##BoneRotZ", &State->EditBoneRotation.Z, 0.5f, -180.0f, 180.0f, "Z: %.2f°");
                 ImGui::PopStyleColor();
                 ImGui::PopItemWidth();
 
                 if (!ImGui::IsAnyItemActive())
                 {
-                    ActiveState->bBoneRotationEditing = false;
+                    State->bBoneRotationEditing = false;
                 }
 
                 if (bRotationChanged)
                 {
-                    ApplyBoneTransform(ActiveState);
-                    ActiveState->bBoneLinesDirty = true;
+                    ApplyBoneTransform(State);
+                    State->bBoneLinesDirty = true;
                 }
 
                 ImGui::Spacing();
@@ -500,16 +494,16 @@ void SSkeletalMeshViewerWindow::OnRender()
                 ImGui::PushItemWidth(-1);
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.20f, 0.20f, 0.28f, 0.6f));
                 bool bScaleChanged = false;
-                bScaleChanged |= ImGui::DragFloat("##BoneScaleX", &ActiveState->EditBoneScale.X, 0.01f, 0.001f, 100.0f, "X: %.3f");
-                bScaleChanged |= ImGui::DragFloat("##BoneScaleY", &ActiveState->EditBoneScale.Y, 0.01f, 0.001f, 100.0f, "Y: %.3f");
-                bScaleChanged |= ImGui::DragFloat("##BoneScaleZ", &ActiveState->EditBoneScale.Z, 0.01f, 0.001f, 100.0f, "Z: %.3f");
+                bScaleChanged |= ImGui::DragFloat("##BoneScaleX", &State->EditBoneScale.X, 0.01f, 0.001f, 100.0f, "X: %.3f");
+                bScaleChanged |= ImGui::DragFloat("##BoneScaleY", &State->EditBoneScale.Y, 0.01f, 0.001f, 100.0f, "Y: %.3f");
+                bScaleChanged |= ImGui::DragFloat("##BoneScaleZ", &State->EditBoneScale.Z, 0.01f, 0.001f, 100.0f, "Z: %.3f");
                 ImGui::PopStyleColor();
                 ImGui::PopItemWidth();
 
                 if (bScaleChanged)
                 {
-                    ApplyBoneTransform(ActiveState);
-                    ActiveState->bBoneLinesDirty = true;
+                    ApplyBoneTransform(State);
+                    State->bBoneLinesDirty = true;
                 }
             }
         }
@@ -537,7 +531,7 @@ void SSkeletalMeshViewerWindow::OnRender()
     // If window was closed via X button, notify the manager to clean up
     if (!bIsOpen)
     {
-        USlateManager::GetInstance().CloseSkeletalMeshViewer();
+        USlateManager::GetInstance().CloseViewer(this);
     }
 
     bRequestFocus = false;
@@ -545,56 +539,59 @@ void SSkeletalMeshViewerWindow::OnRender()
 
 void SSkeletalMeshViewerWindow::OnUpdate(float DeltaSeconds)
 {
-    if (!ActiveState || !ActiveState->Viewport)
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (!State || !State->Viewport)
         return;
 
     // Tick the preview world so editor actors (e.g., gizmo) update visibility/state
-    if (ActiveState->World)
+    if (State->World)
     {
-        ActiveState->World->Tick(DeltaSeconds);
-        if (ActiveState->World->GetGizmoActor())
-            ActiveState->World->GetGizmoActor()->ProcessGizmoModeSwitch();
+        State->World->Tick(DeltaSeconds);
+        if (State->World->GetGizmoActor())
+            State->World->GetGizmoActor()->ProcessGizmoModeSwitch();
     }
 
-    if (ActiveState && ActiveState->Client)
+    if (State && State->Client)
     {
-        ActiveState->Client->Tick(DeltaSeconds);
+        State->Client->Tick(DeltaSeconds);
     }
 }
 
 void SSkeletalMeshViewerWindow::OnMouseMove(FVector2D MousePos)
 {
-    if (!ActiveState || !ActiveState->Viewport) return;
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (!State || !State->Viewport) return;
 
     if (CenterRect.Contains(MousePos))
     {
         FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
-        ActiveState->Viewport->ProcessMouseMove((int32)LocalPos.X, (int32)LocalPos.Y);
+        State->Viewport->ProcessMouseMove((int32)LocalPos.X, (int32)LocalPos.Y);
     }
 }
 
 void SSkeletalMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
-    if (!ActiveState || !ActiveState->Viewport) return;
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (!State || !State->Viewport) return;
 
     if (CenterRect.Contains(MousePos))
     {
         FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
 
         // First, always try gizmo picking (pass to viewport)
-        ActiveState->Viewport->ProcessMouseButtonDown((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
+        State->Viewport->ProcessMouseButtonDown((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
 
         // Left click: if no gizmo was picked, try bone picking
-        if (Button == 0 && ActiveState->PreviewActor && ActiveState->CurrentMesh && ActiveState->Client && ActiveState->World)
+        if (Button == 0 && State->PreviewActor && State->CurrentMesh && State->Client && State->World)
         {
             // Check if gizmo was picked by checking selection
-            UActorComponent* SelectedComp = ActiveState->World->GetSelectionManager()->GetSelectedComponent();
+            UActorComponent* SelectedComp = State->World->GetSelectionManager()->GetSelectedComponent();
 
             // Only do bone picking if gizmo wasn't selected
             if (!SelectedComp || !Cast<UBoneAnchorComponent>(SelectedComp))
             {
                 // Get camera from viewport client
-                ACameraActor* Camera = ActiveState->Client->GetCamera();
+                ACameraActor* Camera = State->Client->GetCamera();
                 if (Camera)
                 {
                     // Get camera vectors
@@ -610,7 +607,7 @@ void SSkeletalMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
                     // Generate ray from mouse position
                     FRay Ray = MakeRayFromViewport(
                         Camera->GetViewMatrix(),
-                        Camera->GetProjectionMatrix(CenterRect.GetWidth() / CenterRect.GetHeight(), ActiveState->Viewport),
+                        Camera->GetProjectionMatrix(CenterRect.GetWidth() / CenterRect.GetHeight(), State->Viewport),
                         CameraPos,
                         CameraRight,
                         CameraUp,
@@ -621,37 +618,37 @@ void SSkeletalMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
                     // Try to pick a bone
                     float HitDistance;
-                    int32 PickedBoneIndex = ActiveState->PreviewActor->PickBone(Ray, HitDistance);
+                    int32 PickedBoneIndex = State->PreviewActor->PickBone(Ray, HitDistance);
 
                     if (PickedBoneIndex >= 0)
                     {
                         // Bone was picked
-                        ActiveState->SelectedBoneIndex = PickedBoneIndex;
-                        ActiveState->bBoneLinesDirty = true;
+                        State->SelectedBoneIndex = PickedBoneIndex;
+                        State->bBoneLinesDirty = true;
 
-                        ExpandToSelectedBone(ActiveState, PickedBoneIndex);
+                        ExpandToSelectedBone(State, PickedBoneIndex);
 
                         // Move gizmo to the selected bone
-                        ActiveState->PreviewActor->RepositionAnchorToBone(PickedBoneIndex);
-                        if (USceneComponent* Anchor = ActiveState->PreviewActor->GetBoneGizmoAnchor())
+                        State->PreviewActor->RepositionAnchorToBone(PickedBoneIndex);
+                        if (USceneComponent* Anchor = State->PreviewActor->GetBoneGizmoAnchor())
                         {
-                            ActiveState->World->GetSelectionManager()->SelectActor(ActiveState->PreviewActor);
-                            ActiveState->World->GetSelectionManager()->SelectComponent(Anchor);
+                            State->World->GetSelectionManager()->SelectActor(State->PreviewActor);
+                            State->World->GetSelectionManager()->SelectComponent(Anchor);
                         }
                     }
                     else
                     {
                         // No bone was picked - clear selection
-                        ActiveState->SelectedBoneIndex = -1;
-                        ActiveState->bBoneLinesDirty = true;
+                        State->SelectedBoneIndex = -1;
+                        State->bBoneLinesDirty = true;
 
                         // Hide gizmo and clear selection
-                        if (UBoneAnchorComponent* Anchor = ActiveState->PreviewActor->GetBoneGizmoAnchor())
+                        if (UBoneAnchorComponent* Anchor = State->PreviewActor->GetBoneGizmoAnchor())
                         {
                             Anchor->SetVisibility(false);
                             Anchor->SetEditability(false);
                         }
-                        ActiveState->World->GetSelectionManager()->ClearSelection();
+                        State->World->GetSelectionManager()->ClearSelection();
                     }
                 }
             }
@@ -661,96 +658,79 @@ void SSkeletalMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
 void SSkeletalMeshViewerWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
-    if (!ActiveState || !ActiveState->Viewport) return;
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (!State || !State->Viewport) return;
 
     if (CenterRect.Contains(MousePos))
     {
         FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
-        ActiveState->Viewport->ProcessMouseButtonUp((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
+        State->Viewport->ProcessMouseButtonUp((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
     }
 }
 
 void SSkeletalMeshViewerWindow::OnRenderViewport()
 {
-    if (ActiveState && ActiveState->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
     {
         const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
         const uint32 NewStartY = static_cast<uint32>(CenterRect.Top);
         const uint32 NewWidth  = static_cast<uint32>(CenterRect.Right - CenterRect.Left);
         const uint32 NewHeight = static_cast<uint32>(CenterRect.Bottom - CenterRect.Top);
-        ActiveState->Viewport->Resize(NewStartX, NewStartY, NewWidth, NewHeight);
+        State->Viewport->Resize(NewStartX, NewStartY, NewWidth, NewHeight);
 
         // 본 오버레이 재구축
-        if (ActiveState->bShowBones)
+        if (State->bShowBones)
         {
-            ActiveState->bBoneLinesDirty = true;
+            State->bBoneLinesDirty = true;
         }
-        if (ActiveState->bShowBones && ActiveState->PreviewActor && ActiveState->CurrentMesh && ActiveState->bBoneLinesDirty)
+        if (State->bShowBones && State->PreviewActor && State->CurrentMesh && State->bBoneLinesDirty)
         {
-            if (ULineComponent* LineComp = ActiveState->PreviewActor->GetBoneLineComponent())
+            if (ULineComponent* LineComp = State->PreviewActor->GetBoneLineComponent())
             {
                 LineComp->SetLineVisible(true);
             }
-            ActiveState->PreviewActor->RebuildBoneLines(ActiveState->SelectedBoneIndex);
-            ActiveState->bBoneLinesDirty = false;
+            State->PreviewActor->RebuildBoneLines(State->SelectedBoneIndex);
+            State->bBoneLinesDirty = false;
         }
 
         // 뷰포트 렌더링 (ImGui보다 먼저)
-        ActiveState->Viewport->Render();
+        State->Viewport->Render();
     }
-}
-
-void SSkeletalMeshViewerWindow::OpenNewTab(const char* Name)
-{
-    ViewerState* State = SkeletalViewerBootstrap::CreateViewerState(Name, World, Device);
-    if (!State) return;
-
-    Tabs.Add(State);
-    ActiveTabIndex = Tabs.Num() - 1;
-    ActiveState = State;
-}
-
-void SSkeletalMeshViewerWindow::CloseTab(int Index)
-{
-    if (Index < 0 || Index >= Tabs.Num()) return;
-    ViewerState* State = Tabs[Index];
-    SkeletalViewerBootstrap::DestroyViewerState(State);
-    Tabs.RemoveAt(Index);
-    if (Tabs.Num() == 0) { ActiveTabIndex = -1; ActiveState = nullptr; }
-    else { ActiveTabIndex = std::min(Index, Tabs.Num() - 1); ActiveState = Tabs[ActiveTabIndex]; }
 }
 
 void SSkeletalMeshViewerWindow::LoadSkeletalMesh(const FString& Path)
 {
-    if (!ActiveState || Path.empty())
+    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    if (!State || Path.empty())
         return;
 
     // Load the skeletal mesh using the resource manager
     USkeletalMesh* Mesh = UResourceManager::GetInstance().Load<USkeletalMesh>(Path);
-    if (Mesh && ActiveState->PreviewActor)
+    if (Mesh && State->PreviewActor)
     {
         // Set the mesh on the preview actor
-        ActiveState->PreviewActor->SetSkeletalMesh(Path);
-        ActiveState->CurrentMesh = Mesh;
-        ActiveState->LoadedMeshPath = Path;  // Track for resource unloading
+        State->PreviewActor->SetSkeletalMesh(Path);
+        State->CurrentMesh = Mesh;
+        State->LoadedMeshPath = Path;  // Track for resource unloading
 
         // Update mesh path buffer for display in UI
-        strncpy_s(ActiveState->MeshPathBuffer, Path.c_str(), sizeof(ActiveState->MeshPathBuffer) - 1);
+        strncpy_s(State->MeshPathBuffer, Path.c_str(), sizeof(State->MeshPathBuffer) - 1);
 
         // Sync mesh visibility with checkbox state
-        if (auto* Skeletal = ActiveState->PreviewActor->GetSkeletalMeshComponent())
+        if (auto* Skeletal = State->PreviewActor->GetSkeletalMeshComponent())
         {
-            Skeletal->SetVisibility(ActiveState->bShowMesh);
+            Skeletal->SetVisibility(State->bShowMesh);
         }
 
         // Mark bone lines as dirty to rebuild on next frame
-        ActiveState->bBoneLinesDirty = true;
+        State->bBoneLinesDirty = true;
 
         // Clear and sync bone line visibility
-        if (auto* LineComp = ActiveState->PreviewActor->GetBoneLineComponent())
+        if (auto* LineComp = State->PreviewActor->GetBoneLineComponent())
         {
             LineComp->ClearLines();
-            LineComp->SetLineVisible(ActiveState->bShowBones);
+            LineComp->SetLineVisible(State->bShowBones);
         }
 
         UE_LOG("SSkeletalMeshViewerWindow: Loaded skeletal mesh from %s", Path.c_str());
@@ -761,11 +741,29 @@ void SSkeletalMeshViewerWindow::LoadSkeletalMesh(const FString& Path)
     }
 }
 
+void SSkeletalMeshViewerWindow::LoadAsset(const FString& AssetPath)
+{
+    LoadSkeletalMesh(AssetPath);
+}
+
+ViewerTabStateBase* SSkeletalMeshViewerWindow::CreateTabState(const char* Name)
+{
+    ViewerState* State = SkeletalViewerBootstrap::CreateViewerState(Name, World, Device);
+    return State;
+}
+
+void SSkeletalMeshViewerWindow::DestroyTabState(ViewerTabStateBase* State)
+{
+    if (!State) return;
+    ViewerState* SkeletalState = static_cast<ViewerState*>(State);
+    SkeletalViewerBootstrap::DestroyViewerState(SkeletalState);
+}
+
 void SSkeletalMeshViewerWindow::UpdateBoneTransformFromSkeleton(ViewerState* State)
 {
     if (!State || !State->CurrentMesh || State->SelectedBoneIndex < 0)
         return;
-        
+
     // 본의 로컬 트랜스폼에서 값 추출
     const FTransform& BoneTransform = State->PreviewActor->GetSkeletalMeshComponent()->GetBoneLocalTransform(State->SelectedBoneIndex);
     State->EditBoneLocation = BoneTransform.Translation;
@@ -786,11 +784,11 @@ void SSkeletalMeshViewerWindow::ExpandToSelectedBone(ViewerState* State, int32 B
 {
     if (!State || !State->CurrentMesh)
         return;
-        
+
     const FSkeleton* Skeleton = State->CurrentMesh->GetSkeleton();
     if (!Skeleton || BoneIndex < 0 || BoneIndex >= Skeleton->Bones.size())
         return;
-    
+
     // 선택된 본부터 루트까지 모든 부모를 펼침
     int32 CurrentIndex = BoneIndex;
     while (CurrentIndex >= 0)
