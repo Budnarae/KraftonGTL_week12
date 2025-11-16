@@ -78,11 +78,5 @@ private:
     float CurrentAnimationTime = 0.0f;                  // 현재 애니메이션 재생 시간 (초)
     bool bIsPlaying = false;                            // 재생 중 여부
     bool bIsLooping = true;                             // 루프 재생 여부
-    
-// FOR TEST!!!
-private:
-    float TestTime = 0;
-    bool bIsInitialized = false;
-    FTransform TestBoneBasePose;
 };
 

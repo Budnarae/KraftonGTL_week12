@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SkeletalMeshComponent.h"
 #include "../Animation/AnimInstance.h"
 #include "Source/Runtime/Engine/Animation/AnimationAsset.h"
@@ -7,6 +7,15 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 {
     // 테스트용 기본 메시 설정
     SetSkeletalMesh(GDataDir + "/Test.fbx");
+}
+
+USkeletalMeshComponent::~USkeletalMeshComponent()
+{
+    if (AnimInstance)
+    {
+        delete AnimInstance;
+        AnimInstance = nullptr;
+    }
 }
 
 void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
@@ -25,14 +34,14 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
     }
 
     if (AnimInstance)
-    {
-        FPoseContext Start, End, Blended;
-
+    {        
+        // UAnimationSequence* SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
+        // AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_mixamo.com"), true);
         // FOR TEST
-        SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
-        SeqB = RESOURCE.Load<UAnimationSequence>("Standard Walk_mixamo.com");
+        // UAnimationSequence* SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
+        // UAnimationSequence* SeqB = RESOURCE.Load<UAnimationSequence>("Standard Walk_mixamo.com");
 
-        AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
+        // AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
     }
 }
 

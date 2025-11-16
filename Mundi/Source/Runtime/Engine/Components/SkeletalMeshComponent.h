@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "SkinnedMeshComponent.h"
 #include "USkeletalMeshComponent.generated.h"
 
@@ -12,7 +12,7 @@ public:
     GENERATED_REFLECTION_BODY()
     
     USkeletalMeshComponent();
-    ~USkeletalMeshComponent() override = default;
+    ~USkeletalMeshComponent();
 
     // FOR TEST
     UPROPERTY(EditAnywhere, Category = "Animation", Range = "0, 1")
@@ -125,10 +125,6 @@ protected:
      * @brief CPU 스키닝에 전달할 최종 노말 스키닝 행렬
      */
     TArray<FMatrix> TempFinalSkinningNormalMatrices;
-
-    // FOR TEST
-    UAnimationSequence* SeqA = nullptr;
-    UAnimationSequence* SeqB = nullptr;
 };
 
 
