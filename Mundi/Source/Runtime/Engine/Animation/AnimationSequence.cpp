@@ -136,7 +136,7 @@ FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) co
         const FVector& Scale1 = Track.ScaleKeys[ScaleIdx1];
 
         Result.Scale3D = FVector::Lerp(Scale0, Scale1, Alpha);
-    }
+    } 
     else
     {
         Result.Scale3D = FVector(1.0f, 1.0f, 1.0f);

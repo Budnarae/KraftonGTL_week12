@@ -57,16 +57,20 @@ ID3D11ShaderResourceView* FThumbnailManager::GetThumbnail(const std::string& Fil
 		return It->second.SRV;
 	}
 
-	// 확장자 추출
-	size_t DotPos = FilePath.find_last_of('.');
-	size_t SlashPos = FilePath.find_last_of("/\\");
-
-	// 확장자가 없거나, . 이 경로 구분자보다 앞에 있으면 폴더로 간주
-	if (DotPos == std::string::npos || (SlashPos != std::string::npos && DotPos < SlashPos))
+	// 파일시스템으로 디렉토리 확인
+	if (std::filesystem::is_directory(FilePath))
 	{
 		// 폴더 아이콘
 		FThumbnailData* FolderData = CreateDefaultThumbnail(".folder");
 		return FolderData ? FolderData->SRV : nullptr;
+	}
+
+	// 확장자 추출
+	size_t DotPos = FilePath.find_last_of('.');
+	if (DotPos == std::string::npos)
+	{
+		// 확장자 없는 파일
+		return CreateDefaultThumbnail("")->SRV;
 	}
 
 	std::string Extension = FilePath.substr(DotPos);
@@ -187,6 +191,10 @@ FThumbnailData* FThumbnailManager::CreateDefaultThumbnail(const std::string& Ext
 	else if (Extension == ".prefab")
 	{
 		Color = 0xFF80FF40; // 초록색 (프리팹) - R=64, G=255, B=128
+	}
+	else if (Extension == ".uanim")
+	{
+		Color = 0xFF00FF00; // 찐 초록색 (애니메이션) - R=0, G=255, B=0
 	}
 	else if (Extension == ".umat")
 	{
