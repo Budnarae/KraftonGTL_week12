@@ -7,6 +7,7 @@ struct FAnimNode_Base {
 	virtual void Evaluate(FPoseContext& Output) = 0;
 	virtual ~FAnimNode_Base() = default;
 };
+
 struct FAnimNode_Sequence : FAnimNode_Base
 {
     UAnimationSequence* Sequence = nullptr;

@@ -209,7 +209,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AnimNode.cpp" />
     <ClCompile Include="Generated\AActor.generated.cpp" />
     <ClCompile Include="Generated\AAmbientLightActor.generated.cpp" />
     <ClCompile Include="Generated\ACameraActor.generated.cpp" />
