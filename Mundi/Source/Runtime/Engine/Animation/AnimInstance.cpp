@@ -10,26 +10,14 @@
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
 {
-    if (TestSeqA)
-    {
-        delete TestSeqA;
-        TestSeqA = nullptr;
-    }
-    if (TestSeqB)
-    {
-        delete TestSeqB;
-        TestSeqB = nullptr;
-    }
-    if (OwnerSkeletalComp)
-    {
-        delete OwnerSkeletalComp;
-        OwnerSkeletalComp = nullptr;
-    }
-    if (CurrentAnimation)
-    {
-        delete CurrentAnimation;
-        CurrentAnimation = nullptr;
-    }
+    // TestSeqA, TestSeqB는 ResourceManager가 관리하므로 delete하지 않음
+    // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
+    // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
+
+    // nullptr로만 설정
+    TestSeqA = nullptr;
+    TestSeqB = nullptr;
+    OwnerSkeletalComp = nullptr;
 }
 
 void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
@@ -105,100 +93,6 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
     // ====================================
     NativeUpdateAnimation(DeltaTime);
     EvaluateAnimation();
-
-    // 평가된 포즈를 SkeletalMeshComponent에 적용
-    if (CurrentPose.EvaluatedPoses.Num() > 0)
-    {
-        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-        LocalPose = CurrentPose.EvaluatedPoses;
-        OwnerSkeletalComp->ForceRecomputePose();
-    }
-
-    // ====================================
-    // SingleNode 방식 Regacy 코드
-    // ====================================
-    /*
-    if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)
-    {
-        return;
-    }
-
-    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
-    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
-    {
-        return;
-    }
-
-    // 1) 시간 업데이트
-    CurrentAnimationTime += DeltaTime;
-    float PlayLength = CurrentAnimation->GetPlayLength();
-
-    if (CurrentAnimationTime >= PlayLength)
-    {
-        if (bIsLooping)
-        {
-            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
-        }
-        else
-        {
-            CurrentAnimationTime = PlayLength;
-            bIsPlaying = false;
-        }
-    }
-
-    // 2) 모든 본의 로컬 포즈 업데이트
-    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
-    const int32 NumBones = Skeleton.Bones.Num();
-
-    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-    LocalPose.SetNum(NumBones);
-
-    for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
-    {
-        const FBone& Bone = Skeleton.Bones[BoneIndex];
-        FName BoneName = FName(Bone.Name);
-
-        // UAnimationAsset 인터페이스로 본 포즈 가져오기
-        // (AnimSequence, Montage 등 모든 타입 지원)
-        FTransform AnimPose = CurrentAnimation->GetBonePose(BoneName, CurrentAnimationTime);
-        LocalPose[BoneIndex] = AnimPose;
-    }
-
-    // 포즈 재계산 => 스키닝
-    OwnerSkeletalComp->ForceRecomputePose();
-    */
-}
-
-void UAnimInstance::SetAnimation(UAnimationAsset* NewAnimation)
-{
-    CurrentAnimation = NewAnimation;
-    CurrentAnimationTime = 0.0f;
-}
-
-void UAnimInstance::Play(bool bLooping)
-{
-    bIsPlaying = true;
-    bIsLooping = bLooping;
-    CurrentAnimationTime = 0.0f;
-}
-
-//Animation Helper
-void UAnimInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
-{
-    if (!OwnerSkeletalComp || !NewAnimToPlay)
-    {
-        return;
-    }
-
-    OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationSingleNode);
-    SetAnimation(NewAnimToPlay);
-    Play(bLooping);
-}
-
-void UAnimInstance::StopAnimation()
-{
-    bIsPlaying = false;
-    CurrentAnimationTime = 0.0f;
 }
 
 void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -249,12 +143,16 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UAnimInstance::EvaluateAnimation()
 {
+    FPoseContext CurrentPose;
     ASM.Evaluate(CurrentPose);
-}
 
-FPoseContext& UAnimInstance::GetCurrentPose()
-{
-    return CurrentPose;
+    // 평가된 포즈를 SkeletalMeshComponent에 적용
+    if (CurrentPose.EvaluatedPoses.Num() > 0)
+    {
+        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+        LocalPose = CurrentPose.EvaluatedPoses;
+        OwnerSkeletalComp->ForceRecomputePose();
+    }
 }
 
 void UAnimInstance::AddTransitionRule(UAnimNodeTransitionRule* InRule)
