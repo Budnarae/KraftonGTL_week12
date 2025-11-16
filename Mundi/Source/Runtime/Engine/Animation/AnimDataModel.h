@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "AnimationType.h"
 
 class UAnimDataModel : public UObject
 {

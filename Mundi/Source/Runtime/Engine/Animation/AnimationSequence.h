@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "AnimationAsset.h"
 #include "AnimDataModel.h"
+#include "AnimationType.h"
 
 class UAnimationSequence : public UAnimationAsset
 {
