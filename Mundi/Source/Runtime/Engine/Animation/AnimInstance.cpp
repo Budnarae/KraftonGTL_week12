@@ -10,26 +10,10 @@
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
 {
-    if (TestSeqA)
-    {
-        delete TestSeqA;
-        TestSeqA = nullptr;
-    }
-    if (TestSeqB)
-    {
-        delete TestSeqB;
-        TestSeqB = nullptr;
-    }
-    if (OwnerSkeletalComp)
-    {
-        delete OwnerSkeletalComp;
-        OwnerSkeletalComp = nullptr;
-    }
-    if (CurrentAnimation)
-    {
-        delete CurrentAnimation;
-        CurrentAnimation = nullptr;
-    }
+    TestSeqA = nullptr;
+    TestSeqB = nullptr;
+    OwnerSkeletalComp = nullptr;
+    CurrentAnimation = nullptr;
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
@@ -59,24 +43,16 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
     if (!OwnerSkeletalComp)
         return;
 
-    // ====================================
-    // Animation State Machine 기반 업데이트
-    // ====================================
+    // 변수 업데이트
     NativeUpdateAnimation(DeltaTime);
     
+    // Anim Graph Update
     FAnimationUpdateContext Context;
     Context.DeltaTime = DeltaTime;
     RootNode->Update(Context);
 
+    // Anim Graph Evaluate
     EvaluateAnimation();
-
-    // 평가된 포즈를 SkeletalMeshComponent에 적용
-    if (CurrentPose.EvaluatedPoses.Num() > 0)
-    {
-        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-        LocalPose = CurrentPose.EvaluatedPoses;
-        OwnerSkeletalComp->ForceRecomputePose();
-    }
 }
 
 
@@ -100,11 +76,6 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
             Rule->Evaluate();
         }
     }
-
-    // State Machine 업데이트
-    FAnimationUpdateContext Context;
-    Context.DeltaTime = DeltaSeconds;
-    ASM.Update(Context);
 
     // 상태가 변경되었는지 확인하여 타이머 리셋
     FAnimState* CurrentState = ASM.GetCurrentState();
@@ -138,6 +109,7 @@ void UAnimInstance::EvaluateAnimation()
     FPoseContext Out(&Skeleton);
     RootNode->Evaluate(Out);
 
+    CurrentPose = Out;
 
     if (Out.EvaluatedPoses.Num() > 0)
     {
@@ -145,8 +117,6 @@ void UAnimInstance::EvaluateAnimation()
         LocalPose = Out.EvaluatedPoses;
         OwnerSkeletalComp->ForceRecomputePose();
     }
-
-    CurrentPose = Out;
 }
 
 
