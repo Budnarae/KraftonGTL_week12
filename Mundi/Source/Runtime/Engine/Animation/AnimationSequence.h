@@ -7,6 +7,7 @@ class UAnimationSequence : public UAnimationAsset
     DECLARE_CLASS(UAnimationSequence, UAnimationAsset)
 public:
     UAnimationSequence();
+    UAnimationSequence(const FSkeleton& InSkeleton);
     virtual ~UAnimationSequence() override;
 
     // ====================================
@@ -35,6 +36,16 @@ public:
     void SetDataModel(UAnimDataModel* InDataModel) { DataModel = InDataModel; }
 
     /**
+     * @brief Skeleton을 설정합니다
+     */
+    void SetSkeleton(const FSkeleton& InSkeleton) { Skeleton = InSkeleton; }
+
+    /**
+     * @brief 루핑 여부를 설정합니다
+     */
+    void SetLooping(bool InLooping) { bIsLooping = InLooping; }
+
+    /**
      * @brief 모든 본의 애니메이션 트랙을 반환합니다
      */
     const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const;
@@ -51,6 +62,14 @@ public:
      */
     int32 GetNumberOfKeys() const;
 
+    void Update(const FAnimationUpdateContext& Context);
+    void Evaluate(FPoseContext& Output);
+
 private:
     UAnimDataModel* DataModel = nullptr;
+    FSkeleton Skeleton{};
+
+    /* 재생 관련 */
+    float CurrentAnimationTime = 0.0f;  // 현재 애니메이션 재생 시간
+    bool bIsLooping = false;
 };

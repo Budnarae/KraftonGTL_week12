@@ -264,9 +264,12 @@
     <ClCompile Include="Source\Runtime\Core\Misc\VertexData.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimBlend.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimationStateMachine.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimDataModel.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationSequence.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimInstance.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkinnedMeshComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.cpp" />
@@ -670,9 +673,12 @@
     <ClInclude Include="Source\Runtime\Core\Object\Property.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationAsset.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimBlend.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimationStateMachine.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimDataModel.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationSequence.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\FloatComparisonRule.h" />
     <ClInclude Include="Source\Runtime\Engine\Audio\Sound.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\AudioComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\CapsuleComponent.h" />

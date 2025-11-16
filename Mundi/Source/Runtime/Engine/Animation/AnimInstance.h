@@ -1,5 +1,8 @@
 ﻿#pragma once
 
+#include "AnimationStateMachine.h"
+#include "AnimNodeTransitionRule.h"
+
 class USkeletalMeshComponent;
 class UAnimationSequence;
 class UAnimInstance : public UObject
@@ -9,7 +12,7 @@ public:
     
     virtual ~UAnimInstance();
 
-    void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent) { OwnerSkeletalComp = InSkeletalMeshComponent; }
+    void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
 
     // FOR TEST
@@ -20,6 +23,11 @@ public:
     UAnimationSequence* TestSeqB = nullptr;
     bool IsBlending = false;
     float CurTime = 0.0;
+
+    /**
+     * @brief AnimInstance 초기화 (최초 1회 호출)
+     */
+    void Initialize();
     
     /**
      * @brief 매 프레임 애니메이션 시간을 업데이트하고 본 포즈를 갱신합니다
@@ -51,6 +59,63 @@ public:
      */
     void StopAnimation();
 
+    /* Unreal Style */
+    
+    // - 게임 로직 기준 Update (Tick) 단계
+    // - 파라미터 업데이트, Transition 조건에 필요한 변수 갱신
+    //
+    // 원본 Unreal에서는 virtual로 되어있음.
+    // 아마 추후 SingleNodeInstance 구현과 관련이 있는 듯 함
+    void NativeUpdateAnimation(float DeltaSeconds);
+
+    // - AnimGraph Evaluate 단계 수행
+    // - 최종 Pose 계산
+    void EvaluateAnimation();
+
+    FPoseContext& GetCurrentPose();
+
+// ====================================
+// Transition Rule Management
+// ====================================
+public:
+    /**
+     * @brief Transition Rule 추가
+     * @param InRule 추가할 Rule 객체
+     */
+    void AddTransitionRule(UAnimNodeTransitionRule* InRule);
+
+    /**
+     * @brief 이름으로 Transition Rule 제거
+     * @param RuleName 제거할 Rule 이름
+     */
+    void RemoveTransitionRule(const FName& RuleName);
+
+    /**
+     * @brief 이름으로 Transition Rule 찾기
+     * @param RuleName 찾을 Rule 이름
+     * @return Rule 객체, 없으면 nullptr
+     */
+    UAnimNodeTransitionRule* FindTransitionRuleByName(const FName& RuleName) const;
+
+    /**
+     * @brief 모든 Transition Rule 반환
+     */
+    const TArray<UAnimNodeTransitionRule*>& GetAllTransitionRules() const { return TransitionRules; }
+
+// ====================================
+// Animation State Machine Setup
+// ====================================
+public:
+    /**
+     * @brief Animation State Machine 초기화 (테스트용)
+     */
+    void InitializeAnimationStateMachine();
+
+    /**
+     * @brief Animation State Machine 접근자
+     */
+    UAnimationStateMachine* GetAnimationStateMachine() { return &ASM; }
+
 // ====================================
 // State Query
 // ====================================
@@ -72,13 +137,24 @@ public:
     
 private:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
-    
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
-    
+
     float CurrentAnimationTime = 0.0f;                  // 현재 애니메이션 재생 시간 (초)
     bool bIsPlaying = false;                            // 재생 중 여부
     bool bIsLooping = true;                             // 루프 재생 여부
-    
+
+    // 현재 포즈를 저장할 변수
+    FPoseContext CurrentPose;
+    UAnimationStateMachine ASM;
+
+    // Transition Rule 관리
+    TArray<UAnimNodeTransitionRule*> TransitionRules;
+
+    // 10초마다 애니메이션 전환 타이머
+    float TransitionTimer = 0.0f;
+    const float TransitionInterval = 10.0f;
+    FAnimState* PreviousState = nullptr;  // 상태 변경 감지용
+
 // FOR TEST!!!
 private:
     float TestTime = 0;
