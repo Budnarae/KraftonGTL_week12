@@ -16,6 +16,7 @@
 #include "Object.h"
 #include "SkeletalMesh.h"
 #include "Source/Runtime/Engine/Animation/AnimationAsset.h"
+#include "Source/Runtime/Engine/Animation/AnimationSequence.h"
 // ... 기타 include ...
 
 // --- 전방 선언 ---

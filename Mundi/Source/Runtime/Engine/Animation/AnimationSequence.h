@@ -39,6 +39,8 @@ public:
      */
     const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const;
 
+    void EvaluatePose(float Time, const FSkeleton& Skeleton, FPoseContext& Out) const;
+
     /**
      * @brief 총 프레임 수를 반환합니다
      */

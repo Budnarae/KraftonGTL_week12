@@ -7,7 +7,6 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 {
     // 테스트용 기본 메시 설정
     SetSkeletalMesh(GDataDir + "/Test.fbx");
-    //PlayAnimation(RESOURCE.Load<UAnimationAsset>("",true));
 }
 
 void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
@@ -27,7 +26,13 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 
     if (AnimInstance)
     {
-        // AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard"), true);
+        FPoseContext Start, End, Blended;
+
+        // FOR TEST
+        SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
+        SeqB = RESOURCE.Load<UAnimationSequence>("Standard Walk_mixamo.com");
+
+        AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
     }
 }
 
@@ -37,6 +42,8 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 
     if (AnimationMode == EAnimationMode::AnimationSingleNode && AnimInstance)
     {
+        // FOR TEST
+        AnimInstance->UpdateBlendedAnimation(DeltaTime, Alpha);
         AnimInstance->UpdateAnimation(DeltaTime);
     }
 

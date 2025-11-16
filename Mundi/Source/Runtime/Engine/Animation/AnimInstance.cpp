@@ -1,16 +1,70 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
+#include "AnimBlend.h"
+#include "AnimationSequence.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
+UAnimInstance::~UAnimInstance()
+{
+    if (TestSeqA)
+    {
+        TestSeqA = nullptr;
+    }
+    if (TestSeqB)
+    {
+        TestSeqB = nullptr;
+    }
+}
+
+void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
+{
+    TestSeqA = &InSeqA;
+    TestSeqB = &InSeqB;
+    IsBlending = true;
+}
+
+void UAnimInstance::UpdateBlendedAnimation(float DeltaTime, float Alpha)
+{
+    if (!OwnerSkeletalComp || !TestSeqA || !TestSeqB || !IsBlending)
+    {
+        return;
+    }
+
+    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
+    {
+        return;
+    }
+
+    CurTime += DeltaTime;
+
+    // 2) 모든 본의 로컬 포즈 업데이트
+    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+    const int32 NumBones = Skeleton.Bones.Num();
+
+    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+    LocalPose.SetNum(NumBones);
+    
+    FPoseContext TSeqA, TSeqB, Out;
+    TestSeqA->EvaluatePose(CurTime, Skeleton, TSeqA);
+    TestSeqB->EvaluatePose(CurTime, Skeleton, TSeqB);
+
+    FAnimBlend::Blend(TSeqA, TSeqB, Alpha, Out);
+    
+    LocalPose = Out.EvaluatedPoses;
+
+    // 포즈 재계산 => 스키닝
+    OwnerSkeletalComp->ForceRecomputePose();
+}
+
 void UAnimInstance::UpdateAnimation(float DeltaTime)
 {
     if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)
     {
         return;
     }
-        
 
     USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
     if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
