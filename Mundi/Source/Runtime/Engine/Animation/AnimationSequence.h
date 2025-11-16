@@ -14,7 +14,7 @@ public:
     // ====================================
 
     void Load(const FString& InFilePath, ID3D11Device* InDevice) override;
-    void Save(const FString& InFilePath) override;
+    bool Save(const FString& InFilePath = "") override;
 
     FTransform GetBonePose(const FName& BoneName, float Time) const override;
     float GetPlayLength() const override;

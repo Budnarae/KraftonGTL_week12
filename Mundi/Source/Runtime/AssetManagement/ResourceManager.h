@@ -54,6 +54,9 @@ public:
 	T* Get(const FString& InFilePath);
 
 	template<typename T>
+	bool Save(T* InResource, const FString& InOutputPath = "");
+
+	template<typename T>
 	TArray<T*> GetAll();
 
 	template<typename T>
@@ -315,4 +318,23 @@ TArray<FString> UResourceManager::GetAllFilePaths()
 		}
 	}
 	return Paths;
+}
+
+template<typename T>
+bool UResourceManager::Save(T* InResource, const FString& InOutputPath)
+{
+	if (!InResource)
+	{
+		UE_LOG("ResourceManager::Save failed: Resource is null");
+		return false;
+	}
+
+	FString SavePath = InOutputPath.empty() ? InResource->GetFilePath() : InOutputPath;
+	if (SavePath.empty())
+	{
+		UE_LOG("ResourceManager::Save failed: No file path specified");
+		return false;
+	}
+
+	return InResource->Save(SavePath);
 }

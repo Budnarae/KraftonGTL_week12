@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "AnimationSequence.h"
+#include "WindowsBinWriter.h"
+#include <filesystem>
 
 IMPLEMENT_CLASS(UAnimationSequence)
 
@@ -17,14 +19,56 @@ UAnimationSequence::~UAnimationSequence()
 
 void UAnimationSequence::Load(const FString& InFilePath, ID3D11Device* InDevice)
 {
-    // FBX Loader에서 FBX 로드 시 한번에 처리하므로 실제 사용은 안할 듯
-    // FBX Loader에서 TArray<FBoneAnimationTrack> 생성 => Data Model 생성 -> Sequence 생성
-    // FBX Loader에서는 ResourceManager::ADD 메서드를 통해 리소스 매니저에 책임 전달
+    // FBX Loader에서 .uanim 파일 로드를 담당하므로 여기서는 구현하지 않음
+    // FBXLoader::LoadCachedAnimations()에서 .uanim 파일 읽기 후 UAnimationSequence 생성
 }
 
-void UAnimationSequence::Save(const FString& InFilePath)
+bool UAnimationSequence::Save(const FString& InFilePath)
 {
-    
+    if (!DataModel)
+    {
+        UE_LOG("AnimationSequence::Save failed: DataModel is null");
+        return false;
+    }
+
+    FString SavePath = InFilePath.empty() ? FilePath : InFilePath;
+    if (SavePath.empty())
+    {
+        UE_LOG("AnimationSequence::Save failed: No file path specified");
+        return false;
+    }
+
+    // 디렉토리 생성
+    std::filesystem::path FilePath(SavePath);
+    if (FilePath.has_parent_path())
+    {
+        std::filesystem::create_directories(FilePath.parent_path());
+    }
+
+    try
+    {
+        FWindowsBinWriter Writer(SavePath);
+
+        // 애니메이션 데이터 (FBXLoader와 동일한 형식)
+        float PlayLength = DataModel->GetPlayLength();
+        float FrameRate = DataModel->GetFrameRate();
+        const TArray<FBoneAnimationTrack>& BoneTracks = DataModel->GetBoneAnimationTracks();
+
+        Writer << PlayLength;
+        Writer << FrameRate;
+        Serialization::WriteArray(Writer, BoneTracks);
+
+        Writer.Close();
+
+        UE_LOG("AnimationSequence saved: %s (%.2fs, %.2f fps, %d tracks)",
+               SavePath.c_str(), PlayLength, FrameRate, BoneTracks.Num());
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        UE_LOG("AnimationSequence::Save failed: %s", e.what());
+        return false;
+    }
 }
 
 FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) const
