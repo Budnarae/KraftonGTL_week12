@@ -28,6 +28,8 @@ public:
 
 	FFbxAssetData* LoadFbxAssets(const FString& FilePath);
 
+	// FSkeletalMeshData를 FStaticMesh로 변환 (스켈레톤 정보 제거)
+	FStaticMesh* ConvertSkeletalToStaticMesh(const FSkeletalMeshData* SkeletalData);
 
 protected:
 	~UFbxLoader() override;

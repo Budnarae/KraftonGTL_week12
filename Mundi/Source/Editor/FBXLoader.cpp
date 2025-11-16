@@ -11,8 +11,10 @@
 #include "PathUtils.h"
 #include <filesystem>
 
+#include "ObjManager.h"
 #include "Source/Runtime/Engine/Animation/AnimationSequence.h"
 #include "Source/Runtime/Engine/Animation/AnimDataModel.h"
+#include "Source/Runtime/AssetManagement/StaticMesh.h"
 
 IMPLEMENT_CLASS(UFbxLoader)
 
@@ -66,13 +68,33 @@ void UFbxLoader::PreLoad()
 					// 메시 등록
 					if (AssetData->MeshData)
 					{
-						// USkeletalMesh 생성 및 리소스 매니저에 등록
-						USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
 						ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
-						SkeletalMesh->InitFromData(AssetData->MeshData, Device);
 
-						RESOURCE.Add<USkeletalMesh>(PathStr, SkeletalMesh);
-						UE_LOG("USkeletalMesh(filename: '%s') is successfully created!", PathStr.c_str());
+						FStaticMesh* StaticMeshData = FbxLoader.ConvertSkeletalToStaticMesh(AssetData->MeshData);
+						if (StaticMeshData)
+						{
+							StaticMeshData->PathFileName = PathStr;
+
+							// ObjManager 캐시에 등록 (메모리 관리)
+							FObjManager::RegisterStaticMeshAsset(PathStr, StaticMeshData);
+
+							// UStaticMesh 생성 및 초기화
+							UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
+							StaticMesh->SetStaticMeshAsset(StaticMeshData);
+
+							RESOURCE.Add<UStaticMesh>(PathStr, StaticMesh);
+							UE_LOG("UStaticMesh(filename: '%s') is successfully created from FBX!", PathStr.c_str());
+						}
+
+						// 스켈레톤이 있으면 SkeletalMesh도 생성
+						if (!AssetData->MeshData->Skeleton.Bones.IsEmpty())
+						{
+							USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
+							SkeletalMesh->InitFromData(AssetData->MeshData, Device);
+
+							RESOURCE.Add<USkeletalMesh>(PathStr, SkeletalMesh);
+							UE_LOG("USkeletalMesh(filename: '%s') is successfully created!", PathStr.c_str());
+						}
 					}
 
 					// 애니메이션 등록
@@ -1512,5 +1534,40 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 	UE_LOG("FBX Assets loaded: Mesh with %d animations", AssetData->AnimationSequences.Num());
 
 	return AssetData;
+}
+
+FStaticMesh* UFbxLoader::ConvertSkeletalToStaticMesh(const FSkeletalMeshData* SkeletalData)
+{
+	if (!SkeletalData)
+		return nullptr;
+
+	FStaticMesh* StaticMesh = new FStaticMesh();
+
+	// 경로 정보 복사
+	StaticMesh->PathFileName = SkeletalData->PathFileName;
+	StaticMesh->CacheFilePath = SkeletalData->CacheFilePath;
+	StaticMesh->bHasMaterial = SkeletalData->bHasMaterial;
+
+	// 인덱스 복사
+	StaticMesh->Indices = SkeletalData->Indices;
+
+	// GroupInfo 복사
+	StaticMesh->GroupInfos = SkeletalData->GroupInfos;
+
+	// FSkinnedVertex를 FNormalVertex로 변환 (스킨 정보 제거)
+	StaticMesh->Vertices.reserve(SkeletalData->Vertices.size());
+	for (const FSkinnedVertex& SkinnedVertex : SkeletalData->Vertices)
+	{
+		FNormalVertex NormalVertex;
+		NormalVertex.pos = SkinnedVertex.Position;
+		NormalVertex.normal = SkinnedVertex.Normal;
+		NormalVertex.tex = SkinnedVertex.UV;
+		NormalVertex.Tangent = SkinnedVertex.Tangent;
+		NormalVertex.color = SkinnedVertex.Color;
+
+		StaticMesh->Vertices.push_back(NormalVertex);
+	}
+
+	return StaticMesh;
 }
 
