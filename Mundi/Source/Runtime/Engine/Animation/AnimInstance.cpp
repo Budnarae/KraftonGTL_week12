@@ -2,21 +2,61 @@
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
+#include "AnimationSequence.h"
+#include "ResourceManager.h"
+#include "FloatComparisonRule.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
+
+void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
+{
+    OwnerSkeletalComp = InSkeletalMeshComponent;
+
+    // 최초 설정 시 초기화
+    if (OwnerSkeletalComp && !bIsInitialized)
+    {
+        Initialize();
+    }
+}
+
+void UAnimInstance::Initialize()
+{
+    if (bIsInitialized)
+        return;
+
+    bIsInitialized = true;
+
+    // Animation State Machine 초기화
+    InitializeAnimationStateMachine();
+}
+
 void UAnimInstance::UpdateAnimation(float DeltaTime)
 {
+    if (!OwnerSkeletalComp)
+        return;
+
     // ====================================
-    // [임시 코드 - 주석 처리됨]
-    // 동료가 만든 직접 애니메이션 업데이트 코드
-    // Animation State Machine으로 대체됨
+    // Animation State Machine 기반 업데이트
+    // ====================================
+    NativeUpdateAnimation(DeltaTime);
+    EvaluateAnimation();
+
+    // 평가된 포즈를 SkeletalMeshComponent에 적용
+    if (CurrentPose.EvaluatedPoses.Num() > 0)
+    {
+        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+        LocalPose = CurrentPose.EvaluatedPoses;
+        OwnerSkeletalComp->ForceRecomputePose();
+    }
+
+    // ====================================
+    // SingleNode 방식 Regacy 코드
     // ====================================
     /*
     if (!OwnerSkeletalComp || !CurrentAnimation || !bIsPlaying)
     {
         return;
     }
-
 
     USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
     if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
@@ -62,20 +102,6 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
     // 포즈 재계산 => 스키닝
     OwnerSkeletalComp->ForceRecomputePose();
     */
-
-    // ====================================
-    // Animation State Machine 기반 업데이트로 대체
-    // ====================================
-    NativeUpdateAnimation(DeltaTime);
-    EvaluateAnimation();
-
-    // 평가된 포즈를 SkeletalMeshComponent에 적용
-    if (OwnerSkeletalComp)
-    {
-        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-        LocalPose = CurrentPose.EvaluatedPoses;
-        OwnerSkeletalComp->ForceRecomputePose();
-    }
 }
 
 void UAnimInstance::SetAnimation(UAnimationAsset* NewAnimation)
@@ -112,28 +138,48 @@ void UAnimInstance::StopAnimation()
 
 void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
-    // 10초마다 Transition Rule 트리거
+    // 타이머 업데이트
     TransitionTimer += DeltaSeconds;
-    if (TransitionTimer >= TransitionInterval)
-    {
-        TransitionTimer = 0.0f;
 
-        // 모든 Rule을 순차적으로 평가
-        // Rule의 CheckTransitionRule()을 호출하여 조건을 확인하고,
-        // 조건이 맞으면 Evaluate()를 호출하여 Delegate를 발동
-        for (UAnimNodeTransitionRule* Rule : TransitionRules)
+    // 매 프레임 모든 Rule에 현재 타이머 값 전달 및 평가
+    for (UAnimNodeTransitionRule* Rule : TransitionRules)
+    {
+        if (Rule)
         {
-            if (Rule)
+            // FloatComparisonRule이라면 현재 시간 값을 전달
+            UFloatComparisonRule* FloatRule = dynamic_cast<UFloatComparisonRule*>(Rule);
+            if (FloatRule)
             {
-                Rule->Evaluate();
+                FloatRule->SetComparisonValue(TransitionTimer);
             }
+
+            Rule->Evaluate();
         }
     }
 
+    // State Machine 업데이트
     FAnimationUpdateContext Context;
     Context.DeltaTime = DeltaSeconds;
-
     ASM.Update(Context);
+
+    // 상태가 변경되었는지 확인하여 타이머 리셋
+    FAnimState* CurrentState = ASM.GetCurrentState();
+    if (CurrentState != PreviousState)
+    {
+        TransitionTimer = 0.0f;
+        PreviousState = CurrentState;
+
+        // State가 변경되면 모든 Transition의 CanEnterTransition을 리셋
+        // 이전 State에서 활성화된 Transition들이 새로운 State에서도 활성화되는 것을 방지
+        TArray<FAnimStateTransition*>& Transitions = ASM.GetTransitions();
+        for (FAnimStateTransition* Transition : Transitions)
+        {
+            if (Transition)
+            {
+                Transition->CanEnterTransition = false;
+            }
+        }
+    }
 }
 
 void UAnimInstance::EvaluateAnimation()
@@ -194,64 +240,111 @@ UAnimNodeTransitionRule* UAnimInstance::FindTransitionRuleByName(const FName& Ru
 
 void UAnimInstance::InitializeAnimationStateMachine()
 {
-    // State 생성
-    FAnimState StateA;
-    StateA.Name = "StateA";
-    // TODO: StateA.AnimSequences에 실제 애니메이션 추가 필요
+    // 애니메이션 로드
+    UAnimationSequence* AnimA = UResourceManager::GetInstance().Load<UAnimationSequence>("Standard Run_mixamo.com");
+    UAnimationSequence* AnimB = UResourceManager::GetInstance().Load<UAnimationSequence>("Standard Walk_mixamo.com");
+    UAnimationSequence* AnimC = UResourceManager::GetInstance().Load<UAnimationSequence>("James_mixamo.com");
 
-    FAnimState StateB;
-    StateB.Name = "StateB";
-    // TODO: StateB.AnimSequences에 실제 애니메이션 추가 필요
+    // 로드 검증
+    if (!AnimA || !AnimB || !AnimC)
+        return;
 
-    FAnimState StateC;
-    StateC.Name = "StateC";
-    // TODO: StateC.AnimSequences에 실제 애니메이션 추가 필요
+    if (!AnimA->GetDataModel() || !AnimB->GetDataModel() || !AnimC->GetDataModel())
+        return;
 
-    // State Machine에 State 추가
-    ASM.AddState(StateA);
-    ASM.AddState(StateB);
-    ASM.AddState(StateC);
+    // Skeleton 정보 설정 (SkeletalMeshComponent로부터)
+    if (OwnerSkeletalComp && OwnerSkeletalComp->GetSkeletalMesh())
+    {
+        USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+        if (SkeletalMesh && SkeletalMesh->GetSkeletalMeshData())
+        {
+            const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
 
-    // Transition Rule 생성 및 추가
-    UAnimNodeTransitionRule* RuleAtoB = NewObject<UAnimNodeTransitionRule>();
+            // 각 애니메이션에 Skeleton 설정 및 루핑 활성화
+            AnimA->SetSkeleton(Skeleton);
+            AnimA->SetLooping(true);
+
+            AnimB->SetSkeleton(Skeleton);
+            AnimB->SetLooping(true);
+
+            AnimC->SetSkeleton(Skeleton);
+            AnimC->SetLooping(true);
+        }
+        else
+        {
+            return;
+        }
+    }
+    else
+    {
+        return;
+    }
+
+    // State 생성 및 애니메이션 추가 (새로운 API 사용)
+    // AddState가 내부에서 동적 할당하여 State 포인터를 반환
+    FAnimState* StateA = ASM.AddState("StateA");
+    if (StateA)
+    {
+        StateA->AddAnimSequence(AnimA);
+    }
+
+    FAnimState* StateB = ASM.AddState("StateB");
+    if (StateB)
+    {
+        StateB->AddAnimSequence(AnimB);
+    }
+
+    FAnimState* StateC = ASM.AddState("StateC");
+    if (StateC)
+    {
+        StateC->AddAnimSequence(AnimC);
+    }
+
+    // AnimationMode를 AnimationBlueprint로 설정
+    if (OwnerSkeletalComp)
+    {
+        OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationBlueprint);
+    }
+
+    // Transition Rule 생성 및 추가 (10초마다 전환)
+    UFloatComparisonRule* RuleAtoB = NewObject<UFloatComparisonRule>();
     RuleAtoB->SetRuleName("RuleAtoB");
+    RuleAtoB->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
+    RuleAtoB->SetBaseValue(3.0f);  // 10초 기준
+    RuleAtoB->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
     AddTransitionRule(RuleAtoB);
 
-    UAnimNodeTransitionRule* RuleBtoC = NewObject<UAnimNodeTransitionRule>();
+    UFloatComparisonRule* RuleBtoC = NewObject<UFloatComparisonRule>();
     RuleBtoC->SetRuleName("RuleBtoC");
+    RuleBtoC->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
+    RuleBtoC->SetBaseValue(3.0f);  // 10초 기준
+    RuleBtoC->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
     AddTransitionRule(RuleBtoC);
 
-    UAnimNodeTransitionRule* RuleCtoA = NewObject<UAnimNodeTransitionRule>();
+    UFloatComparisonRule* RuleCtoA = NewObject<UFloatComparisonRule>();
     RuleCtoA->SetRuleName("RuleCtoA");
+    RuleCtoA->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
+    RuleCtoA->SetBaseValue(3.0f);  // 10초 기준
+    RuleCtoA->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
     AddTransitionRule(RuleCtoA);
 
-    // Transition 생성 및 연결
-    FAnimStateTransition TransitionAtoB;
-    TransitionAtoB.BlendTime = 0.3f;
-    FDelegateHandle HandleAtoB = RuleAtoB->GetTransitionDelegate().AddLambda([&TransitionAtoB]()
+    // Transition 생성 및 연결 (새로운 API 사용)
+    // AddTransition이 내부에서 동적 할당, Rule 연결, Delegate 바인딩을 모두 처리
+    FAnimStateTransition* TransitionAtoB = ASM.AddTransition("StateA", "StateB", RuleAtoB);
+    if (TransitionAtoB)
     {
-        TransitionAtoB.TriggerTransition();
-    });
-    TransitionAtoB.DelegateHandle = HandleAtoB;
+        TransitionAtoB->SetBlendTime(0.3f);
+    }
 
-    FAnimStateTransition TransitionBtoC;
-    TransitionBtoC.BlendTime = 0.3f;
-    FDelegateHandle HandleBtoC = RuleBtoC->GetTransitionDelegate().AddLambda([&TransitionBtoC]()
+    FAnimStateTransition* TransitionBtoC = ASM.AddTransition("StateB", "StateC", RuleBtoC);
+    if (TransitionBtoC)
     {
-        TransitionBtoC.TriggerTransition();
-    });
-    TransitionBtoC.DelegateHandle = HandleBtoC;
+        TransitionBtoC->SetBlendTime(0.3f);
+    }
 
-    FAnimStateTransition TransitionCtoA;
-    TransitionCtoA.BlendTime = 0.3f;
-    FDelegateHandle HandleCtoA = RuleCtoA->GetTransitionDelegate().AddLambda([&TransitionCtoA]()
+    FAnimStateTransition* TransitionCtoA = ASM.AddTransition("StateC", "StateA", RuleCtoA);
+    if (TransitionCtoA)
     {
-        TransitionCtoA.TriggerTransition();
-    });
-    TransitionCtoA.DelegateHandle = HandleCtoA;
-
-    // State Machine에 Transition 추가
-    ASM.AddTransition("StateA", "StateB", TransitionAtoB);
-    ASM.AddTransition("StateB", "StateC", TransitionBtoC);
-    ASM.AddTransition("StateC", "StateA", TransitionCtoA);
+        TransitionCtoA->SetBlendTime(0.3f);
+    }
 }

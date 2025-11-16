@@ -148,7 +148,7 @@ void UAnimationSequence::Evaluate(FPoseContext& Output)
 
     Output.EvaluatedPoses.clear();
     Output.EvaluatedPoses.resize(NumBones);
-    
+
     for (int32 BoneIndex = 0; BoneIndex < NumBones; BoneIndex++)
     {
         const FBone& Bone = Skeleton.Bones[BoneIndex];

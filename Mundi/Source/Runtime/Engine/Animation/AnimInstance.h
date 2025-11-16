@@ -9,8 +9,13 @@ class UAnimInstance : public UObject
 public:
     DECLARE_CLASS(UAnimInstance, UObject)
     
-    void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent) { OwnerSkeletalComp = InSkeletalMeshComponent; }
+    void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
+
+    /**
+     * @brief AnimInstance 초기화 (최초 1회 호출)
+     */
+    void Initialize();
     
     /**
      * @brief 매 프레임 애니메이션 시간을 업데이트하고 본 포즈를 갱신합니다
@@ -136,6 +141,7 @@ private:
     // 10초마다 애니메이션 전환 타이머
     float TransitionTimer = 0.0f;
     const float TransitionInterval = 10.0f;
+    FAnimState* PreviousState = nullptr;  // 상태 변경 감지용
 
 // FOR TEST!!!
 private:

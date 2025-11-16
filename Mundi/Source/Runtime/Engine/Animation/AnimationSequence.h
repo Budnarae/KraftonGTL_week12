@@ -36,6 +36,16 @@ public:
     void SetDataModel(UAnimDataModel* InDataModel) { DataModel = InDataModel; }
 
     /**
+     * @brief Skeleton을 설정합니다
+     */
+    void SetSkeleton(const FSkeleton& InSkeleton) { Skeleton = InSkeleton; }
+
+    /**
+     * @brief 루핑 여부를 설정합니다
+     */
+    void SetLooping(bool InLooping) { bIsLooping = InLooping; }
+
+    /**
      * @brief 모든 본의 애니메이션 트랙을 반환합니다
      */
     const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const;

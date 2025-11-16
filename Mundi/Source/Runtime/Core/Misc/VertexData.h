@@ -475,14 +475,20 @@ struct FPoseContext
     TArray<FTransform> EvaluatedPoses;
 };
 
+// 전방 선언
+class UAnimNodeTransitionRule;
+
+// Forward declaration
+struct FAnimState;
+
 struct FAnimStateTransition
 {
     // ------------------------------------------------------------------------
     // Source / Target State
-    // Transition 출발 상태와 도착 상태 인덱스
+    // Transition 출발 상태와 도착 상태 포인터
     // ------------------------------------------------------------------------
-    int32 SourceStateIndex = -1;
-    int32 TargetStateIndex = -1;
+    FAnimState* SourceState = nullptr;
+    FAnimState* TargetState = nullptr;
 
     uint32 Index{};   // Animation State Machine에서의 Index
 
@@ -492,8 +498,18 @@ struct FAnimStateTransition
     // ------------------------------------------------------------------------
     bool CanEnterTransition = false;
 
-    // Delegete에서 TriggerTransition를 제거하기 위해 필요
+    // Delegate 관리
+    UAnimNodeTransitionRule* AssociatedRule = nullptr;
     FDelegateHandle DelegateHandle;
+
+    // 생성자/소멸자
+    FAnimStateTransition() = default;
+    FAnimStateTransition(const FAnimStateTransition& Other);
+    FAnimStateTransition& operator=(const FAnimStateTransition& Other);
+    ~FAnimStateTransition();
+
+    // Delegate Handle 정리 (구현은 VertexData.cpp에)
+    void CleanupDelegate();
     
     /* 이하는 나중에 해제하여 사용할 것 */
     
@@ -568,6 +584,14 @@ struct FAnimStateTransition
     {
         CanEnterTransition = true;
     }
+
+    // ------------------------------------------------------------------------
+    // Setter for BlendTime
+    // ------------------------------------------------------------------------
+    void SetBlendTime(float InBlendTime)
+    {
+        BlendTime = InBlendTime;
+    }
 };
 
 class UAnimationSequence;
@@ -577,4 +601,15 @@ struct FAnimState
     FName Name{};
     uint32 Index{};   // Animation State Machine에서의 Index
     TArray<UAnimationSequence*> AnimSequences;
+
+    /**
+     * @brief AnimSequence를 이 State에 추가
+     */
+    void AddAnimSequence(UAnimationSequence* AnimSequence)
+    {
+        if (AnimSequence)
+        {
+            AnimSequences.Add(AnimSequence);
+        }
+    }
 };
