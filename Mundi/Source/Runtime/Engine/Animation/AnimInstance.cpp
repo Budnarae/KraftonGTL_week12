@@ -63,6 +63,11 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
     // Animation State Machine 기반 업데이트
     // ====================================
     NativeUpdateAnimation(DeltaTime);
+    
+    FAnimationUpdateContext Context;
+    Context.DeltaTime = DeltaTime;
+    RootNode->Update(Context);
+
     EvaluateAnimation();
 
     // 평가된 포즈를 SkeletalMeshComponent에 적용
@@ -123,7 +128,25 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UAnimInstance::EvaluateAnimation()
 {
-    ASM.Evaluate(CurrentPose);
+    if (!OwnerSkeletalComp || !RootNode) return;
+
+    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData()) return;
+
+    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+
+    FPoseContext Out(&Skeleton);
+    RootNode->Evaluate(Out);
+
+
+    if (Out.EvaluatedPoses.Num() > 0)
+    {
+        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+        LocalPose = Out.EvaluatedPoses;
+        OwnerSkeletalComp->ForceRecomputePose();
+    }
+
+    CurrentPose = Out;
 }
 
 
@@ -319,6 +342,9 @@ void UAnimInstance::InitializeAnimationStateMachine()
     {
         TransitionCtoA->SetBlendTime(0.3f);
     }
+
+    // 4) RootNode를 StateMachine으로 고정
+    RootNode = &ASM;
 }
 
 void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)

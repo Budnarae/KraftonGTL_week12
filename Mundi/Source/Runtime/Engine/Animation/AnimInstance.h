@@ -1,7 +1,6 @@
 ﻿#pragma once
-
-#include "AnimationStateMachine.h"
 #include "AnimNodeTransitionRule.h"
+#include "AnimNode.h"
 
 class USkeletalMeshComponent;
 class UAnimationSequence;
@@ -14,6 +13,12 @@ public:
 
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
+
+    FAnimNode_StateMachine ASM;
+    FAnimNode_Base* RootNode = nullptr;
+
+    // 현재 포즈를 저장할 변수
+    FPoseContext           CurrentPose;
 
     // FOR TEST
     void PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB);
@@ -117,7 +122,6 @@ public:
     /**
      * @brief Animation State Machine 접근자
      */
-    UAnimationStateMachine* GetAnimationStateMachine() { return &ASM; }
 
 // ====================================
 // State Query
@@ -145,10 +149,6 @@ private:
     float CurrentAnimationTime = 0.0f;                  // 현재 애니메이션 재생 시간 (초)
     bool bIsPlaying = false;                            // 재생 중 여부
     bool bIsLooping = true;                             // 루프 재생 여부
-
-    // 현재 포즈를 저장할 변수
-    FPoseContext CurrentPose;
-    UAnimationStateMachine ASM;
 
     // Transition Rule 관리
     TArray<UAnimNodeTransitionRule*> TransitionRules;

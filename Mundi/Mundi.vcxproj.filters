@@ -653,12 +653,15 @@
     <ClCompile Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimBlend.cpp" />
-    <ClCompile Include="Source\Runtime\Engine\Animation\AnimationStateMachine.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimDataModel.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationSequence.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimationType.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNode.cpp">
+      <Filter>Source\Runtime\Engine\Animation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -1400,7 +1403,6 @@
     <ClInclude Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationAsset.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimBlend.h" />
-    <ClInclude Include="Source\Runtime\Engine\Animation\AnimationStateMachine.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimDataModel.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationSequence.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
@@ -1409,6 +1411,7 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNode.h">
       <Filter>Source\Runtime\Engine\Animation</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimationType.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
