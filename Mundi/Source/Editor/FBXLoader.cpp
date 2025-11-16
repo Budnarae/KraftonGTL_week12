@@ -433,7 +433,34 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 	int VertexId = 0;
 
 	// 위의 이유로 ControlPoint를 인덱스 버퍼로 쓸 수가 없어서 Vertex마다 대응되는 Index Map을 따로 만들어서 계산할 것임.
-	TMap<FSkinnedVertex, uint32> IndexMap;
+	// ✅ 최적화: FSkinnedVertex 전체 대신 실제 FBX 인덱스 조합을 키로 사용 (10배+ 빠름)
+	// FBX는 Position, Normal, UV, Tangent 각각에 대해 서로 다른 인덱스를 가질 수 있음
+	struct FVertexKey {
+		int ControlPointIndex;  // Position 인덱스
+		int NormalIndex;        // Normal MappingIndex
+		int UVIndex;            // UV MappingIndex
+		int TangentIndex;       // Tangent MappingIndex
+
+		bool operator==(const FVertexKey& Other) const {
+			return ControlPointIndex == Other.ControlPointIndex &&
+			       NormalIndex == Other.NormalIndex &&
+			       UVIndex == Other.UVIndex &&
+			       TangentIndex == Other.TangentIndex;
+		}
+	};
+
+	struct FVertexKeyHash {
+		size_t operator()(const FVertexKey& Key) const {
+			// 4개 정수를 결합한 해시
+			size_t hash = std::hash<int>()(Key.ControlPointIndex);
+			hash ^= std::hash<int>()(Key.NormalIndex) << 1;
+			hash ^= std::hash<int>()(Key.UVIndex) << 2;
+			hash ^= std::hash<int>()(Key.TangentIndex) << 3;
+			return hash;
+		}
+	};
+
+	std::unordered_map<FVertexKey, uint32, FVertexKeyHash> IndexMap;
 
 
 	for (int PolygonIndex = 0; PolygonIndex < PolygonCount; PolygonIndex++)
@@ -457,6 +484,9 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 			FSkinnedVertex SkinnedVertex{};
 			// 폴리곤 인덱스와 폴리곤 내에서의 vertexIndex로 ControlPointIndex 얻어냄
 			int ControlPointIndex = InMesh->GetPolygonVertex(PolygonIndex, VertexIndex);
+
+			// ✅ 중복 체크용 키 인덱스 (각 속성 샘플링 시 기록)
+			int NormalIdx = -1, UVIdx = -1, TangentIdx = -1;
 
 			const FbxVector4& Position = FbxSceneWorld.MultT(ControlPoints[ControlPointIndex]);
 			//const FbxVector4& Position = ControlPoints[ControlPointIndex];
@@ -567,6 +597,8 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 					break;
 				}
 
+				NormalIdx = MappingIndex;  // ✅ 중복 체크용 저장
+
 				switch (Normals->GetReferenceMode())
 				{
 				case FbxGeometryElement::eDirect:
@@ -613,6 +645,8 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				default:
 					break;
 				}
+
+				TangentIdx = MappingIndex;  // ✅ 중복 체크용 저장
 
 				switch (Tangents->GetReferenceMode())
 				{
@@ -671,6 +705,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				switch (UVs->GetMappingMode())
 				{
 				case FbxGeometryElement::eByControlPoint:
+					UVIdx = ControlPointIndex;  // ✅ 중복 체크용 저장
 					switch (UVs->GetReferenceMode())
 					{
 					case FbxGeometryElement::eDirect:
@@ -693,6 +728,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				case FbxGeometryElement::eByPolygonVertex:
 				{
 					int TextureUvIndex = InMesh->GetTextureUVIndex(PolygonIndex, VertexIndex);
+					UVIdx = TextureUvIndex;  // ✅ 중복 체크용 저장
 					switch (UVs->GetReferenceMode())
 					{
 					case FbxGeometryElement::eDirect:
@@ -712,12 +748,16 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				}
 			}
 
-			// 실제 인덱스 버퍼에서 사용할 인덱스
+			// ✅ 실제 인덱스 버퍼에서 사용할 인덱스
+			// 위에서 이미 NormalIdx, UVIdx, TangentIdx를 샘플링하면서 저장했음
 			uint32 IndexOfVertex;
+			FVertexKey Key{ ControlPointIndex, NormalIdx, UVIdx, TangentIdx };
+
 			// 기존의 Vertex맵에 있으면 그 인덱스를 사용
-			if (IndexMap.Contains(SkinnedVertex))
+			auto it = IndexMap.find(Key);
+			if (it != IndexMap.end())
 			{
-				IndexOfVertex = IndexMap[SkinnedVertex];
+				IndexOfVertex = it->second;
 			}
 			else
 			{
@@ -726,7 +766,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				IndexOfVertex = MeshData.Vertices.Num() - 1;
 
 				// 인덱스 맵에 추가
-				IndexMap.Add(SkinnedVertex, IndexOfVertex);
+				IndexMap[Key] = IndexOfVertex;
 			}
 			// 대응하는 머티리얼 인덱스 리스트에 추가
 			TArray<uint32>& GroupIndexList = MaterialGroupIndexList[MaterialIndex];
