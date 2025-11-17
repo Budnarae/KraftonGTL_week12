@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <sol/sol.hpp>
+
 struct FRawAnimSequenceTrack
 {
     TArray<FVector> PosKeys; // 위치 키프레임
@@ -130,9 +132,9 @@ struct FAnimStateTransition
     // ------------------------------------------------------------------------
     bool CanEnterTransition = false;
 
-    // Delegate 관리
-    UAnimNodeTransitionRule* AssociatedRule = nullptr;
-    FDelegateHandle DelegateHandle;
+    // Lua 함수 기반 Transition 조건
+    // Lua에서 조건 함수를 설정하고, Update 시 호출하여 CanEnterTransition 업데이트
+    sol::function TransitionConditionFunc;
 
     // 생성자/소멸자
     FAnimStateTransition() = default;
@@ -140,8 +142,35 @@ struct FAnimStateTransition
     FAnimStateTransition& operator=(const FAnimStateTransition& Other);
     ~FAnimStateTransition();
 
-    // Delegate Handle 정리 (구현은 VertexData.cpp에)
-    void CleanupDelegate();
+    /**
+     * @brief Transition 조건 함수 설정 (Lua에서 호출)
+     * @param InFunc Lua 함수 (bool 반환)
+     */
+    void SetTransitionCondition(sol::function InFunc)
+    {
+        TransitionConditionFunc = InFunc;
+    }
+
+    /**
+     * @brief Transition 조건 평가 (Lua 함수 호출)
+     * @return 조건 함수의 반환값 (bool)
+     */
+    bool EvaluateCondition()
+    {
+        if (TransitionConditionFunc.valid())
+        {
+            sol::protected_function_result result = TransitionConditionFunc();
+            if (result.valid())
+            {
+                sol::optional<bool> value = result;
+                if (value)
+                {
+                    return value.value();
+                }
+            }
+        }
+        return false;
+    }
     
     /* 이하는 나중에 해제하여 사용할 것 */
     
@@ -189,14 +218,24 @@ struct FAnimStateTransition
     // ------------------------------------------------------------------------
     void Update(const FAnimationUpdateContext& Context)
     {
-        BlendTimeElapsed += Context.DeltaTime;
-        if (BlendTimeElapsed >= BlendTime)
+        // Transition 조건 평가 (Lua 함수 호출)
+        if (TransitionConditionFunc.valid())
         {
-            bIsBlending = false;
-            return;
+            CanEnterTransition = EvaluateCondition();
         }
 
-        // 블렌딩은 추후 구현
+        // Blending 업데이트
+        if (bIsBlending)
+        {
+            BlendTimeElapsed += Context.DeltaTime;
+            if (BlendTimeElapsed >= BlendTime)
+            {
+                bIsBlending = false;
+                return;
+            }
+
+            // 블렌딩은 추후 구현
+        }
     }
 
     // ------------------------------------------------------------------------

@@ -53,8 +53,8 @@ void UGlobalConsole::LogV(const char* fmt, va_list args)
     else
     {
         // Fallback to OutputDebugString if console widget not available
-        char tmp[1024];
-        vsnprintf_s(tmp, _countof(tmp), fmt, args);
+        char tmp[8192];  // Increased buffer size for long Lua error messages
+        vsnprintf_s(tmp, _countof(tmp), _TRUNCATE, fmt, args);
         OutputDebugStringA("[No Console] ");
         OutputDebugStringA(tmp);
         OutputDebugStringA("\n");

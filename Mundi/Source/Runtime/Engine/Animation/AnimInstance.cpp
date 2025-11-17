@@ -1,23 +1,20 @@
 ﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
-#include "AnimationAsset.h"
-#include "AnimBlend.h"
-#include "AnimationSequence.h"
-#include "ResourceManager.h"
-#include "FloatComparisonRule.h"
+#include "LuaScriptComponent.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
 {
     // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
     // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
-    OwnerSkeletalComp = nullptr;    
+    OwnerSkeletalComp = nullptr;
 
-    if (RootNode)
-    {
-        RootNode = nullptr;
-    }
+    // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
+    // if (RootNode)
+    // {
+    //     RootNode = nullptr;
+    // }
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
@@ -38,8 +35,8 @@ void UAnimInstance::Initialize()
 
     bIsInitialized = true;
 
-    // Animation State Machine 초기화
-    InitializeAnimationStateMachine();
+    // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
+    // InitializeAnimationStateMachine();
 }
 
 void UAnimInstance::UpdateAnimation(float DeltaTime)
@@ -49,14 +46,14 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
 
     // 변수 업데이트
     NativeUpdateAnimation(DeltaTime);
-    
-    // Anim Graph Update
-    FAnimationUpdateContext Context;
-    Context.DeltaTime = DeltaTime;
-    if (RootNode)
-    {
-        RootNode->Update(Context);
-    }
+
+    // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
+    // FAnimationUpdateContext Context;
+    // Context.DeltaTime = DeltaTime;
+    // if (RootNode)
+    // {
+    //     RootNode->Update(Context);
+    // }
 
     // Anim Graph Evaluate
     EvaluateAnimation();
@@ -65,40 +62,48 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
 
 void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
-    // 타이머 업데이트
-    TransitionTimer += DeltaSeconds;
+    // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
+    // TransitionTimer += DeltaSeconds;
+    // for (UAnimNodeTransitionRule* Rule : TransitionRules)
+    // {
+    //     if (Rule)
+    //     {
+    //         UFloatComparisonRule* FloatRule = dynamic_cast<UFloatComparisonRule*>(Rule);
+    //         if (FloatRule)
+    //         {
+    //             FloatRule->SetComparisonValue(TransitionTimer);
+    //         }
+    //         Rule->Evaluate();
+    //     }
+    // }
+    // FAnimState* CurrentState = ASM.GetCurrentState();
+    // if (CurrentState != PreviousState)
+    // {
+    //     TransitionTimer = 0.0f;
+    //     PreviousState = CurrentState;
+    //     TArray<FAnimStateTransition*>& Transitions = ASM.GetTransitions();
+    //     for (FAnimStateTransition* Transition : Transitions)
+    //     {
+    //         if (Transition)
+    //         {
+    //             Transition->CanEnterTransition = false;
+    //         }
+    //     }
+    // }
 
-    // 매 프레임 모든 Rule에 현재 타이머 값 전달 및 평가
-    for (UAnimNodeTransitionRule* Rule : TransitionRules)
+    // Lua ASM 사용: AnimUpdate() 호출
+    // OwnerSkeletalComp의 Owner Actor의 Lua 스크립트에서 AnimUpdate() 함수 호출
+    if (OwnerSkeletalComp)
     {
-        if (Rule)
+        AActor* OwnerActor = OwnerSkeletalComp->GetOwner();
+        if (OwnerActor)
         {
-            // FloatComparisonRule이라면 현재 시간 값을 전달
-            UFloatComparisonRule* FloatRule = dynamic_cast<UFloatComparisonRule*>(Rule);
-            if (FloatRule)
+            ULuaScriptComponent* ScriptComp = static_cast<ULuaScriptComponent*>(
+                OwnerActor->GetComponent(ULuaScriptComponent::StaticClass())
+            );
+            if (ScriptComp)
             {
-                FloatRule->SetComparisonValue(TransitionTimer);
-            }
-
-            Rule->Evaluate();
-        }
-    }
-
-    // 상태가 변경되었는지 확인하여 타이머 리셋
-    FAnimState* CurrentState = ASM.GetCurrentState();
-    if (CurrentState != PreviousState)
-    {
-        TransitionTimer = 0.0f;
-        PreviousState = CurrentState;
-
-        // State가 변경되면 모든 Transition의 CanEnterTransition을 리셋
-        // 이전 State에서 활성화된 Transition들이 새로운 State에서도 활성화되는 것을 방지
-        TArray<FAnimStateTransition*>& Transitions = ASM.GetTransitions();
-        for (FAnimStateTransition* Transition : Transitions)
-        {
-            if (Transition)
-            {
-                Transition->CanEnterTransition = false;
+                ScriptComp->CallFunction("AnimUpdate", DeltaSeconds);
             }
         }
     }
@@ -106,26 +111,56 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UAnimInstance::EvaluateAnimation()
 {
-    if (!OwnerSkeletalComp || !RootNode) return;
+    if (!OwnerSkeletalComp) return;
 
-    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
-    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData()) return;
+    // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
+    // if (!RootNode) return;
+    // USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+    // if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData()) return;
+    // const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+    // FPoseContext Out(&Skeleton);
+    // RootNode->Evaluate(Out);
+    // CurrentPose = Out;
+    // if (Out.EvaluatedPoses.Num() > 0)
+    // {
+    //     TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+    //     LocalPose = Out.EvaluatedPoses;
+    //     OwnerSkeletalComp->ForceRecomputePose();
+    // }
 
-    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
-
-    FPoseContext Out(&Skeleton);
-    RootNode->Evaluate(Out);
-
-    CurrentPose = Out;
-
-    if (Out.EvaluatedPoses.Num() > 0)
+    // Lua ASM 사용: AnimEvaluate() 호출
+    // OwnerSkeletalComp의 Owner Actor의 Lua 스크립트에서 AnimEvaluate() 함수 호출
+    AActor* OwnerActor = OwnerSkeletalComp->GetOwner();
+    if (OwnerActor)
     {
-        TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-        LocalPose = Out.EvaluatedPoses;
-        OwnerSkeletalComp->ForceRecomputePose();
+        ULuaScriptComponent* ScriptComp = static_cast<ULuaScriptComponent*>(
+            OwnerActor->GetComponent(ULuaScriptComponent::StaticClass())
+        );
+        if (ScriptComp)
+        {
+            USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+            if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData()) return;
+
+            const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+            FPoseContext Out(&Skeleton);
+
+            // Lua 함수에 FPoseContext 전달
+            ScriptComp->CallFunction("AnimEvaluate", &Out);
+
+            CurrentPose = Out;
+
+            if (Out.EvaluatedPoses.Num() > 0)
+            {
+                TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
+                LocalPose = Out.EvaluatedPoses;
+                OwnerSkeletalComp->ForceRecomputePose();
+            }
+        }
     }
 }
 
+// C++ ASM 관련 함수 (주석 처리 - Lua ASM 사용)
+/*
 void UAnimInstance::AddTransitionRule(UAnimNodeTransitionRule* InRule)
 {
     if (!InRule)
@@ -134,7 +169,6 @@ void UAnimInstance::AddTransitionRule(UAnimNodeTransitionRule* InRule)
         return;
     }
 
-    // 같은 이름의 Rule이 이미 있으면 거부
     for (UAnimNodeTransitionRule* Rule : TransitionRules)
     {
         if (Rule && Rule->GetRuleName() == InRule->GetRuleName())
@@ -285,3 +319,4 @@ void UAnimInstance::InitializeAnimationStateMachine()
     // 4) RootNode를 StateMachine으로 고정
     RootNode = &ASM;
 }
+*/

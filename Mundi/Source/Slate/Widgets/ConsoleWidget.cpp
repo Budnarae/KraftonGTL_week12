@@ -235,10 +235,10 @@ void UConsoleWidget::RenderCommandInput()
 
 void UConsoleWidget::AddLog(const char* fmt, ...)
 {
-	char buf[1024];
+	char buf[8192];  // Increased buffer size for long Lua error messages
 	va_list args;
 	va_start(args, fmt);
-	vsnprintf_s(buf, sizeof(buf), fmt, args);
+	vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, args);
 	buf[sizeof(buf) - 1] = 0;
 	va_end(args);
 
@@ -253,8 +253,8 @@ void UConsoleWidget::AddLog(const char* fmt, ...)
 
 void UConsoleWidget::VAddLog(const char* fmt, va_list args)
 {
-	char buf[1024];
-	vsnprintf_s(buf, sizeof(buf), fmt, args);
+	char buf[8192];  // Increased buffer size for long Lua error messages
+	vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, args);
 	buf[sizeof(buf) - 1] = 0;
 
 	if (strstr(buf, "[error]") != nullptr)

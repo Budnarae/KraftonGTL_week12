@@ -321,6 +321,7 @@
     <Content Include="Content\Scripts\PlayerSpawner.lua" />
     <Content Include="Content\Scripts\RotatingSpawner.lua" />
     <Content Include="Content\Scripts\SHC.lua" />
+    <Content Include="Content\Scripts\SkeletalMeshActor.lua" />
     <Content Include="Content\Scripts\TestPropertyBinding.lua" />
     <Content Include="Content\Scripts\Tile.lua" />
     <Content Include="Content\Scripts\TileMap.lua" />
