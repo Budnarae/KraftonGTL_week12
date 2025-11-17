@@ -84,10 +84,6 @@ public:
      */
     void InitializeAnimationStateMachine();
 
-    /**
-     * @brief Animation State Machine 접근자
-     */
-
 protected:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
 

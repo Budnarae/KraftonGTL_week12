@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "AnimationType.h"
 #include "AnimationSequence.h"
 
@@ -98,6 +98,8 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     // Transition 리스트 (동적 할당)
     TArray<FAnimStateTransition*> Transitions;
+
+    virtual ~FAnimNode_StateMachine();
 
     /**
     * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)

@@ -13,6 +13,11 @@ UAnimInstance::~UAnimInstance()
     // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
     // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
     OwnerSkeletalComp = nullptr;    
+
+    if (RootNode)
+    {
+        RootNode = nullptr;
+    }
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)

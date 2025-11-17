@@ -12,6 +12,25 @@ FAnimState* FAnimNode_StateMachine::FindStateByName(const FName& StateName) cons
     return nullptr;
 }
 
+FAnimNode_StateMachine::~FAnimNode_StateMachine()
+{
+    while (!States.empty())
+    {
+        DeleteState(States.back()->Name);
+    }
+
+    while (!Transitions.empty())
+    {
+        FAnimStateTransition* Transition = Transitions.back();
+        Transition->CleanupDelegate();
+        delete Transition;
+        Transitions.pop_back();
+    }
+
+    CurrentState = nullptr;
+    CurrentTransition = nullptr;
+}
+
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
     if (bIsInTransition)
@@ -136,8 +155,8 @@ void FAnimNode_StateMachine::DeleteState(const FName& TargetName)
         if (Transition->SourceState == TargetState ||
             Transition->TargetState == TargetState)
         {
-            Transition->CleanupDelegate();
-            delete Transition;
+             Transition->CleanupDelegate();
+             delete Transition;
             Transitions.erase(Transitions.begin() + i);
         }
     }

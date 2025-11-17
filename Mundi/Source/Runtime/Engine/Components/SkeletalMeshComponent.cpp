@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "SkeletalMeshComponent.h"
 #include "../Animation/AnimInstance.h"
 #include "../Animation/AnimSingleNodeInstance.h"
@@ -24,18 +24,19 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 
     if (AnimInstance && AnimInstance->GetSkeletalComponent() != this)
     {
+        DeleteObject(AnimInstance);
         AnimInstance = nullptr;
     }
 
     if (!AnimInstance)
     {
         /* UAnimInstanceTest */
-        // UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
-        // SetAnimInstanceClass(NewAnimInstanceClass);
+         UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
+         SetAnimInstanceClass(NewAnimInstanceClass);
 
         /* UAnimSingleNodeInstanceTest */
-        UAnimInstance* NewAnimInstanceClass = NewObject<UAnimSingleNodeInstance>();
-        SetAnimInstanceClass(NewAnimInstanceClass);
+        //UAnimInstance* NewAnimInstanceClass = NewObject<UAnimSingleNodeInstance>();
+        //SetAnimInstanceClass(NewAnimInstanceClass);
     }
 }
 
