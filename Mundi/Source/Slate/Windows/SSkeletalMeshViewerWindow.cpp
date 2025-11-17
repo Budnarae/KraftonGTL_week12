@@ -527,13 +527,7 @@ void SSkeletalMeshViewerWindow::OnRender()
         CenterRect = FRect(0, 0, 0, 0);
         CenterRect.UpdateMinMax();
     }
-
-    // If window was closed via X button, notify the manager to clean up
-    if (!bIsOpen)
-    {
-        USlateManager::GetInstance().CloseViewer(this);
-    }
-
+    
     bRequestFocus = false;
 }
 
