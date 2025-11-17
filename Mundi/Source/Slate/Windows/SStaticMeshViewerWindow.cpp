@@ -76,19 +76,26 @@ void SStaticMeshViewerWindow::LoadAsset(const FString& AssetPath)
 void SStaticMeshViewerWindow::LoadStaticMesh(const FString& Path)
 {
     StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
-    if (!State || !State->PreviewActor)
+    if (!State || Path.empty())
         return;
 
+    // Load the static mesh using the resource manager
     UStaticMesh* Mesh = UResourceManager::GetInstance().Load<UStaticMesh>(Path);
-    if (Mesh)
+    if (Mesh && State->PreviewActor)
     {
-        if (auto* MeshComp = State->PreviewActor->GetStaticMeshComponent())
-        {
-            MeshComp->SetStaticMesh(Path);
-        }
+        // Set the mesh on the preview actor (matches SkeletalMeshViewer pattern)
+        State->PreviewActor->SetStaticMesh(Path);
         State->CurrentMesh = Mesh;
-        State->LoadedMeshPath = Path;
+        State->LoadedMeshPath = Path;  // Track for resource unloading
+
+        // Update mesh path buffer for display in UI
         strncpy_s(State->MeshPathBuffer, Path.c_str(), sizeof(State->MeshPathBuffer) - 1);
+
+        UE_LOG("SStaticMeshViewerWindow: Loaded static mesh from %s", Path.c_str());
+    }
+    else
+    {
+        UE_LOG("SStaticMeshViewerWindow: Failed to load static mesh from %s", Path.c_str());
     }
 }
 
@@ -150,7 +157,10 @@ void SStaticMeshViewerWindow::OnRender()
         AssetBrowser.SetPath(State->MeshPathBuffer);
     }
 
-    if (AssetBrowser.Render("fbx", "FBX Files", buttonWidth))
+    AssetBrowser.SetLoadButtonLabel("Load Mesh");
+    AssetBrowser.SetPlaceholderText("Browse for mesh file...");
+
+    if (AssetBrowser.Render("umesh", "Static Mesh Files", buttonWidth))
     {
         LoadStaticMesh(AssetBrowser.GetPath());
     }
@@ -203,7 +213,16 @@ void SStaticMeshViewerWindow::OnRender()
 
         ImGui::Text("Vertices: %u", State->CurrentMesh->GetVertexCount());
         ImGui::Text("Triangles: %u", State->CurrentMesh->GetIndexCount() / 3);
-        ImGui::Text("Groups: %llu", State->CurrentMesh->GetMeshGroupCount());
+
+        // GetMeshGroupCount()는 StaticMeshAsset에 접근하므로 nullptr 체크 필요
+        if (State->CurrentMesh->GetStaticMeshAsset())
+        {
+            ImGui::Text("Groups: %llu", State->CurrentMesh->GetMeshGroupCount());
+        }
+        else
+        {
+            ImGui::Text("Groups: 0");
+        }
 
         ImGui::Spacing();
         ImGui::Separator();

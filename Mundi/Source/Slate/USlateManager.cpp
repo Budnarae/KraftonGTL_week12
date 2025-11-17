@@ -420,16 +420,12 @@ void USlateManager::Render()
 
 void USlateManager::RenderAfterUI()
 {
-    // 뷰어의 뷰포트 렌더링 (SSkeletalMeshViewerWindow 전용)
+    // 모든 뷰어의 뷰포트 렌더링
     for (SViewerWindowBase* Viewer : Viewers)
     {
         if (Viewer && Viewer->IsOpen())
         {
-            SSkeletalMeshViewerWindow* SkeletalViewer = dynamic_cast<SSkeletalMeshViewerWindow*>(Viewer);
-            if (SkeletalViewer)
-            {
-                SkeletalViewer->OnRenderViewport();
-            }
+            Viewer->OnRenderViewport();
         }
     }
 }

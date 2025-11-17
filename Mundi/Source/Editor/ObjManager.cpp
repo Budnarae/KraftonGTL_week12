@@ -290,6 +290,40 @@ FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FString& PathFileName)
 	std::transform(Extension.begin(), Extension.end(), Extension.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
+	// .umesh 파일을 직접 받은 경우 (FBX나 OBJ에서 만든 캐시)
+	if (Extension == ".umesh")
+	{
+		// .umesh 바이너리 캐시를 직접 로드
+#ifdef USE_OBJ_CACHE
+		try
+		{
+			FStaticMesh* CachedMesh = new FStaticMesh();
+			FWindowsBinReader Reader(NormalizedPathStr);
+			if (!Reader.IsOpen())
+			{
+				throw std::runtime_error("Failed to open .umesh file for reading.");
+			}
+			Reader << *CachedMesh;
+			Reader.Close();
+
+			CachedMesh->CacheFilePath = NormalizedPathStr;
+			UE_LOG("Loaded static mesh from .umesh cache: %s", NormalizedPathStr.c_str());
+
+			// 메모리 캐시에 등록
+			ObjStaticMeshMap.Add(NormalizedPathStr, CachedMesh);
+			return CachedMesh;
+		}
+		catch (const std::exception& e)
+		{
+			UE_LOG("ERROR: Failed to load .umesh file '%s': %s", NormalizedPathStr.c_str(), e.what());
+			return nullptr;
+		}
+#else
+		UE_LOG("ERROR: .umesh cache files not supported without USE_OBJ_CACHE");
+		return nullptr;
+#endif
+	}
+
 	if (Extension != ".obj")
 	{
 		UE_LOG("this file is not obj!: %s", NormalizedPathStr.c_str());

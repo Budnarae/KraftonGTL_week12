@@ -54,6 +54,7 @@ public:
     // SWindow overrides
     virtual void OnRender() override;
     virtual void OnUpdate(float DeltaSeconds) override;
+    virtual void OnRenderViewport() {}  // 뷰포트 렌더링 (자식 클래스에서 오버라이드)
 
 protected:
     // === 탭 관리 시스템 ===

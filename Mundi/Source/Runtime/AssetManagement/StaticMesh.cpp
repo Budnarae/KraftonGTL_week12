@@ -79,7 +79,8 @@ void UStaticMesh::Load(const FString& InFilePath, ID3D11Device* InDevice, EVerte
     }
     else
     {
-        // OBJ 파일 로드 (기존 방식)
+        // OBJ 또는 .umesh 파일 로드
+        // ResourceManager가 확장자를 제거하고 관리하므로 .obj와 .umesh는 같은 리소스
         StaticMeshAsset = FObjManager::LoadObjStaticMeshAsset(InFilePath);
     }
 

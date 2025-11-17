@@ -50,6 +50,14 @@ void AStaticMeshActor::SetStaticMeshComponent(UStaticMeshComponent* InStaticMesh
     StaticMeshComponent = InStaticMeshComponent;
 }
 
+void AStaticMeshActor::SetStaticMesh(const FString& PathFileName)
+{
+    if (StaticMeshComponent)
+    {
+        StaticMeshComponent->SetStaticMesh(PathFileName);
+    }
+}
+
 void AStaticMeshActor::DuplicateSubObjects()
 {
     Super::DuplicateSubObjects();

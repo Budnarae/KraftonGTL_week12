@@ -45,15 +45,11 @@ MaterialEditorState* MaterialEditorBootstrap::CreateEditorState(
     // 프리뷰 액터 스폰
     State->PreviewActor = State->World->SpawnActor<AStaticMeshActor>();
 
-    // TODO: 기본 구체 메시 로드
-    // UStaticMesh* SphereMesh = UResourceManager::GetInstance().Load<UStaticMesh>("Engine/Meshes/Sphere.fbx");
-    // if (SphereMesh && State->PreviewActor)
-    // {
-    //     if (auto* MeshComp = State->PreviewActor->GetStaticMeshComponent())
-    //     {
-    //         MeshComp->SetStaticMesh(SphereMesh);
-    //     }
-    // }
+    // 기본 큐브 메시 로드
+    if (State->PreviewActor)
+    {
+        State->PreviewActor->SetStaticMesh("Content/Resources/Model/Cube.umesh");
+    }
 
     return State;
 }
