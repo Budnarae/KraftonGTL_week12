@@ -472,33 +472,36 @@ void UContentBrowserWindow::HandleDoubleClick(FFileEntry& Entry)
 	// 확장자에 따라 적절한 뷰어 열기
 	std::string ext = Entry.Extension.c_str();
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+	std::string pathStr = Entry.Path.string();
 
 	if (ext == ".uskel" || ext == ".fbx")
 	{
 		// SkeletalMeshViewer 열기
-		std::string pathStr = Entry.Path.string();
 		USlateManager::GetInstance().OpenViewer<SSkeletalMeshViewerWindow>(pathStr);
 		UE_LOG("Opening SkeletalMeshViewer for: %s", Entry.FileName.c_str());
 	}
 	else if (ext == ".umesh" || ext == ".obj")
 	{
-		// StaticMesh는 현재 전용 뷰어가 없으므로 로그만 출력
-		UE_LOG("StaticMesh file clicked: %s (No dedicated viewer yet)", Entry.FileName.c_str());
+		// StaticMeshViewer 열기 (신규 구현!)
+		USlateManager::GetInstance().OpenViewer<SStaticMeshViewerWindow>(pathStr);
+		UE_LOG("Opening StaticMeshViewer for: %s", Entry.FileName.c_str());
+	}
+	else if (ext == ".uanim")
+	{
+		// AnimationViewer 열기 (신규 구현!)
+		USlateManager::GetInstance().OpenViewer<SAnimationViewerWindow>(pathStr);
+		UE_LOG("Opening AnimationViewer for: %s", Entry.FileName.c_str());
+	}
+	else if (ext == ".umat")
+	{
+		// MaterialEditor 열기 (신규 구현!)
+		USlateManager::GetInstance().OpenViewer<SMaterialEditorWindow>(pathStr);
+		UE_LOG("Opening MaterialEditor for: %s", Entry.FileName.c_str());
 	}
 	else if (ext == ".utxt" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds" || ext == ".tga")
 	{
 		// 텍스처 뷰어 (향후 구현)
 		UE_LOG("Texture file clicked: %s (Texture viewer not implemented yet)", Entry.FileName.c_str());
-	}
-	else if (ext == ".uanim")
-	{
-		// 애니메이션 파일 (향후 구현)
-		UE_LOG("Animation file clicked: %s (Animation viewer not implemented yet)", Entry.FileName.c_str());
-	}
-	else if (ext == ".umat")
-	{
-		// 머티리얼 파일 (향후 구현)
-		UE_LOG("Material file clicked: %s (Material editor not implemented yet)", Entry.FileName.c_str());
 	}
 	else
 	{
@@ -521,9 +524,13 @@ const char* UContentBrowserWindow::GetIconForFile(const FFileEntry& Entry) const
 	{
 		return "[PREFAB]";
 	}
-	else if (ext == ".uskel" || ext == ".umesh" || ext == ".fbx" || ext == ".obj")
+	else if (ext == ".uskel" || ext == ".fbx")
 	{
-		return "[MESH]";
+		return "[SKEL]";  // Skeletal Mesh
+	}
+	else if (ext == ".umesh" || ext == ".obj")
+	{
+		return "[MESH]";  // Static Mesh
 	}
 	else if (ext == ".uanim")
 	{

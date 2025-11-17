@@ -5,6 +5,9 @@
 #include "Windows/SSplitterH.h"
 #include "Windows/SViewportWindow.h"
 #include "Windows/SSkeletalMeshViewerWindow.h"
+#include "Windows/SStaticMeshViewerWindow.h"
+#include "Windows/SMaterialEditorWindow.h"
+#include "Windows/SAnimationViewerWindow.h"
 #include "Windows/SViewerWindowBase.h"
 
 class SSceneIOWindow; // 새로 추가할 UI

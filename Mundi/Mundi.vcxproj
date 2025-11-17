@@ -262,6 +262,7 @@
     <ClCompile Include="Source\Runtime\AssetManagement\SkeletalMesh.cpp" />
     <ClCompile Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.cpp" />
     <ClCompile Include="Source\Runtime\Core\Misc\VertexData.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimBlend.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimationStateMachine.cpp" />
@@ -340,6 +341,7 @@
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Info.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\PointLightActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SpotLightActor.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Scripting\GameObject.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Scripting\LuaBindHelpers.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Scripting\LuaBindingRegistry.cpp" />
@@ -348,6 +350,7 @@
     <ClCompile Include="Source\Runtime\Engine\Scripting\LuaManager.cpp" />
     <ClCompile Include="Source\Runtime\Engine\SkeletalViewer\SkeletalViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\SkeletalViewer\ViewerState.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\FSkeletalViewerViewportClient.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\LightManager.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\PostProcessing\GammaPass.cpp" />
@@ -363,6 +366,9 @@
     <ClCompile Include="Source\Slate\Widgets\PropertyRenderer.cpp" />
     <ClCompile Include="Source\Slate\Windows\ContentBrowserWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\SSkeletalMeshViewerWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SStaticMeshViewerWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SMaterialEditorWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SAnimationViewerWindow.cpp" />
     <ClCompile Include="Source\Slate\ThumbnailManager.cpp" />
     <ClCompile Include="Source\Slate\Windows\SViewerWindowBase.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui.cpp">
@@ -676,6 +682,8 @@
     <ClInclude Include="Source\Runtime\Core\Misc\PathUtils.h" />
     <ClInclude Include="Source\Runtime\Core\Object\FireballActor.h" />
     <ClInclude Include="Source\Runtime\Core\Object\Property.h" />
+    <ClInclude Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerState.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationAsset.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimBlend.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimationStateMachine.h" />
@@ -714,6 +722,8 @@
     <ClInclude Include="Source\Runtime\Engine\GameFramework\PointLightActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\SpotLightActor.h" />
+    <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorState.h" />
     <ClInclude Include="Source\Runtime\Engine\Scripting\GameObject.h" />
     <ClInclude Include="Source\Runtime\Engine\Scripting\LuaBindHelpers.h" />
     <ClInclude Include="Source\Runtime\Engine\Scripting\LuaBindingRegistry.h" />
@@ -722,6 +732,8 @@
     <ClInclude Include="Source\Runtime\Engine\Scripting\LuaManager.h" />
     <ClInclude Include="Source\Runtime\Engine\SkeletalViewer\SkeletalViewerBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\SkeletalViewer\ViewerState.h" />
+    <ClInclude Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerState.h" />
     <ClInclude Include="Source\Runtime\Renderer\FSkeletalViewerViewportClient.h" />
     <ClInclude Include="Source\Runtime\Renderer\LightManager.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\AmbientLightComponent.h" />
@@ -748,6 +760,9 @@
     <ClInclude Include="Source\Slate\Widgets\PropertyRenderer.h" />
     <ClInclude Include="Source\Slate\Windows\ContentBrowserWindow.h" />
     <ClInclude Include="Source\Slate\Windows\SSkeletalMeshViewerWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SStaticMeshViewerWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SMaterialEditorWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SAnimationViewerWindow.h" />
     <ClInclude Include="Source\Slate\ThumbnailManager.h" />
     <ClInclude Include="Source\Slate\Windows\SViewerWindowBase.h" />
     <ClInclude Include="ThirdParty\DirectXTK\include\Audio.h" />
