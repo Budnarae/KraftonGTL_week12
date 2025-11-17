@@ -25,6 +25,23 @@ struct FAnimNode_Sequence : FAnimNode_Base
 
     void SetLooping(bool bInLooping) { bLooping = bInLooping; }
 
+    float GetLength() const { return Sequence ? Sequence->GetPlayLength() : 0.f; }
+    float GetCurrentTime() const { return CurrentTime; }
+
+    float GetNormalizedTime() const
+    {
+        float Len = GetLength();
+        return (Len > 0.f) ? (CurrentTime / Len) : 0.f;
+    }
+    void SetNormalizedTime(float Normalized)
+    {
+        float Len = GetLength();
+        if (Len > 0.f)
+            CurrentTime = FMath::Clamp(Normalized, 0.f, 1.f) * Len;
+        else
+            CurrentTime = 0.f;
+    }
+
     virtual void Update(const FAnimationUpdateContext& Context) override
     {
         if (!Sequence)
@@ -49,7 +66,6 @@ struct FAnimNode_Sequence : FAnimNode_Base
             CurrentTime = FMath::Clamp(CurrentTime, 0.0f, Length);
         }
     }
-
     virtual void Evaluate(FPoseContext& Output) override
     {
         if (!Sequence)
@@ -111,6 +127,47 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
         }
     }
 };
+
+struct FBlendSample1D
+{
+    float Position = 0.0f; // 이 샘플이 놓인 위치 (ex: 속도 0, 200, 500)
+    FAnimNode_Sequence* SequenceNode = nullptr; // 재생할 노드
+    float Weight = 0.0f;
+};
+
+struct FAnimNode_BlendSpace1D : public FAnimNode_Base
+{
+    float BlendInput = 0.0f; // 외부 세팅 값 (ex: 이동 속도)
+    float MinimumPosition = 0.0f; // BlendSpace 시작값
+    float MaximumPosition = 1.0f; // BlendSpace 끝값
+    bool IsTimeSynchronized = true; // 샘플 시퀀스들끼리 시간 동기화 여부
+
+    TArray <FBlendSample1D> Samples;
+
+    void AddSample(FAnimNode_Sequence* SequenceNode, float Position)
+    {
+        FBlendSample1D Sample;
+        Sample.Position = Position;
+        Sample.SequenceNode = SequenceNode;
+        Sample.Weight = 0.0f;
+        Samples.Add(Sample);
+
+        Samples.Sort([](const FBlendSample1D& A, const FBlendSample1D& B)
+        {
+            return A.Position < B.Position;
+        });
+    }
+
+    void SetBlendInput(float InValue) { BlendInput = InValue; }
+
+    virtual void Update(const FAnimationUpdateContext& Context) override;
+    virtual void Evaluate(FPoseContext& Output) override;
+
+private:
+    void CalculateSampleWeights();
+    void SynchronizeSampleTimes();
+};
+
 struct FAnimState
 {
     FName Name{};
@@ -176,8 +233,8 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     FAnimState* CurrentState = nullptr;
 
-    // Transition 중인지 여부
-    bool bIsInTransition = false;
+    bool bUseTransitionBlend = true;  // Transition 중 Blend 할지
+    bool bIsInTransition = false; // Transition 중인지 여부
     FAnimStateTransition* CurrentTransition = nullptr;
 
     float TransitionElapsed = 0.f;

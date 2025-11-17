@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimNode.h"
 
 // ====================================
@@ -100,6 +100,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
         }
         else
         {
+            // 만약 Transition 중이라면 Cross Fade
             TransitionBlendNode.Update(Context);
 
             TransitionElapsed += Context.DeltaTime;
@@ -134,6 +135,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
         if (!Transition)
             continue;
 
+        // Transition Start!
         if (Transition->CanEnterTransition &&
             Transition->SourceState == CurrentState)
         {
@@ -172,7 +174,9 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
             TransitionBlendNode.To = TargetEntry;
             TransitionBlendNode.Alpha = 0.f;
             TransitionBlendNode.BlendTime = Transition->BlendTime;
+            TransitionBlendNode.BlendTimeElapsed = 0.0f;
             TransitionBlendNode.bIsBlending = true;
+            bUseTransitionBlend = (SourceEntry && TargetEntry);
 
             return;
         }
@@ -355,4 +359,161 @@ void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FNa
         }
     }
     UE_LOG("[FAnimNode_StateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
+}
+
+void FAnimNode_BlendSpace1D::Update(const FAnimationUpdateContext& Context)
+{
+    if (Samples.Num() == 0) { return; }
+
+    // 1) 가중치 계산
+    CalculateSampleWeights();
+
+    // 2) 시간 동기화
+    SynchronizeSampleTimes();
+
+    // 3) 가중치가 0이 아닌 시퀀스들만 Update
+    for (FBlendSample1D& Sample : Samples)
+    {
+        if (Sample.Weight > KINDA_SMALL_NUMBER && Sample.SequenceNode)
+        {
+            Sample.SequenceNode->Update(Context);
+        }
+    }
+}
+
+void FAnimNode_BlendSpace1D::Evaluate(FPoseContext& Output)
+{
+    if (!Output.Skeleton)
+    {
+        // AnimInstance 쪽에서 미리 Skeleton을 세팅해줘야 한다.
+        return;
+    }
+
+    if (Samples.Num() == 0) { Output.ResetToRefPose(); return; }
+
+    FPoseContext SamplePose(Output); // 임시 포즈 버퍼 (Skeleton만 공유)
+
+    const int32 NumBones = Output.EvaluatedPoses.Num();
+
+    bool  bHasAnyPose = false;
+    float TotalWeight = 0.0f;
+
+    for (FBlendSample1D& Sample : Samples)
+    {
+        if (Sample.Weight <= KINDA_SMALL_NUMBER || Sample.SequenceNode == nullptr) { continue; }
+
+        SamplePose.ResetToRefPose();
+        Sample.SequenceNode->Evaluate(SamplePose);
+
+        if (!bHasAnyPose)
+        {
+            // 첫 샘플이면 그대로 복사
+            Output.EvaluatedPoses = SamplePose.EvaluatedPoses;
+            TotalWeight = Sample.Weight;
+            bHasAnyPose = true;
+        }
+        else
+        {
+            const float NewTotalWeight = TotalWeight + Sample.Weight;
+            const float Alpha = Sample.Weight / NewTotalWeight;
+
+            // 본별로 Lerp
+            for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
+            {
+                Output.EvaluatedPoses[BoneIndex] =
+                    FTransform::Lerp(
+                        Output.EvaluatedPoses[BoneIndex],           // 지금까지 누적된 포즈
+                        SamplePose.EvaluatedPoses[BoneIndex],       // 새 샘플 포즈
+                        Alpha                                       // 새 샘플 비율
+                    );
+            }
+
+            TotalWeight = NewTotalWeight;
+        }
+    }
+
+    if (!bHasAnyPose)
+    {
+        // 모든 샘플 Weight가 0이면 기본 포즈
+        Output.ResetToRefPose();
+    }
+}
+
+void FAnimNode_BlendSpace1D::CalculateSampleWeights()
+{
+    if (Samples.Num() == 0) { return; }
+
+    float ClampedInput = std::clamp(BlendInput, MinimumPosition, MaximumPosition);
+
+    for (FBlendSample1D& Sample : Samples)
+    {
+        Sample.Weight = 0.0f;
+    }
+
+    if (Samples.Num() == 1) { Samples[0].Weight = 1.0f; return; }
+
+    // 입력이 제일 왼쪽 이하일 때
+    if (ClampedInput <= Samples[0].Position) { Samples[0].Weight = 1.0f; return; }
+
+    // 입력이 제일 오른쪽 이상일 때
+    if (ClampedInput >= Samples.Last().Position) { Samples.Last().Weight = 1.0f; return; }
+
+    for (int32 Index = 0; Index < Samples.Num() - 1; ++Index)
+    {
+        const FBlendSample1D& LeftSample = Samples[Index];
+        const FBlendSample1D& RightSample = Samples[Index + 1];
+
+        // 두 시퀀스의 시간에 따른 비율로 Weight를 설정
+        if (ClampedInput >= LeftSample.Position && ClampedInput <= RightSample.Position)
+        {
+            float Range = RightSample.Position - LeftSample.Position;
+            float T = (Range > KINDA_SMALL_NUMBER)
+                ? (ClampedInput - LeftSample.Position) / Range
+                : 0.0f;
+
+            Samples[Index].Weight = 1.0f - T;
+            Samples[Index + 1].Weight = T;
+            break;
+        }
+    }
+}
+
+void FAnimNode_BlendSpace1D::SynchronizeSampleTimes()
+{
+    if (!IsTimeSynchronized) { return; }
+
+    // 가장 Weight가 큰 샘플을 마스터로 선택
+    int32 MasterIndex = INDEX_NONE;
+    float MaximumWeight = 0.0f;
+
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
+    {
+        if (Samples[Index].Weight > MaximumWeight)
+        {
+            MaximumWeight = Samples[Index].Weight;
+            MasterIndex = Index;
+        }
+    }
+
+    if (MasterIndex == INDEX_NONE) { return; }
+
+    FBlendSample1D& MasterSample = Samples[MasterIndex];
+    if (MasterSample.SequenceNode == nullptr) { return; }
+
+    float MasterNormalizedTime = MasterSample.SequenceNode->GetNormalizedTime();
+
+    // 나머지 시퀀스들 시간 맞춰주기
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
+    {
+        if (Index == MasterIndex)
+        {
+            continue;
+        }
+
+        FBlendSample1D& Sample = Samples[Index];
+        if (Sample.SequenceNode && Sample.Weight > KINDA_SMALL_NUMBER)
+        {
+            Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);
+        }
+    }
 }

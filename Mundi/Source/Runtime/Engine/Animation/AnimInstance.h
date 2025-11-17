@@ -108,6 +108,15 @@ protected:
     const float TransitionInterval = 10.0f;
     FAnimState* PreviousState = nullptr;  // 상태 변경 감지용
 
+    // TEST
+    float CurrentMoveSpeed = 0.0f;
+
+    FAnimNode_Sequence* IdleSequenceNode = nullptr;
+    FAnimNode_Sequence* WalkSequenceNode = nullptr;
+    FAnimNode_Sequence* RunSequenceNode = nullptr;
+
+    FAnimNode_BlendSpace1D* MoveBlendSpaceNode = nullptr;
+
 private:
     bool bIsInitialized = false;
 };

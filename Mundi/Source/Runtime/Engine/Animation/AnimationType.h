@@ -97,12 +97,63 @@ struct FPoseContext
 
     FPoseContext() = default;
 
-    FPoseContext(const FSkeleton* InSkeleton)
+    explicit FPoseContext(const FSkeleton* InSkeleton)
         : Skeleton(InSkeleton)
     {
         if (Skeleton)
         {
             EvaluatedPoses.SetNum(Skeleton->Bones.Num());
         }
+    }
+
+    FPoseContext(const FPoseContext& Other)
+        : Skeleton(Other.Skeleton)
+    {
+        if (Skeleton)
+        {
+            EvaluatedPoses.SetNum(Skeleton->Bones.Num());
+        }
+    }
+
+    FPoseContext& operator=(const FPoseContext& Other)
+    {
+        if (this != &Other)
+        {
+            Skeleton = Other.Skeleton;
+            if (Skeleton)
+            {
+                EvaluatedPoses.SetNum(Skeleton->Bones.Num());
+            }
+            else
+            {
+                EvaluatedPoses.Empty();
+            }
+        }
+        return *this;
+    }
+
+    void ResetToRefPose()
+    {
+        if (!Skeleton)
+        {
+            EvaluatedPoses.Empty();
+            return;
+        }
+
+        const int32 NumBones = static_cast<int32>(Skeleton->Bones.Num());
+        EvaluatedPoses.SetNum(NumBones);
+
+        // 1차 버전: 일단 Identity Pose로 채운다.
+        // (나중에 BindPose 기반 로컬 RefPose를 Skeleton에 캐시해서 써도 됨)
+        for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
+        {
+            EvaluatedPoses[BoneIndex] = FTransform();
+        }
+    }
+
+    void CopyFrom(const FPoseContext& Other)
+    {
+        Skeleton = Other.Skeleton;
+        EvaluatedPoses = Other.EvaluatedPoses;
     }
 };
