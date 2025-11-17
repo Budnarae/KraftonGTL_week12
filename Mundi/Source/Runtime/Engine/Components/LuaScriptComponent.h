@@ -31,6 +31,31 @@ public:
 
 	bool Call(const char* FuncName, sol::variadic_args VarArgs); // 다른 클래스가 날 호출할 때 씀
 
+	// 템플릿 버전 - 일반 C++ 코드에서 호출할 때 사용
+	template<typename... Args>
+	bool CallFunction(const char* FuncName, Args&&... args)
+	{
+		if (!Env.valid())
+		{
+			return false;
+		}
+
+		sol::protected_function Func = Env[FuncName];
+		if (!Func.valid())
+		{
+			return false;
+		}
+
+		auto Result = Func(std::forward<Args>(args)...);
+		if (!Result.valid())
+		{
+			sol::error Err = Result;
+			return false;
+		}
+
+		return true;
+	}
+
 	void CleanupLuaResources();
 protected:
 	// 이 컴포넌트가 실행할 .lua 스크립트 파일의 경로 (에디터에서 설정)

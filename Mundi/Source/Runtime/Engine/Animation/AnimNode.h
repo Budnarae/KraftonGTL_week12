@@ -197,6 +197,28 @@ struct FAnimState
         OwnedNodes.Empty();
         EntryNode = nullptr;
     }
+
+    /**
+     * @brief 첫 번째 AnimSequence 노드를 업데이트
+     */
+    void Update(const FAnimationUpdateContext& Context)
+    {
+        if (!AnimSequenceNodes.empty())
+        {
+            AnimSequenceNodes.front().Update(Context);
+        }
+    }
+
+    /**
+     * @brief 첫 번째 AnimSequence 노드를 평가하여 Output에 Pose 데이터 채우기
+     */
+    void Evaluate(FPoseContext& Output)
+    {
+        if (!AnimSequenceNodes.empty())
+        {
+            AnimSequenceNodes.front().Evaluate(Output);
+        }
+    }
 };
 
 struct FAnimStateTransition
@@ -208,22 +230,60 @@ struct FAnimStateTransition
 
     bool CanEnterTransition = false; // true가 되면 Transition 발동
 
-    // Delegate 관리
-    UAnimNodeTransitionRule* AssociatedRule = nullptr;
-    FDelegateHandle DelegateHandle;
+    // Lua 함수 기반 Transition 조건
+    sol::function TransitionConditionFunc;
 
     float BlendTime = 0.2f;       // ActiveState Pose -> TargetState Pose로 자연스럽게 Blend
 
     FAnimStateTransition() = default;
     FAnimStateTransition(const FAnimStateTransition& Other);
     FAnimStateTransition& operator=(const FAnimStateTransition& Other);
-    ~FAnimStateTransition();
 
-    void CleanupDelegate();
-
-    void TriggerTransition() { CanEnterTransition = true; } // 특정 조건을 충족하면 외부의 delegate에서 호출
+    void TriggerTransition() { CanEnterTransition = true; }
 
     void SetBlendTime(float InBlendTime) { BlendTime = InBlendTime; }
+
+    /**
+     * @brief Transition 조건 함수 설정 (Lua에서 호출)
+     * @param InFunc Lua 함수 (bool 반환)
+     */
+    void SetTransitionCondition(sol::function InFunc)
+    {
+        TransitionConditionFunc = InFunc;
+    }
+
+    /**
+     * @brief Transition 조건 평가 (Lua 함수 호출)
+     * @return 조건 함수의 반환값 (bool)
+     */
+    bool EvaluateCondition()
+    {
+        if (TransitionConditionFunc.valid())
+        {
+            sol::protected_function_result result = TransitionConditionFunc();
+            if (result.valid())
+            {
+                sol::optional<bool> value = result;
+                if (value)
+                {
+                    return value.value();
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @brief Update: Transition 조건 평가
+     */
+    void Update(const FAnimationUpdateContext& Context)
+    {
+        // Lua 함수 기반 조건 평가
+        if (TransitionConditionFunc.valid())
+        {
+            CanEnterTransition = EvaluateCondition();
+        }
+    }
 };
 
 struct FAnimNode_StateMachine : FAnimNode_Base
@@ -257,27 +317,13 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     // --------- 트랜지션 API ----------
     /**
-     * @brief Source와 Target의 이름으로 새로운 Transition 추가 (기본 버전)
+     * @brief Source와 Target의 이름으로 새로운 Transition 추가
      * @return 추가된 Transition의 포인터
      */
     FAnimStateTransition* AddTransition
     (
         const FName& SourceName,
         const FName& TargetName
-    );
-
-    /**
-     * @brief Source와 Target의 이름으로 새로운 Transition 추가 및 Rule 연결
-     * @param SourceName 출발 State 이름
-     * @param TargetName 도착 State 이름
-     * @param TransitionRule Transition 조건을 판단할 Rule
-     * @return 추가된 Transition의 포인터
-     */
-    FAnimStateTransition* AddTransition
-    (
-        const FName& SourceName,
-        const FName& TargetName,
-        UAnimNodeTransitionRule* TransitionRule
     );
 
     /**

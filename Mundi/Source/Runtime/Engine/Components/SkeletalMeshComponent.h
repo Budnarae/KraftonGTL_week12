@@ -40,6 +40,19 @@ public:
 
     void SetAnimationMode(EAnimationMode InAnimationMode) { AnimationMode = InAnimationMode; }
 
+    /**
+     * @brief 애니메이션 모드를 설정합니다 (Lua용 - int 버전)
+     * @param InAnimationMode 0=SingleNode, 1=AnimationBlueprint
+     */
+    UFUNCTION(LuaBind, DisplayName="SetAnimationModeInt")
+    void SetAnimationModeInt(int InAnimationMode) { AnimationMode = static_cast<EAnimationMode>(InAnimationMode); }
+
+    /**
+     * @brief AnimInstance를 초기화/재생성합니다 (Lua용)
+     */
+    UFUNCTION(LuaBind)
+    void InitAnimInstance();
+
 // ====================================
 // Pose Management
 // ====================================

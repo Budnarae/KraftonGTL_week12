@@ -49,6 +49,7 @@ sol::object LuaComponentProxy::Index(sol::this_state LuaState, LuaComponentProxy
     case EPropertyType::Int32:   return sol::make_object(LuaView, *Property->GetValuePtr<int>(Self.Instance));
     case EPropertyType::FString: return sol::make_object(LuaView, *Property->GetValuePtr<FString>(Self.Instance));
     case EPropertyType::FVector: return sol::make_object(LuaView, *Property->GetValuePtr<FVector>(Self.Instance));
+    case EPropertyType::FName:   return sol::make_object(LuaView, *Property->GetValuePtr<FName>(Self.Instance));
     default: return sol::nil;
     }
 }
@@ -91,6 +92,16 @@ void LuaComponentProxy::NewIndex(LuaComponentProxy& Self, const char* Key, sol::
                 static_cast<float>(t.get_or("Z", 0.0))
             };
             *Property->GetValuePtr<FVector>(Self.Instance) = tmp;
+        }
+        break;
+    case EPropertyType::FName:
+        if (Obj.is<FName>())
+        {
+            *Property->GetValuePtr<FName>(Self.Instance) = Obj.as<FName>();
+        }
+        else if (Obj.get_type() == sol::type::string)
+        {
+            *Property->GetValuePtr<FName>(Self.Instance) = FName(Obj.as<FString>());
         }
         break;
     default:

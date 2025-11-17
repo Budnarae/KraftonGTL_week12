@@ -100,8 +100,8 @@ struct ExampleAppConsole
 
     void VAddLog(const char* fmt, va_list args)
     {
-        char buf[1024];
-        vsnprintf_s(buf, IM_ARRAYSIZE(buf), fmt, args);
+        char buf[8192];  // Increased buffer size for long Lua error messages
+        vsnprintf_s(buf, IM_ARRAYSIZE(buf), _TRUNCATE, fmt, args);
         buf[IM_ARRAYSIZE(buf) - 1] = 0;
         Items.push_back(Strdup(buf));
         ScrollToBottom = true;
@@ -110,10 +110,10 @@ struct ExampleAppConsole
     void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
     {
         // FIXME-OPT
-        char buf[1024];
+        char buf[8192];  // Increased buffer size for long Lua error messages
         va_list args;
         va_start(args, fmt);
-        vsnprintf_s(buf, IM_ARRAYSIZE(buf), fmt, args);
+        vsnprintf_s(buf, IM_ARRAYSIZE(buf), _TRUNCATE, fmt, args);
         buf[IM_ARRAYSIZE(buf) - 1] = 0;
         va_end(args);
         Items.push_back(Strdup(buf));

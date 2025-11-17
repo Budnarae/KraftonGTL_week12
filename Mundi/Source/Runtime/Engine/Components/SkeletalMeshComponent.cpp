@@ -30,19 +30,36 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 
     if (!AnimInstance)
     {
-        UAnimInstance* NewInstance;
-        switch (AnimationMode)
-        {
-            case EAnimationMode::AnimationSingleNode:
-                NewInstance = NewObject<UAnimSingleNodeInstance>();
-                SetAnimInstanceClass(NewInstance);
-                break;
+        InitAnimInstance();
+    }
+}
 
-            case EAnimationMode::AnimationBlueprint:
-                NewInstance = NewObject<UAnimInstance>();
-                SetAnimInstanceClass(NewInstance);
-                break;
-        }
+void USkeletalMeshComponent::InitAnimInstance()
+{
+    // 기존 AnimInstance가 있으면 삭제
+    if (AnimInstance)
+    {
+        DeleteObject(AnimInstance);
+        AnimInstance = nullptr;
+    }
+
+    // AnimationMode에 따라 새 AnimInstance 생성
+    UAnimInstance* NewInstance = nullptr;
+    switch (AnimationMode)
+    {
+        case EAnimationMode::AnimationSingleNode:
+            NewInstance = NewObject<UAnimSingleNodeInstance>();
+            SetAnimInstanceClass(NewInstance);
+            break;
+
+        case EAnimationMode::AnimationBlueprint:
+            NewInstance = NewObject<UAnimInstance>();
+            SetAnimInstanceClass(NewInstance);
+            break;
+
+        default:
+            // 지원하지 않는 AnimationMode면 AnimInstance 생성하지 않음
+            break;
     }
 }
 

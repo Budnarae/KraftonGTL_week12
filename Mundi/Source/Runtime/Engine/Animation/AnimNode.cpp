@@ -1,56 +1,38 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimNode.h"
 
 // ====================================
 // FAnimStateTransition 구현
 // ====================================
-
-void FAnimStateTransition::CleanupDelegate()
-{
-    if (AssociatedRule && DelegateHandle != 0)
-    {
-        AssociatedRule->GetTransitionDelegate().Remove(DelegateHandle);
-        DelegateHandle = 0;
-        AssociatedRule = nullptr;
-    }
-}
-
-FAnimStateTransition::~FAnimStateTransition()
-{
-    CleanupDelegate();
-}
+// Note: Delegate 시스템 제거됨, Lua 함수 기반으로 단순화
 
 FAnimStateTransition::FAnimStateTransition(const FAnimStateTransition& Other)
     : SourceState(Other.SourceState)
     , TargetState(Other.TargetState)
     , Index(Other.Index)
-    , CanEnterTransition(false)  // 새로 생성되는 Transition은 항상 false로 초기화
-    , AssociatedRule(nullptr)  // Delegate는 복사하지 않음
-    , DelegateHandle(0)
+    , CanEnterTransition(Other.CanEnterTransition)
+    , TransitionConditionFunc(Other.TransitionConditionFunc)  // Lua 함수 복사
     , BlendTime(Other.BlendTime)
 {
-    // Delegate는 복사 후 재바인딩 필요
 }
 
 FAnimStateTransition& FAnimStateTransition::operator=(const FAnimStateTransition& Other)
 {
     if (this != &Other)
     {
-        // 기존 Delegate 정리
-        CleanupDelegate();
-
         SourceState = Other.SourceState;
         TargetState = Other.TargetState;
         Index = Other.Index;
         CanEnterTransition = Other.CanEnterTransition;
-        BlendTime = Other.BlendTime;;
-
-        // Delegate는 복사하지 않음 (재바인딩 필요)
-        AssociatedRule = nullptr;
-        DelegateHandle = 0;
+        TransitionConditionFunc = Other.TransitionConditionFunc;  // Lua 함수 복사
+        BlendTime = Other.BlendTime;
     }
     return *this;
 }
+
+// ====================================
+// FAnimNode_StateMachine 구현
+// ====================================
 
 FAnimState* FAnimNode_StateMachine::FindStateByName(const FName& StateName) const
 {
@@ -245,7 +227,6 @@ void FAnimNode_StateMachine::DeleteState(const FName& TargetName)
         if (Transition->SourceState == TargetState ||
             Transition->TargetState == TargetState)
         {
-             Transition->CleanupDelegate();
              delete Transition;
             Transitions.erase(Transitions.begin() + i);
         }
@@ -308,33 +289,6 @@ FAnimStateTransition* FAnimNode_StateMachine::AddTransition
     return Transition;
 }
 
-FAnimStateTransition* FAnimNode_StateMachine::AddTransition
-(
-    const FName& SourceName,
-    const FName& TargetName,
-    UAnimNodeTransitionRule* TransitionRule
-)
-{
-    // 기본 Transition 생성
-    FAnimStateTransition* Transition = AddTransition(SourceName, TargetName);
-
-    if (!Transition)
-        return nullptr;
-
-    if (!TransitionRule)
-    {
-        UE_LOG("[FAnimNode_StateMachine::AddTransition] Warning : TransitionRule is nullptr.");
-        return Transition;
-    }
-
-    // Rule 연결 및 Delegate 바인딩
-    Transition->AssociatedRule = TransitionRule;
-    Transition->DelegateHandle = TransitionRule->GetTransitionDelegate().AddDynamic(
-        Transition, &FAnimStateTransition::TriggerTransition);
-
-    return Transition;
-}
-
 void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FName& TargetName)
 {
     // 입력된 이름과 일치하는 State 찾기
@@ -352,7 +306,6 @@ void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FNa
         if ((*It)->SourceState == SourceState &&
             (*It)->TargetState == TargetState)
         {
-            (*It)->CleanupDelegate();
             delete* It;
             Transitions.erase(It);
             return;

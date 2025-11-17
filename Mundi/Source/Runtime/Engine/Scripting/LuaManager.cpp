@@ -6,6 +6,10 @@
 #include "CameraActor.h"
 #include "CameraComponent.h"
 #include "PlayerCameraManager.h"
+#include "../Animation/AnimNode.h"
+#include "../Animation/AnimationType.h"
+#include "../Animation/AnimationSequence.h"
+#include "../../AssetManagement/ResourceManager.h"
 #include <tuple>
 
 sol::object MakeCompProxy(sol::state_view SolState, void* Instance, UClass* Class) {
@@ -24,11 +28,16 @@ FLuaManager::FLuaManager()
     // Open essential standard libraries for gameplay scripts
     Lua->open_libraries(
         sol::lib::base,
+        sol::lib::package,
         sol::lib::coroutine,
         sol::lib::math,
         sol::lib::table,
         sol::lib::string
     );
+
+    // Set package.path to include Content/Scripts directory
+    std::string ScriptsPath = "Content/Scripts/?.lua";
+    (*Lua)["package"]["path"] = ScriptsPath;
 
     SharedLib = Lua->create_table();
 
@@ -283,6 +292,14 @@ FLuaManager::FLuaManager()
        [](float x, float y, float z) { return FVector(x, y, z); }
    ));
 
+    // LoadAnimationSequence 함수 바인딩
+    SharedLib.set_function("LoadAnimationSequence",
+        [](const FString& AnimationName) -> UAnimationSequence*
+        {
+            return UResourceManager::GetInstance().Load<UAnimationSequence>(AnimationName);
+        }
+    );
+
     //@TODO(Timing)
     SharedLib.set_function("SetSlomo", [](float Duration , float Dilation) { GWorld->RequestSlomo(Duration, Dilation); });
 
@@ -334,6 +351,165 @@ FLuaManager::FLuaManager()
         "G", &FLinearColor::G,
         "B", &FLinearColor::B,
         "A", &FLinearColor::A
+    );
+
+    // FName 생성자 함수 등록
+    SharedLib.set_function("FName", sol::overload(
+        []() { return FName(); },
+        [](const FString& name) { return FName(name); }
+    ));
+
+    // FName usertype 등록
+    SharedLib.new_usertype<FName>("FNameType",
+        sol::no_constructor,
+        // ToString 메서드
+        "ToString", &FName::ToString,
+        // 비교 연산자
+        sol::meta_function::equal_to, [](const FName& a, const FName& b) {
+            return a == b;
+        },
+        // 문자열 변환 (tostring 메타메서드)
+        sol::meta_function::to_string, [](const FName& name) {
+            return name.ToString();
+        }
+    );
+
+    // FAnimState 생성자 함수 등록 (전역과 SharedLib 모두)
+    auto fanimstate_constructor = []() { return FAnimState(); };
+    SharedLib.set_function("FAnimState", fanimstate_constructor);
+    Lua->set_function("FAnimState", fanimstate_constructor);
+
+    // FAnimState usertype 등록
+    SharedLib.new_usertype<FAnimState>("FAnimStateType",
+        sol::no_constructor,
+        "Name", &FAnimState::Name,
+        "Index", &FAnimState::Index,
+        "AnimSequenceNodes", &FAnimState::AnimSequenceNodes,
+        // AddAnimSequence: UAnimationSequence*, bool bLoop = true 매개변수 지원
+        "AddAnimSequence", sol::overload(
+            [](FAnimState& self, UAnimationSequence* seq) { return self.AddAnimSequence(seq); },
+            [](FAnimState& self, UAnimationSequence* seq, bool bLoop) { return self.AddAnimSequence(seq, bLoop); }
+        ),
+        "Update", &FAnimState::Update,
+        "Evaluate", &FAnimState::Evaluate
+    );
+
+    // FAnimationUpdateContext 생성자 함수 등록 (전역과 SharedLib 모두)
+    auto fanimctx_constructor = []() { return FAnimationUpdateContext(); };
+    SharedLib.set_function("FAnimationUpdateContext", fanimctx_constructor);
+    Lua->set_function("FAnimationUpdateContext", fanimctx_constructor);
+
+    // FAnimationUpdateContext usertype 등록
+    SharedLib.new_usertype<FAnimationUpdateContext>("FAnimationUpdateContextType",
+        sol::no_constructor,
+        "DeltaTime", &FAnimationUpdateContext::DeltaTime
+    );
+
+    // FPoseContext 생성자 함수 등록 (전역과 SharedLib 모두)
+    // 오버로드: FPoseContext() 또는 FPoseContext(Skeleton)
+    auto fposectx_constructor = sol::overload(
+        []() { return FPoseContext(); },
+        [](const FSkeleton* Skeleton) { return FPoseContext(Skeleton); }
+    );
+    SharedLib.set_function("FPoseContext", fposectx_constructor);
+    Lua->set_function("FPoseContext", fposectx_constructor);
+
+    // FPoseContext usertype 등록
+    SharedLib.new_usertype<FPoseContext>("FPoseContextType",
+        sol::no_constructor,
+        "Skeleton", &FPoseContext::Skeleton,
+        "EvaluatedPoses", &FPoseContext::EvaluatedPoses
+    );
+
+    // FTransform usertype 등록 (SharedLib)
+    SharedLib.new_usertype<FTransform>("FTransform",
+        sol::constructors<FTransform(), FTransform(const FVector&, const FQuat&, const FVector&)>(),
+        "Translation", &FTransform::Translation,
+        "Rotation", &FTransform::Rotation,
+        "Scale3D", &FTransform::Scale3D,
+        // Static Lerp 함수
+        "Lerp", &FTransform::Lerp
+    );
+
+    // FTransform을 전역에도 등록 (테이블 형태로)
+    sol::table FTransformTable = Lua->create_table();
+    FTransformTable["Lerp"] = &FTransform::Lerp;
+    Lua->set("FTransform", FTransformTable);
+
+    // TArray<FTransform> usertype 등록 (Lua에서 배열처럼 접근 가능하도록)
+    SharedLib.new_usertype<TArray<FTransform>>("TArrayFTransform",
+        sol::no_constructor,
+        "Num", [](TArray<FTransform>& arr) -> int32 {
+            return arr.Num();
+        },
+        "SetNum", [](TArray<FTransform>& arr, int32 NewSize) {
+            arr.SetNum(NewSize);
+        },
+        "Get", [](TArray<FTransform>& arr, int32 Index) -> FTransform* {
+            // Lua는 1-based 인덱싱이므로 0-based로 변환
+            int32 ActualIndex = Index - 1;
+            if (ActualIndex >= 0 && ActualIndex < arr.Num()) {
+                return &arr[ActualIndex];
+            }
+            return nullptr;
+        },
+        "Set", [](TArray<FTransform>& arr, int32 Index, const FTransform& value) {
+            // Lua는 1-based 인덱싱이므로 0-based로 변환
+            int32 ActualIndex = Index - 1;
+            if (ActualIndex >= 0 && ActualIndex < arr.Num()) {
+                arr[ActualIndex] = value;
+            }
+        }
+    );
+
+    // FAnimStateTransition 생성자 함수 등록 (전역과 SharedLib 모두)
+    auto fanimtrans_constructor = []() { return FAnimStateTransition(); };
+    SharedLib.set_function("FAnimStateTransition", fanimtrans_constructor);
+    Lua->set_function("FAnimStateTransition", fanimtrans_constructor);
+
+    // FAnimStateTransition usertype 등록
+    SharedLib.new_usertype<FAnimStateTransition>("FAnimStateTransitionType",
+        sol::no_constructor,
+        "SourceState", &FAnimStateTransition::SourceState,
+        "TargetState", &FAnimStateTransition::TargetState,
+        "Index", &FAnimStateTransition::Index,
+        "CanEnterTransition", &FAnimStateTransition::CanEnterTransition,
+        "BlendTime", &FAnimStateTransition::BlendTime,
+        "TriggerTransition", &FAnimStateTransition::TriggerTransition,
+        "SetBlendTime", &FAnimStateTransition::SetBlendTime,
+        // Lua 함수 기반 Transition 조건
+        "SetTransitionCondition", &FAnimStateTransition::SetTransitionCondition,
+        "EvaluateCondition", &FAnimStateTransition::EvaluateCondition,
+        "Update", &FAnimStateTransition::Update
+    );
+
+    // FAnimNode_Sequence usertype 등록
+    SharedLib.new_usertype<FAnimNode_Sequence>("FAnimNode_Sequence",
+        sol::constructors<FAnimNode_Sequence()>(),
+        "Sequence", &FAnimNode_Sequence::Sequence,
+        "CurrentTime", &FAnimNode_Sequence::CurrentTime,
+        "PlayRate", &FAnimNode_Sequence::PlayRate,
+        "bLooping", &FAnimNode_Sequence::bLooping,
+        "SetSequence", &FAnimNode_Sequence::SetSequence,
+        "SetLooping", &FAnimNode_Sequence::SetLooping,
+        "Update", &FAnimNode_Sequence::Update,
+        "Evaluate", &FAnimNode_Sequence::Evaluate
+    );
+
+    // FAnimNode_StateMachine usertype 등록
+    SharedLib.new_usertype<FAnimNode_StateMachine>("FAnimNode_StateMachine",
+        sol::constructors<FAnimNode_StateMachine()>(),
+        "CurrentState", &FAnimNode_StateMachine::CurrentState,
+        "CurrentTransition", &FAnimNode_StateMachine::CurrentTransition,
+        "bIsInTransition", &FAnimNode_StateMachine::bIsInTransition,
+        "Update", &FAnimNode_StateMachine::Update,
+        "Evaluate", &FAnimNode_StateMachine::Evaluate,
+        "AddState", &FAnimNode_StateMachine::AddState,
+        "DeleteState", &FAnimNode_StateMachine::DeleteState,
+        "AddTransition", &FAnimNode_StateMachine::AddTransition,
+        "DeleteTransition", &FAnimNode_StateMachine::DeleteTransition,
+        "GetCurrentState", &FAnimNode_StateMachine::GetCurrentState,
+        "GetTransitions", &FAnimNode_StateMachine::GetTransitions
     );
 
     RegisterComponentProxy(*Lua);

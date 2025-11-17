@@ -300,6 +300,32 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_StandAlone|x64'">true</ExcludedFromBuild>
     </FxCompile>
+    <Content Include="Content\Scripts\AnimationStateMachine.lua" />
+    <Content Include="Content\Scripts\Apple.lua" />
+    <Content Include="Content\Scripts\AppleManager.lua" />
+    <Content Include="Content\Scripts\BoomEffect.lua" />
+    <Content Include="Content\Scripts\CGCAttack.lua" />
+    <Content Include="Content\Scripts\CGCWeapon.lua" />
+    <Content Include="Content\Scripts\coach.lua" />
+    <Content Include="Content\Scripts\coroutineTest.lua" />
+    <Content Include="Content\Scripts\Fireball.lua" />
+    <Content Include="Content\Scripts\Fireball1.lua" />
+    <Content Include="Content\Scripts\FireballDestroyArea.lua" />
+    <Content Include="Content\Scripts\FireballManager.lua" />
+    <Content Include="Content\Scripts\FireballSpawnArea.lua" />
+    <Content Include="Content\Scripts\Fireballtest.lua" />
+    <Content Include="Content\Scripts\FMath.lua" />
+    <Content Include="Content\Scripts\names.lua" />
+    <Content Include="Content\Scripts\NewScript.lua" />
+    <Content Include="Content\Scripts\Player.lua" />
+    <Content Include="Content\Scripts\PlayerSpawner.lua" />
+    <Content Include="Content\Scripts\RotatingSpawner.lua" />
+    <Content Include="Content\Scripts\SHC.lua" />
+    <Content Include="Content\Scripts\SkeletalMeshActor.lua" />
+    <Content Include="Content\Scripts\TestPropertyBinding.lua" />
+    <Content Include="Content\Scripts\Tile.lua" />
+    <Content Include="Content\Scripts\TileMap.lua" />
+    <Content Include="Content\Scripts\UIManager.lua" />
     <Content Include="Shaders\PostProcess\FadeInOut_PS.hlsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
