@@ -54,6 +54,12 @@ private:
 	FSkeletalMeshData* TryLoadMeshFromCache(const FString& FbxPath);
 	void SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& FbxPath);
 	TArray<UAnimationSequence*> TryLoadAnimationsFromCache(const FString& FbxPath, TArray<FString>& OutAnimationNames);
+
+	// Preload 분리: 캐시 생성과 메모리 로드 분리
+	void BakeFbxCacheOnly(const FString& FilePath);  // 캐시만 생성 (메모리 로드 X)
+	void LoadFromCacheToMemory(const FString& FbxPath);  // 캐시에서 메모리로 로드
+	bool IsCacheValid(const FString& FbxPath);  // 캐시 유효성 검사
+	void SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, const FString& FbxPath);  // 애니메이션 캐시만 저장
 	
 	void LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int32, TArray<uint32>>& MaterialGroupIndexList, TMap<FbxNode*, int32>& BoneToIndex, TArray<int32> MaterialSlotToIndex, int32 DefaultMaterialIndex = 0);
 

@@ -5,6 +5,10 @@
 #include "Windows/SSplitterH.h"
 #include "Windows/SViewportWindow.h"
 #include "Windows/SSkeletalMeshViewerWindow.h"
+#include "Windows/SStaticMeshViewerWindow.h"
+#include "Windows/SMaterialEditorWindow.h"
+#include "Windows/SAnimationViewerWindow.h"
+#include "Windows/SViewerWindowBase.h"
 
 class SSceneIOWindow; // 새로 추가할 UI
 class SDetailsWindow;
@@ -73,11 +77,15 @@ public:
     void ToggleContentBrowser();
     bool IsContentBrowserVisible() const;
 
-    // Temp: open/close Skeletal Mesh Viewer (detached window)
-    void OpenSkeletalMeshViewer();
-    void OpenSkeletalMeshViewerWithFile(const char* FilePath);
-    void CloseSkeletalMeshViewer();
-    bool IsSkeletalMeshViewerOpen() const { return SkeletalViewerWindow != nullptr; }
+    // === 뷰어 관리 API ===
+    template<typename T>
+    T* OpenViewer(const FString& AssetPath = "");
+
+    void CloseViewer(SViewerWindowBase* Viewer);
+    void CloseAllViewers();
+
+    template<typename T>
+    T* FindViewer() const;
 
 private:
     FRect Rect; // 이전엔 SWindow로부터 상속받던 영역 정보
@@ -121,8 +129,8 @@ private:
     const float ConsoleHeightRatio = 0.3f; // 화면 높이의 30%
     const float ConsoleHorizontalMargin = 10.0f; // 좌/우 여백 (픽셀 단위)
 
-    // Detached skeletal mesh viewer window
-    SSkeletalMeshViewerWindow* SkeletalViewerWindow = nullptr;
+    // === 뷰어 통합 관리 ===
+    TArray<SViewerWindowBase*> Viewers;
 
     // Content Browser (Bottom panel overlay with animation)
     UContentBrowserWindow* ContentBrowserWindow = nullptr;
@@ -136,3 +144,57 @@ private:
     // Shutdown 관련
     bool bIsShutdown = false;
 };
+
+// === 템플릿 함수 구현 ===
+template<typename T>
+T* USlateManager::OpenViewer(const FString& AssetPath)
+{
+    static_assert(std::is_base_of<SViewerWindowBase, T>::value, "T must inherit from SViewerWindowBase");
+
+    // 기존에 열린 같은 타입의 뷰어가 있는지 확인
+    T* ExistingViewer = FindViewer<T>();
+    if (ExistingViewer && ExistingViewer->IsOpen())
+    {
+        // 이미 열려있으면 해당 뷰어 반환
+        if (!AssetPath.empty())
+        {
+            ExistingViewer->LoadAsset(AssetPath);
+        }
+        return ExistingViewer;
+    }
+
+    // 새 뷰어 생성
+    T* NewViewer = new T();
+    if (!NewViewer->Initialize(Device, World))
+    {
+        delete NewViewer;
+        return nullptr;
+    }
+
+    // 배열에 추가
+    Viewers.Add(NewViewer);
+
+    // 에셋 로드
+    if (!AssetPath.empty())
+    {
+        NewViewer->LoadAsset(AssetPath);
+    }
+
+    return NewViewer;
+}
+
+template<typename T>
+T* USlateManager::FindViewer() const
+{
+    static_assert(std::is_base_of<SViewerWindowBase, T>::value, "T must inherit from SViewerWindowBase");
+
+    for (SViewerWindowBase* Viewer : Viewers)
+    {
+        T* CastedViewer = dynamic_cast<T*>(Viewer);
+        if (CastedViewer)
+        {
+            return CastedViewer;
+        }
+    }
+    return nullptr;
+}

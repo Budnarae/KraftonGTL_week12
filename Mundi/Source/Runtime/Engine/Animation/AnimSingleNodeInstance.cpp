@@ -52,7 +52,7 @@ void UAnimSingleNodeInstance::NativeUpdateAnimation(float DeltaSeconds)
         return;
 
     FAnimationUpdateContext Context;
-    Context.DeltaTime = DeltaSeconds;
+    Context.DeltaTime = DeltaSeconds * PlaybackSpeed;
     CurrentAnimation->Update(Context);
 }
 

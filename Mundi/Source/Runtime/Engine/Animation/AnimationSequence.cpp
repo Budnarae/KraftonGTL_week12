@@ -123,9 +123,29 @@ FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) co
     if (!DataModel)
         return FTransform();
 
+    // Bind Pose 가져오기 (키가 없을 때 사용)
+    FTransform BindPoseTransform;
+    if (Skeleton.Bones.Num() > 0)
+    {
+        // BoneName으로 본 인덱스 찾기
+        auto It = Skeleton.BoneNameToIndex.find(BoneName.ToString());
+        if (It != Skeleton.BoneNameToIndex.end())
+        {
+            int32 BoneIndex = It->second;
+            if (BoneIndex >= 0 && BoneIndex < Skeleton.Bones.Num())
+            {
+                const FBone& Bone = Skeleton.Bones[BoneIndex];
+                BindPoseTransform = FTransform(Bone.BindPose);
+            }
+        }
+    }
+
     const FBoneAnimationTrack* AnimTrack = DataModel->FindTrackByBone(BoneName);
     if (!AnimTrack)
-        return FTransform();
+    {
+        // 애니메이션 트랙이 없으면 Bind Pose 반환
+        return BindPoseTransform;
+    }
 
     const FRawAnimSequenceTrack& Track = AnimTrack->InternalTrack;
 
@@ -144,7 +164,7 @@ FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) co
 
     FTransform Result;
 
-    // Position 보간 (Linear)
+    // Position 보간 (Linear) - 키가 없으면 Bind Pose 사용
     if (Track.PosKeys.Num() > 0)
     {
         int32 PosIdx0 = FMath::Clamp(FrameIndex0, 0, Track.PosKeys.Num() - 1);
@@ -155,8 +175,12 @@ FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) co
 
         Result.Translation = FVector::Lerp(Pos0, Pos1, Alpha);
     }
+    else
+    {
+        Result.Translation = BindPoseTransform.Translation;
+    }
 
-    // Rotation 보간 (Slerp)
+    // Rotation 보간 (Slerp) - 키가 없으면 Bind Pose 사용
     if (Track.RotKeys.Num() > 0)
     {
         int32 RotIdx0 = FMath::Clamp(FrameIndex0, 0, Track.RotKeys.Num() - 1);
@@ -172,8 +196,12 @@ FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) co
         Result.Rotation = FQuat::Slerp(Rot0, Rot1, Alpha);
         Result.Rotation.Normalize();
     }
+    else
+    {
+        Result.Rotation = BindPoseTransform.Rotation;
+    }
 
-    // Scale 보간 (Linear)
+    // Scale 보간 (Linear) - 키가 없으면 Bind Pose 사용
     if (Track.ScaleKeys.Num() > 0)
     {
         int32 ScaleIdx0 = FMath::Clamp(FrameIndex0, 0, Track.ScaleKeys.Num() - 1);
@@ -183,10 +211,10 @@ FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) co
         const FVector& Scale1 = Track.ScaleKeys[ScaleIdx1];
 
         Result.Scale3D = FVector::Lerp(Scale0, Scale1, Alpha);
-    } 
+    }
     else
     {
-        Result.Scale3D = FVector(1.0f, 1.0f, 1.0f);
+        Result.Scale3D = BindPoseTransform.Scale3D;
     }
 
     return Result;

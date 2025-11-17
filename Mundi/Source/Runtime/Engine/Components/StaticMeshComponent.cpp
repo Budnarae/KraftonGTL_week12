@@ -140,7 +140,9 @@ void UStaticMeshComponent::SetStaticMesh(const FString& PathFileName)
 		const TArray<FGroupInfo>& GroupInfos = StaticMesh->GetMeshGroupInfo();
 
 		// 4. 새 메시 정보에 맞게 슬롯을 재설정합니다.
-		MaterialSlots.resize(GroupInfos.size()); // ClearDynamicMaterials()에서 비워졌으므로, 새 크기로 재할당
+		// 그룹이 없어도 최소 1개의 슬롯은 필요 (전체 메시에 머티리얼 적용)
+		const size_t NumSlots = GroupInfos.empty() ? 1 : GroupInfos.size();
+		MaterialSlots.resize(NumSlots); // ClearDynamicMaterials()에서 비워졌으므로, 새 크기로 재할당
 
 		for (int i = 0; i < GroupInfos.size(); ++i)
 		{

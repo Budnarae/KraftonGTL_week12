@@ -17,7 +17,7 @@ AFireBallActor::AFireBallActor()
 	PointLightComponent = CreateDefaultSubobject<UPointLightComponent>("PointLightComponent");
 	PointLightComponent->SetupAttachment(RootComponent);
 	 
-	StaticMeshComponent->SetStaticMesh(GDataDir  + "/Model/Sphere8.obj");
+	StaticMeshComponent->SetStaticMesh(GResourceDir  + "/Model/Sphere8.umesh");
 	StaticMeshComponent->SetMaterialByName(0, "Shaders/Materials/Fireball.hlsl");
 
 	RotatingComponent = CreateDefaultSubobject<URotatingMovementComponent>("RotatingComponent");

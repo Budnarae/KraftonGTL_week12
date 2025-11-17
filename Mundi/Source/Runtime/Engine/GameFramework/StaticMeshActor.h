@@ -21,6 +21,7 @@ public:
 	virtual FAABB GetBounds() const override;
 	UStaticMeshComponent* GetStaticMeshComponent() const { return StaticMeshComponent; }
 	void SetStaticMeshComponent(UStaticMeshComponent* InStaticMeshComponent);
+	void SetStaticMesh(const FString& PathFileName);
 
 	// ───── 복사 관련 ────────────────────────────
 	void DuplicateSubObjects() override;

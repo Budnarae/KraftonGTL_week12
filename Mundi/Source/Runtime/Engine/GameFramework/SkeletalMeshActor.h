@@ -37,6 +37,9 @@ public:
     // Position the anchor
     void RepositionAnchorToBone(int32 BoneIndex);
 
+    // Reset bone lines cache (call when loading new mesh)
+    void ResetBoneLinesCache();
+
     // Bone picking with ray
     // Returns bone index if hit, -1 otherwise
     int32 PickBone(const FRay& Ray, float& OutDistance) const;
@@ -74,6 +77,7 @@ protected:
 
     void BuildBoneLinesCache();
     void UpdateBoneSubtreeTransforms(int32 BoneIndex);
+    void UpdateAllBoneTransforms();
     void UpdateBoneSelectionHighlight(int32 SelectedBoneIndex);
 
     // Lazily create viewer-only components (BoneLineComponent, BoneAnchor) if in preview world

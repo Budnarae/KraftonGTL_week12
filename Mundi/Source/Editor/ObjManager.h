@@ -61,6 +61,14 @@ class FObjManager
 {
 private:
 	static TMap<FString, FStaticMesh*> ObjStaticMeshMap;
+
+	// .obj 파일을 파싱해서 .umesh/.umat 캐시 파일로 Cook (저장만, 성공 시 true 반환)
+	static bool CookObjToCache(const FString& ObjPath);
+
+	// .umesh 캐시 파일에서 FStaticMesh 로드 (성공 시 true 반환)
+	static bool LoadFromCache(const FString& BinPath, const FString& MatBinPath,
+	                          FStaticMesh* OutMesh, TArray<FMaterialInfo>& OutMaterials);
+
 public:
 	static void Preload();
 	static void Clear();
