@@ -9,8 +9,21 @@ class UAnimInstance : public UObject
 public:
     DECLARE_CLASS(UAnimInstance, UObject)
     
+    template<typename TNode, typename... TArgs> 
+    TNode* NewNode(TArgs&&... Args) 
+    { 
+        static_assert(std::is_base_of_v<FAnimNode_Base, TNode>, "TNode must derive from FAnimNode_Base"); 
+        TNode* Node = new TNode(std::forward<TArgs>(Args)...); 
+        NodePool.Add(Node); 
+        return Node; 
+    }
+
     virtual ~UAnimInstance();
 
+protected:
+    TArray<FAnimNode_Base*> NodePool;
+
+public:
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
 

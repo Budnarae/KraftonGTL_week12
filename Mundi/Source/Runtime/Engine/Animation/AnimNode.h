@@ -115,22 +115,19 @@ struct FAnimState
 {
     FName Name{};
     uint32 Index{};   // Animation State Machine에서의 Index
-    TArray<FAnimNode_Sequence> AnimSequenceNodes;
+    FAnimNode_Base* EntryNode = nullptr;
+    TArray<FAnimNode_Base*> Nodes;
 
-    /**
-     * @brief AnimSequence를 이 State에 추가
-     */
-    FAnimNode_Sequence* AddAnimSequence(UAnimationSequence* AnimSequence, bool bLoop = true)
+    void SetEntryNode(FAnimNode_Base* InNode)
     {
-        if (!AnimSequence)
-        {
-            return nullptr;
-        }
+        EntryNode = InNode;
+    }
 
-        AnimSequenceNodes.Emplace();
-        FAnimNode_Sequence& Node = AnimSequenceNodes.Last();
-        Node.SetSequence(AnimSequence, bLoop);
-        return &Node;
+    template<typename TNode>
+    TNode* AddNode(TNode* InNode)
+    {
+        Nodes.Add(InNode);
+        return InNode;
     }
 };
 
@@ -178,18 +175,8 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     virtual ~FAnimNode_StateMachine();
 
-    /**
-    * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)
-    * @return 없음
-    */
     virtual void Update(const FAnimationUpdateContext& Context) override;
-
-    /**
-     * @brief 이 노드가 생성하는 최종 Pose 계산(모든 애니메이션 노드는 반드시 이 함수를 통해 Pose를 출력)
-     * @return 인자로 받는 Output을 갱신
-     */
     virtual void Evaluate(FPoseContext& Output) override;
-
 
     // --------- 상태 API ----------
     /**
@@ -198,11 +185,6 @@ struct FAnimNode_StateMachine : FAnimNode_Base
      * @return 추가된 State의 포인터
      */
     FAnimState* AddState(const FName& StateName);
-
-    /**
-     * @brief 이름으로 State 제거
-     * @return 없음
-     */
     void DeleteState(const FName& TargetName);
 
     // --------- 트랜지션 API ----------

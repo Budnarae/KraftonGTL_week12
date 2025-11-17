@@ -17,6 +17,12 @@ UAnimInstance::~UAnimInstance()
     {
         RootNode = nullptr;
     }
+
+    for (FAnimNode_Base* Node : NodePool)
+    {
+        delete Node;
+    }
+    NodePool.clear();
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
