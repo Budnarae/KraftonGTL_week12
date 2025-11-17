@@ -76,6 +76,13 @@ public:
     TArray<FAnimStateTransition*>& GetTransitions() { return Transitions; }
 
 private:
+    /**
+     * @brief 이름으로 State를 찾습니다
+     * @return State 포인터, 찾지 못하면 nullptr
+     */
+    FAnimState* FindStateByName(const FName& StateName) const;
+
+private:
     // 현재 활성화된 State (포인터)
     FAnimState* CurrentState = nullptr;
     FAnimStateTransition* CurrentTransition = nullptr;
@@ -88,12 +95,6 @@ private:
 
     // Transition 리스트 (동적 할당)
     TArray<FAnimStateTransition*> Transitions;
-
-    /**
-     * @brief 이름으로 State를 찾습니다
-     * @return State 포인터, 찾지 못하면 nullptr
-     */
-    FAnimState* FindStateByName(const FName& StateName) const;
 
     /* 아래 요소가 필요하다면 주석을 해제하세요 */
     

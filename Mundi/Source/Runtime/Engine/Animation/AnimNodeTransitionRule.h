@@ -16,10 +16,16 @@ public:
 public:
     TDelegate<>& GetTransitionDelegate();
 
+    UFUNCTION(LuaBind)
     virtual bool CheckTransitionRule();
+
+    UFUNCTION(LuaBind)
     void Evaluate();
 
+    UFUNCTION(LuaBind)
     void SetRuleName(const FName& InName) { RuleName = InName; }
+
+    UFUNCTION(LuaBind)
     FName GetRuleName() const { return RuleName; }
 
 private:

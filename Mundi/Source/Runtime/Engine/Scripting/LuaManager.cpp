@@ -336,6 +336,48 @@ FLuaManager::FLuaManager()
         "A", &FLinearColor::A
     );
 
+    // FName 생성자 함수
+    Lua->set_function("Name", sol::overload(
+        []() { return FName(); },
+        [](const FString& str) { return FName(str); }
+    ));
+
+    // FName usertype 등록
+    SharedLib.new_usertype<FName>("FName",
+        sol::no_constructor,
+        // ToString 메서드
+        "ToString", &FName::ToString,
+        // 비교 연산자
+        sol::meta_function::equal_to, [](const FName& a, const FName& b) {
+            return a == b;
+        },
+        // 문자열 변환 (tostring 메타메서드)
+        sol::meta_function::to_string, [](const FName& name) {
+            return name.ToString();
+        }
+    );
+
+    // FAnimState usertype 등록
+    SharedLib.new_usertype<FAnimState>("FAnimState",
+        sol::no_constructor,
+        "Name", &FAnimState::Name,
+        "Index", &FAnimState::Index,
+        "AddAnimSequence", &FAnimState::AddAnimSequence
+    );
+
+    // FAnimStateTransition usertype 등록
+    SharedLib.new_usertype<FAnimStateTransition>("FAnimStateTransition",
+        sol::no_constructor,
+        "SourceState", &FAnimStateTransition::SourceState,
+        "TargetState", &FAnimStateTransition::TargetState,
+        "Index", &FAnimStateTransition::Index,
+        "CanEnterTransition", &FAnimStateTransition::CanEnterTransition,
+        "BlendTime", &FAnimStateTransition::BlendTime,
+        "BlendTimeElapsed", &FAnimStateTransition::BlendTimeElapsed,
+        "BlendAlpha", &FAnimStateTransition::BlendAlpha,
+        "bIsBlending", &FAnimStateTransition::bIsBlending
+    );
+
     RegisterComponentProxy(*Lua);
     ExposeGlobalFunctions();
     ExposeAllComponentsToLua();

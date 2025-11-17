@@ -92,6 +92,7 @@ void FAnimStateTransition::CleanupDelegate()
 
 FAnimStateTransition::~FAnimStateTransition()
 {
+    // 만약 delegete에서 스스로를 지우지 않았을 경우 여기서 지운다.
     CleanupDelegate();
 }
 
