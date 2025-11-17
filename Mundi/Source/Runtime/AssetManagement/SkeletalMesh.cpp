@@ -120,8 +120,32 @@ void USkeletalMesh::ReleaseResources()
 
 void USkeletalMesh::CreateVertexBuffer(ID3D11Buffer** InVertexBuffer, bool bUseSkinningAttributes)
 {
-    if (!Data) { return; }
+    if (!Data)
+    {
+        UE_LOG("CreateVertexBuffer: Data is null");
+        return;
+    }
+
+    if (Data->Vertices.IsEmpty())
+    {
+        UE_LOG("CreateVertexBuffer: Vertices are empty");
+        return;
+    }
+
+    // 이미 버퍼가 생성되어 있으면 먼저 해제
+    if (InVertexBuffer && *InVertexBuffer)
+    {
+        UE_LOG("CreateVertexBuffer: Releasing existing buffer");
+        (*InVertexBuffer)->Release();
+        *InVertexBuffer = nullptr;
+    }
+
     ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
+    if (!Device)
+    {
+        UE_LOG("ERROR: CreateVertexBuffer: Device is null");
+        return;
+    }
 
     HRESULT hr = E_FAIL;
     if (bUseSkinningAttributes)
@@ -131,6 +155,12 @@ void USkeletalMesh::CreateVertexBuffer(ID3D11Buffer** InVertexBuffer, bool bUseS
     else
     {
         hr = D3D11RHI::CreateVertexBuffer<FVertexDynamic>(Device, Data->Vertices, InVertexBuffer);
+    }
+
+    if (FAILED(hr))
+    {
+        UE_LOG("ERROR: CreateVertexBuffer failed with HRESULT: 0x%08X, VertexCount: %d, Skinning: %d",
+               hr, Data->Vertices.size(), bUseSkinningAttributes);
     }
     assert(SUCCEEDED(hr));
 }

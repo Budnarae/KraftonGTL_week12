@@ -416,15 +416,6 @@ void USlateManager::Render()
             Viewer->OnRender();
         }
     }
-
-    // === 모든 뷰어 렌더링 ===
-    for (SViewerWindowBase* Viewer : Viewers)
-    {
-        if (Viewer && Viewer->IsOpen())
-        {
-            Viewer->OnRender();
-        }
-    }
 }
 
 void USlateManager::RenderAfterUI()
