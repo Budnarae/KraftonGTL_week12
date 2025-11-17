@@ -216,18 +216,160 @@ bool ShouldRegenerateCache(const FString& ObjPath, const FString& BinPath, const
 	return false;
 }
 
+// .obj 파일을 파싱해서 .umesh/.umat 캐시 파일로 Cook (저장만)
+bool FObjManager::CookObjToCache(const FString& ObjPath)
+{
+	FString NormalizedObjPath = NormalizePath(ObjPath);
+
+	// 캐시 파일 경로 설정
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedObjPath);
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
+	const FString BinPathFileName = CachePathWithoutExt + ".umesh";
+	const FString MatBinPathFileName = CachePathWithoutExt + ".umat";
+
+	// 캐시 재생성이 필요한지 확인
+	if (!ShouldRegenerateCache(NormalizedObjPath, BinPathFileName, MatBinPathFileName))
+	{
+		UE_LOG("Cache is up-to-date, skipping cook for: %s", NormalizedObjPath.c_str());
+		return true; // 이미 최신 캐시가 존재
+	}
+
+	// 캐시를 저장할 디렉토리 생성
+	fs::path CacheFileDirPath(BinPathFileName);
+	if (CacheFileDirPath.has_parent_path())
+	{
+		fs::create_directories(CacheFileDirPath.parent_path());
+	}
+
+	UE_LOG("Cooking .obj to cache: %s", NormalizedObjPath.c_str());
+
+	// .obj 파일 파싱
+	FObjInfo RawObjInfo;
+	TArray<FMaterialInfo> MaterialInfos;
+	if (!FObjImporter::LoadObjModel(NormalizedObjPath, &RawObjInfo, MaterialInfos, true))
+	{
+		UE_LOG("ERROR: Failed to parse .obj file: %s", NormalizedObjPath.c_str());
+		return false;
+	}
+
+	// FStaticMesh로 변환
+	FStaticMesh TempMesh;
+	FObjImporter::ConvertToStaticMesh(RawObjInfo, MaterialInfos, &TempMesh);
+
+	// 기본 머티리얼 처리
+	if (TempMesh.GroupInfos.size() > 0 && MaterialInfos.empty())
+	{
+		UE_LOG("No materials found for '%s'. Assigning default 'uberlit' material.", NormalizedObjPath.c_str());
+
+		FMaterialInfo DefaultMaterialInfo;
+		DefaultMaterialInfo.MaterialName = "uberlit"; // 기본 머티리얼 이름
+		MaterialInfos.Add(DefaultMaterialInfo);
+
+		for (FGroupInfo& Group : TempMesh.GroupInfos)
+		{
+			if (Group.InitialMaterialName.empty())
+			{
+				Group.InitialMaterialName = DefaultMaterialInfo.MaterialName;
+			}
+		}
+	}
+
+#ifdef USE_OBJ_CACHE
+	try
+	{
+		// .umesh 파일 저장
+		FWindowsBinWriter Writer(BinPathFileName);
+		Writer << TempMesh;
+		Writer.Close();
+
+		// .umat 파일 저장
+		FWindowsBinWriter MatWriter(MatBinPathFileName);
+		Serialization::WriteArray<FMaterialInfo>(MatWriter, MaterialInfos);
+		MatWriter.Close();
+
+		UE_LOG("Successfully cooked cache for: %s", NormalizedObjPath.c_str());
+		return true;
+	}
+	catch (const std::exception& e)
+	{
+		UE_LOG("ERROR: Failed to write cache files for '%s': %s", NormalizedObjPath.c_str(), e.what());
+
+		// 실패 시 불완전한 파일 삭제
+		fs::remove(BinPathFileName);
+		fs::remove(MatBinPathFileName);
+		return false;
+	}
+#else
+	UE_LOG("WARNING: USE_OBJ_CACHE is not defined, skipping cache write.");
+	return false;
+#endif
+}
+
+// .umesh 캐시 파일에서 FStaticMesh 로드
+bool FObjManager::LoadFromCache(const FString& BinPath, const FString& MatBinPath,
+                                 FStaticMesh* OutMesh, TArray<FMaterialInfo>& OutMaterials)
+{
+	if (!OutMesh)
+	{
+		UE_LOG("ERROR: LoadFromCache called with null OutMesh pointer");
+		return false;
+	}
+
+#ifdef USE_OBJ_CACHE
+	try
+	{
+		// .umesh 파일 로드
+		FWindowsBinReader Reader(BinPath);
+		if (!Reader.IsOpen())
+		{
+			throw std::runtime_error("Failed to open .umesh file for reading.");
+		}
+		Reader << *OutMesh;
+		Reader.Close();
+
+		// .umat 파일 로드
+		FWindowsBinReader MatReader(MatBinPath);
+		if (!MatReader.IsOpen())
+		{
+			throw std::runtime_error("Failed to open .umat file for reading.");
+		}
+		Serialization::ReadArray<FMaterialInfo>(MatReader, OutMaterials);
+		MatReader.Close();
+
+		OutMesh->CacheFilePath = BinPath;
+
+		UE_LOG("Successfully loaded from cache: %s", BinPath.c_str());
+		return true;
+	}
+	catch (const std::exception& e)
+	{
+		UE_LOG("ERROR: Failed to load from cache '%s': %s", BinPath.c_str(), e.what());
+		return false;
+	}
+#else
+	UE_LOG("ERROR: USE_OBJ_CACHE is not defined");
+	return false;
+#endif
+}
+
 void FObjManager::Preload()
 {
 	const fs::path DataDir(GDataDir);
+	const fs::path ContentDir = fs::path(GDataDir).parent_path() / "Content";
+
+	// ===== PHASE 1: Cook (.obj → .umesh) =====
+	UE_LOG("=== PHASE 1: Cooking .obj files to .umesh cache ===");
 
 	if (!fs::exists(DataDir) || !fs::is_directory(DataDir))
 	{
-		UE_LOG("FObjManager::Preload: Data directory not found: %s", DataDir.string().c_str());
+		UE_LOG("ERROR: Data directory not found: %s", DataDir.string().c_str());
 		return;
 	}
 
-	size_t LoadedCount = 0;
-	std::unordered_set<FString> ProcessedFiles; // 중복 로딩 방지
+	size_t CookedCount = 0;
+	std::unordered_set<FString> ProcessedObjFiles;
 
 	for (const auto& Entry : fs::recursive_directory_iterator(DataDir))
 	{
@@ -236,30 +378,74 @@ void FObjManager::Preload()
 
 		const fs::path& Path = Entry.path();
 		FString Extension = Path.extension().string();
-		std::transform(Extension.begin(), Extension.end(), Extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+		std::transform(Extension.begin(), Extension.end(), Extension.begin(),
+		               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
 		if (Extension == ".obj")
 		{
 			FString PathStr = NormalizePath(Path.string());
 
-			// 이미 처리된 파일인지 확인
-			if (ProcessedFiles.find(PathStr) == ProcessedFiles.end())
+			if (ProcessedObjFiles.find(PathStr) == ProcessedObjFiles.end())
 			{
-				ProcessedFiles.insert(PathStr);
-				LoadObjStaticMesh(PathStr);
-				++LoadedCount;
+				ProcessedObjFiles.insert(PathStr);
+				if (CookObjToCache(PathStr))
+				{
+					++CookedCount;
+				}
 			}
 		}
 		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
 		{
-			UResourceManager::GetInstance().Load<UTexture>(Path.string()); // 데칼 텍스쳐를 ui에서 고를 수 있게 하기 위해 임시로 만듬.
+			UResourceManager::GetInstance().Load<UTexture>(Path.string());
 		}
 	}
 
-	// 4) 모든 StaticMeshs 가져오기
+	UE_LOG("Cooked %zu .obj files to cache", CookedCount);
+
+	// ===== PHASE 2: Load (.umesh → Resources) =====
+	UE_LOG("=== PHASE 2: Loading .umesh files and creating resources ===");
+
+	if (!fs::exists(ContentDir) || !fs::is_directory(ContentDir))
+	{
+		UE_LOG("WARNING: Content directory not found: %s", ContentDir.string().c_str());
+		UE_LOG("Skipping resource loading phase");
+		return;
+	}
+
+	size_t LoadedCount = 0;
+	std::unordered_set<FString> ProcessedUmeshFiles;
+
+	for (const auto& Entry : fs::recursive_directory_iterator(ContentDir))
+	{
+		if (!Entry.is_regular_file())
+			continue;
+
+		const fs::path& Path = Entry.path();
+		FString Extension = Path.extension().string();
+		std::transform(Extension.begin(), Extension.end(), Extension.begin(),
+		               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+		if (Extension == ".umesh")
+		{
+			FString PathStr = NormalizePath(Path.string());
+
+			if (ProcessedUmeshFiles.find(PathStr) == ProcessedUmeshFiles.end())
+			{
+				ProcessedUmeshFiles.insert(PathStr);
+
+				// .umesh 파일로부터 리소스 생성 및 등록
+				if (LoadObjStaticMesh(PathStr))
+				{
+					++LoadedCount;
+				}
+			}
+		}
+	}
+
+	// 모든 StaticMeshs 가져오기
 	RESOURCE.SetStaticMeshs();
 
-	UE_LOG("FObjManager::Preload: Loaded %zu .obj files from %s", LoadedCount, DataDir.string().c_str());
+	UE_LOG("Loaded %zu .umesh files from Content folder", LoadedCount);
 }
 
 void FObjManager::Clear()
@@ -272,291 +458,44 @@ void FObjManager::Clear()
 	ObjStaticMeshMap.Empty();
 }
 
-// PathFileName의 bin을 로드 (없으면 생성) 해서 메모리에 캐싱 후 반환
+// .umesh 캐시 파일로부터 FStaticMesh 로드 (메모리 캐싱)
 FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FString& PathFileName)
 {
 	FString NormalizedPathStr = NormalizePath(PathFileName);
 
-	// 1. 메모리 캐시 확인: 이미 로드된 에셋이 있으면 즉시 반환합니다.
+	// 1. 메모리 캐시 확인
 	if (FStaticMesh** It = ObjStaticMeshMap.Find(NormalizedPathStr))
 	{
 		return *It;
 	}
 
+	// 2. 확장자 확인
 	std::filesystem::path Path(NormalizedPathStr);
-
-	// 2. 파일 경로 설정
 	FString Extension = Path.extension().string();
 	std::transform(Extension.begin(), Extension.end(), Extension.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-	// .umesh 파일을 직접 받은 경우 (FBX나 OBJ에서 만든 캐시)
-	if (Extension == ".umesh")
+	if (Extension != ".umesh")
 	{
-		// .umesh 바이너리 캐시를 직접 로드
-#ifdef USE_OBJ_CACHE
-		try
-		{
-			FStaticMesh* CachedMesh = new FStaticMesh();
-			FWindowsBinReader Reader(NormalizedPathStr);
-			if (!Reader.IsOpen())
-			{
-				throw std::runtime_error("Failed to open .umesh file for reading.");
-			}
-			Reader << *CachedMesh;
-			Reader.Close();
-
-			CachedMesh->CacheFilePath = NormalizedPathStr;
-			UE_LOG("Loaded static mesh from .umesh cache: %s", NormalizedPathStr.c_str());
-
-			// 메모리 캐시에 등록
-			ObjStaticMeshMap.Add(NormalizedPathStr, CachedMesh);
-			return CachedMesh;
-		}
-		catch (const std::exception& e)
-		{
-			UE_LOG("ERROR: Failed to load .umesh file '%s': %s", NormalizedPathStr.c_str(), e.what());
-			return nullptr;
-		}
-#else
-		UE_LOG("ERROR: .umesh cache files not supported without USE_OBJ_CACHE");
-		return nullptr;
-#endif
-	}
-
-	if (Extension != ".obj")
-	{
-		UE_LOG("this file is not obj!: %s", NormalizedPathStr.c_str());
+		UE_LOG("ERROR: LoadObjStaticMeshAsset expects .umesh file, got: %s", NormalizedPathStr.c_str());
 		return nullptr;
 	}
 
-#ifdef USE_OBJ_CACHE
-	// 2-1. 캐시 파일 경로 설정
-	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPathStr);
+	// 3. .umesh 파일 로드
+	FStaticMesh* NewMesh = new FStaticMesh();
+	TArray<FMaterialInfo> MaterialInfos; // 사용하지 않지만 호환성을 위해 남김
 
-	// 확장자 제거 (예: "Content/Models/cube.obj" → "Content/Models/cube")
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
-
-	const FString BinPathFileName = CachePathWithoutExt + ".umesh";
-	const FString MatBinPathFileName = CachePathWithoutExt + ".umat";
-
-	// 캐시를 저장할 디렉토리가 없으면 생성
-	fs::path CacheFileDirPath(BinPathFileName);
-	if (CacheFileDirPath.has_parent_path())
+	if (!LoadFromCache(NormalizedPathStr, Path.parent_path().string() + "/" + Path.stem().string() + ".umat",
+	                   NewMesh, MaterialInfos))
 	{
-		fs::create_directories(CacheFileDirPath.parent_path());
+		delete NewMesh;
+		UE_LOG("ERROR: Failed to load .umesh file: %s", NormalizedPathStr.c_str());
+		return nullptr;
 	}
 
-	// 3. 캐시 데이터 로드 시도 및 실패 시 재생성 로직
-	FStaticMesh* NewFStaticMesh = new FStaticMesh();
-	TArray<FMaterialInfo> MaterialInfos;
-	bool bLoadedSuccessfully = false;
-
-	// 캐시가 오래되었는지 먼저 확인
-	bool bShouldRegenerate = ShouldRegenerateCache(NormalizedPathStr, BinPathFileName, MatBinPathFileName);
-
-	if (!bShouldRegenerate)
-	{
-		UE_LOG("Attempting to load '%s' from cache.", NormalizedPathStr.c_str());
-		try
-		{
-			// 캐시에서 FStaticMesh 데이터 로드
-			FWindowsBinReader Reader(BinPathFileName);
-			if (!Reader.IsOpen())
-			{
-				// Reader 생성자에서 예외를 던지지 않는 경우를 대비한 명시적 실패 처리
-				throw std::runtime_error("Failed to open bin file for reading.");
-			}
-			Reader << *NewFStaticMesh;
-			Reader.Close();
-
-			// 캐시에서 Material 데이터 로드
-			FWindowsBinReader MatReader(MatBinPathFileName);
-			if (!MatReader.IsOpen())
-			{
-				throw std::runtime_error("Failed to open material bin file for reading.");
-			}
-			Serialization::ReadArray<FMaterialInfo>(MatReader, MaterialInfos);
-			MatReader.Close();
-
-			NewFStaticMesh->CacheFilePath = BinPathFileName;
-
-			// 모든 로드가 성공적으로 완료됨
-			bLoadedSuccessfully = true;
-			UE_LOG("Successfully loaded '%s' from cache.", NormalizedPathStr.c_str());
-		}
-		catch (const std::exception& e)
-		{
-			UE_LOG("Error loading from cache: %s. Cache might be corrupt or incompatible.", e.what());
-			UE_LOG("Deleting corrupt cache and forcing regeneration for '%s'.", NormalizedPathStr.c_str());
-
-			// 실패 시 생성 중이던 객체 메모리 정리
-			delete NewFStaticMesh;
-			NewFStaticMesh = nullptr; // 포인터를 nullptr로 설정하여 이중 삭제 방지
-
-			// 손상된 캐시 파일 삭제
-			fs::remove(BinPathFileName);
-			fs::remove(MatBinPathFileName);
-
-			bLoadedSuccessfully = false;
-		}
-	}
-#else
-	FStaticMesh* NewFStaticMesh = new FStaticMesh();
-	TArray<FMaterialInfo> MaterialInfos;
-	bool bLoadedSuccessfully = false;
-#endif // USE_OBJ_CACHE
-
-	// 기본 머티리얼 주입 로직을 헬퍼 람다로 분리합니다.
-	auto EnsureDefaultMaterial = [&](FStaticMesh* Mesh, TArray<FMaterialInfo>& Materials)
-		{
-			if (Mesh->GroupInfos.size() > 0 && Materials.empty())
-			{
-				UE_LOG("No materials found for '%s'. Assigning default 'uberlit' material.", NormalizedPathStr.c_str());
-
-				FMaterialInfo DefaultMaterialInfo;
-				UMaterial* DefaultMaterial = UResourceManager::GetInstance().GetDefaultMaterial();
-				DefaultMaterialInfo.MaterialName = DefaultMaterial->GetMaterialInfo().MaterialName;
-				Materials.Add(DefaultMaterialInfo);
-
-				TArray<FGroupInfo>& GroupInfos = Mesh->GroupInfos;
-				for (FGroupInfo& Group : GroupInfos)
-				{
-					if (Group.InitialMaterialName.empty())
-					{
-						Group.InitialMaterialName = DefaultMaterialInfo.MaterialName;
-					}
-				}
-				return true; // 변경됨
-			}
-			return false; // 변경 없음
-		};
-
-	// 캐시 로드에 실패했거나, 처음부터 재생성이 필요했던 경우
-	if (!bLoadedSuccessfully)
-	{
-		if (NewFStaticMesh == nullptr) { NewFStaticMesh = new FStaticMesh(); }
-		UE_LOG("Regenerating cache for '%s'...", NormalizedPathStr.c_str());
-
-		FObjInfo RawObjInfo;
-		if (!FObjImporter::LoadObjModel(NormalizedPathStr, &RawObjInfo, MaterialInfos, true))
-		{
-			delete NewFStaticMesh;
-			return nullptr;
-		}
-
-		FObjImporter::ConvertToStaticMesh(RawObjInfo, MaterialInfos, NewFStaticMesh);
-
-		// 캐시 저장 *직전에* 기본 머티리얼 로직을 호출합니다.
-		EnsureDefaultMaterial(NewFStaticMesh, MaterialInfos);
-
-#ifdef USE_OBJ_CACHE
-		// 새로운 캐시 파일(.umesh) 저장 (이제 올바른 데이터가 저장됨)
-		FWindowsBinWriter Writer(BinPathFileName);
-		Writer << *NewFStaticMesh;
-		Writer.Close();
-
-		FWindowsBinWriter MatWriter(MatBinPathFileName);
-		Serialization::WriteArray<FMaterialInfo>(MatWriter, MaterialInfos);
-		MatWriter.Close();
-
-		UE_LOG("Cache regeneration complete for '%s'.", NormalizedPathStr.c_str());
-#endif // USE_OBJ_CACHE
-	}
-	else
-	{
-		// 캐시 로드에 성공한 경우(bLoadedSuccessfully == true)
-		// 구버전 캐시(기본 머티리얼이 없는)일 수 있으므로, 동일한 검사를 수행합니다.
-		if (EnsureDefaultMaterial(NewFStaticMesh, MaterialInfos))
-		{
-#ifdef USE_OBJ_CACHE
-			// 변경된 경우, 캐시를 갱신합니다.
-			UE_LOG("Updating outdated cache for '%s' with default material.", NormalizedPathStr.c_str());
-			try
-			{
-				FWindowsBinWriter Writer(BinPathFileName);
-				Writer << *NewFStaticMesh;
-				Writer.Close();
-				FWindowsBinWriter MatWriter(MatBinPathFileName);
-				Serialization::WriteArray<FMaterialInfo>(MatWriter, MaterialInfos);
-				MatWriter.Close();
-			}
-			catch (const std::exception& e)
-			{
-				UE_LOG("Failed to update cache for default material: %s", e.what());
-			}
-#endif // USE_OBJ_CACHE
-		}
-	}
-
-	// 4. 머티리얼 및 텍스처 경로 처리 (공통 로직)
-	// 한글 경로 지원: UTF-8 → UTF-16 변환 후 경로 처리
-
-	// .obj 파일의 기본 디렉토리를 FString으로 미리 계산 (한글 경로 지원)
-	FWideString WNormalizedPath = UTF8ToWide(NormalizedPathStr);
-	fs::path BaseDirFs = fs::path(WNormalizedPath).parent_path();
-	FString ObjBaseDir = NormalizePath(WideToUTF8(BaseDirFs.wstring()));
-
-	for (auto& MaterialInfo : MaterialInfos)
-	{
-		// 람다 함수 대신 PathUtils 유틸리티 함수를 직접 호출
-		MaterialInfo.DiffuseTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.DiffuseTextureFileName, ObjBaseDir);
-
-		MaterialInfo.NormalTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.NormalTextureFileName, ObjBaseDir);
-
-		MaterialInfo.TransparencyTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.TransparencyTextureFileName, ObjBaseDir);
-
-		MaterialInfo.AmbientTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.AmbientTextureFileName, ObjBaseDir);
-
-		MaterialInfo.SpecularTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.SpecularTextureFileName, ObjBaseDir);
-
-		MaterialInfo.SpecularExponentTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.SpecularExponentTextureFileName, ObjBaseDir);
-
-		MaterialInfo.EmissiveTextureFileName =
-			ResolveAssetRelativePath(MaterialInfo.EmissiveTextureFileName, ObjBaseDir);
-	}
-
-	// 루프가 시작되기 전에 기본 UberLit 셰이더 포인터를 한 번만 가져옵니다.
-	UShader* DefaultUberlitShader = nullptr;
-	UMaterial* DefaultMaterial = UResourceManager::GetInstance().GetDefaultMaterial();
-	if (DefaultMaterial)
-	{
-		DefaultUberlitShader = DefaultMaterial->GetShader();
-	}
-
-	if (DefaultUberlitShader == nullptr)
-	{
-		UE_LOG("CRITICAL: Default Uberlit Shader not found. OBJ materials may fail.");
-	}
-
-	for (const FMaterialInfo& InMaterialInfo : MaterialInfos)
-	{
-		if (!UResourceManager::GetInstance().Get<UMaterial>(InMaterialInfo.MaterialName))
-		{
-			UMaterial* Material = NewObject<UMaterial>();
-			Material->SetMaterialInfo(InMaterialInfo);
-			Material->SetShaderMacros(DefaultMaterial->GetShaderMacros());
-
-			// 모든 OBJ 파생 머티리얼의 셰이더가 없으면 기본 셰이더로 강제 설정합니다.
-			if (!Material->GetShader())
-			{
-				Material->SetShader(DefaultUberlitShader);
-			}
-
-			UResourceManager::GetInstance().Add<UMaterial>(InMaterialInfo.MaterialName, Material);
-		}
-	}
-
-	// 5. 메모리 캐시에 등록하고 반환
-	ObjStaticMeshMap.Add(NormalizedPathStr, NewFStaticMesh);
-	return NewFStaticMesh;
+	// 4. 메모리 캐시에 등록 후 반환
+	ObjStaticMeshMap.Add(NormalizedPathStr, NewMesh);
+	return NewMesh;
 }
 
 void FObjManager::RegisterStaticMeshAsset(const FString& PathFileName, FStaticMesh* InStaticMesh)
@@ -577,27 +516,126 @@ void FObjManager::RegisterStaticMeshAsset(const FString& PathFileName, FStaticMe
 	ObjStaticMeshMap.Add(NormalizedPathStr, InStaticMesh);
 }
 
-// 여기서 BVH 정보 담아주기 작업을 해야 함 
+// .umesh 파일로부터 UStaticMesh 생성 및 리소스 등록
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName)
 {
-	// 0) 경로
 	FString NormalizedPathStr = NormalizePath(PathFileName);
 
-	// 1) 이미 로드된 UStaticMesh가 있는지 전체 검색 (정규화된 경로로 비교)
+	// 1) 이미 로드된 UStaticMesh가 있는지 확인
 	for (TObjectIterator<UStaticMesh> It; It; ++It)
 	{
 		UStaticMesh* StaticMesh = *It;
-
 		if (StaticMesh->GetFilePath() == NormalizedPathStr)
 		{
 			return StaticMesh;
 		}
 	}
 
-	// 2) 없으면 새로 로드 (정규화된 경로 사용)
-	UStaticMesh* StaticMesh = UResourceManager::GetInstance().Load<UStaticMesh>(NormalizedPathStr);
+	// 2) FStaticMesh 에셋 로드 (.umesh 파일에서)
+	FStaticMesh* StaticMeshAsset = LoadObjStaticMeshAsset(NormalizedPathStr);
+	if (!StaticMeshAsset)
+	{
+		UE_LOG("ERROR: Failed to load FStaticMesh asset from: %s", NormalizedPathStr.c_str());
+		return nullptr;
+	}
 
-	UE_LOG("UStaticMesh(filename: \'%s\') is successfully crated!", NormalizedPathStr.c_str());
+	// 3) .umat 파일에서 머티리얼 정보 로드
+	std::filesystem::path UmeshPath(NormalizedPathStr);
+	FString UmatPath = UmeshPath.parent_path().string() + "/" + UmeshPath.stem().string() + ".umat";
+
+	TArray<FMaterialInfo> MaterialInfos;
+
+#ifdef USE_OBJ_CACHE
+	try
+	{
+		FWindowsBinReader MatReader(UmatPath);
+		if (MatReader.IsOpen())
+		{
+			Serialization::ReadArray<FMaterialInfo>(MatReader, MaterialInfos);
+			MatReader.Close();
+		}
+		else
+		{
+			UE_LOG("WARNING: Could not open .umat file: %s", UmatPath.c_str());
+		}
+	}
+	catch (const std::exception& e)
+	{
+		UE_LOG("ERROR: Failed to load material data from '%s': %s", UmatPath.c_str(), e.what());
+	}
+#endif
+
+	// 4) 머티리얼 텍스처 경로 처리
+	FWideString WNormalizedPath = UTF8ToWide(NormalizedPathStr);
+	fs::path BaseDirFs = fs::path(WNormalizedPath).parent_path();
+	FString UmeshBaseDir = NormalizePath(WideToUTF8(BaseDirFs.wstring()));
+
+	for (auto& MaterialInfo : MaterialInfos)
+	{
+		MaterialInfo.DiffuseTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.DiffuseTextureFileName, UmeshBaseDir);
+
+		MaterialInfo.NormalTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.NormalTextureFileName, UmeshBaseDir);
+
+		MaterialInfo.TransparencyTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.TransparencyTextureFileName, UmeshBaseDir);
+
+		MaterialInfo.AmbientTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.AmbientTextureFileName, UmeshBaseDir);
+
+		MaterialInfo.SpecularTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.SpecularTextureFileName, UmeshBaseDir);
+
+		MaterialInfo.SpecularExponentTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.SpecularExponentTextureFileName, UmeshBaseDir);
+
+		MaterialInfo.EmissiveTextureFileName =
+			ResolveAssetRelativePath(MaterialInfo.EmissiveTextureFileName, UmeshBaseDir);
+	}
+
+	// 5) UMaterial 생성 및 등록
+	UShader* DefaultUberlitShader = nullptr;
+	UMaterial* DefaultMaterial = UResourceManager::GetInstance().GetDefaultMaterial();
+	if (DefaultMaterial)
+	{
+		DefaultUberlitShader = DefaultMaterial->GetShader();
+	}
+
+	if (DefaultUberlitShader == nullptr)
+	{
+		UE_LOG("CRITICAL: Default Uberlit Shader not found. OBJ materials may fail.");
+	}
+
+	for (const FMaterialInfo& InMaterialInfo : MaterialInfos)
+	{
+		if (!UResourceManager::GetInstance().Get<UMaterial>(InMaterialInfo.MaterialName))
+		{
+			UMaterial* Material = NewObject<UMaterial>();
+			Material->SetMaterialInfo(InMaterialInfo);
+			Material->SetShaderMacros(DefaultMaterial->GetShaderMacros());
+
+			if (!Material->GetShader())
+			{
+				Material->SetShader(DefaultUberlitShader);
+			}
+
+			UResourceManager::GetInstance().Add<UMaterial>(InMaterialInfo.MaterialName, Material);
+		}
+	}
+
+	// 6) UStaticMesh 생성 및 GPU 버퍼 초기화
+	UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
+	StaticMesh->SetFilePath(NormalizedPathStr);
+
+	// GPU 버퍼 생성 (VertexBuffer, IndexBuffer, LocalBound)
+	ID3D11Device* Device = UResourceManager::GetInstance().GetDevice();
+	StaticMesh->InitializeFromAsset(StaticMeshAsset, Device, EVertexLayoutType::PositionColorTexturNormal);
+
+	// ResourceManager에 등록
+	UResourceManager::GetInstance().Add<UStaticMesh>(NormalizedPathStr, StaticMesh);
+
+	UE_LOG("UStaticMesh created and registered: %s", NormalizedPathStr.c_str());
 	return StaticMesh;
 }
 

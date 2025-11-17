@@ -96,6 +96,26 @@ void UStaticMesh::Load(const FString& InFilePath, ID3D11Device* InDevice, EVerte
     }
 }
 
+void UStaticMesh::InitializeFromAsset(FStaticMesh* InAsset, ID3D11Device* InDevice, EVertexLayoutType InVertexType)
+{
+	assert(InAsset);
+	assert(InDevice);
+
+	SetVertexType(InVertexType);
+	StaticMeshAsset = InAsset;
+
+	// GPU 버퍼 생성
+	if (StaticMeshAsset && 0 < StaticMeshAsset->Vertices.size() && 0 < StaticMeshAsset->Indices.size())
+	{
+		CacheFilePath = StaticMeshAsset->CacheFilePath;
+		CreateVertexBuffer(StaticMeshAsset, InDevice, InVertexType);
+		CreateIndexBuffer(StaticMeshAsset, InDevice);
+		CreateLocalBound(StaticMeshAsset);
+		VertexCount = static_cast<uint32>(StaticMeshAsset->Vertices.size());
+		IndexCount = static_cast<uint32>(StaticMeshAsset->Indices.size());
+	}
+}
+
 void UStaticMesh::Load(FMeshData* InData, ID3D11Device* InDevice, EVertexLayoutType InVertexType)
 {
     SetVertexType(InVertexType);

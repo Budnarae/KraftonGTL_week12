@@ -37,8 +37,11 @@ void UFbxLoader::PreLoad()
 		return;
 	}
 
-	size_t LoadedCount = 0;
 	std::unordered_set<FString> ProcessedFiles; // 중복 로딩 방지
+	TArray<FString> FbxFilePaths; // 모든 FBX 경로 저장
+
+	// ========== Phase 1: 캐시 생성 ==========
+	UE_LOG("UFbxLoader::Preload - Phase 1: Baking FBX caches...");
 
 	for (const auto& Entry : fs::recursive_directory_iterator(DataDir))
 	{
@@ -57,62 +60,10 @@ void UFbxLoader::PreLoad()
 			if (ProcessedFiles.find(PathStr) == ProcessedFiles.end())
 			{
 				ProcessedFiles.insert(PathStr);
+				FbxFilePaths.Add(PathStr);
 
-				// FBX에서 메시와 애니메이션 모두 로드
-				FFbxAssetData* AssetData = FbxLoader.LoadFbxAssets(PathStr);
-				if (AssetData)
-				{
-					// 파일명 추출 (확장자 제거)
-					FString FileName = Path.stem().string();
-
-					// 메시 등록
-					if (AssetData->MeshData)
-					{
-						ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
-
-						FStaticMesh* StaticMeshData = FbxLoader.ConvertSkeletalToStaticMesh(AssetData->MeshData);
-						if (StaticMeshData)
-						{
-							StaticMeshData->PathFileName = PathStr;
-
-							// ObjManager 캐시에 등록 (메모리 관리)
-							FObjManager::RegisterStaticMeshAsset(PathStr, StaticMeshData);
-
-							// UStaticMesh 생성 및 초기화
-							UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
-							StaticMesh->SetStaticMeshAsset(StaticMeshData);
-
-							RESOURCE.Add<UStaticMesh>(PathStr, StaticMesh);
-							UE_LOG("UStaticMesh(filename: '%s') is successfully created from FBX!", PathStr.c_str());
-						}
-
-						// 스켈레톤이 있으면 SkeletalMesh도 생성
-						if (!AssetData->MeshData->Skeleton.Bones.IsEmpty())
-						{
-							USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
-							SkeletalMesh->InitFromData(AssetData->MeshData, Device);
-
-							RESOURCE.Add<USkeletalMesh>(PathStr, SkeletalMesh);
-							UE_LOG("USkeletalMesh(filename: '%s') is successfully created!", PathStr.c_str());
-						}
-					}
-
-					// 애니메이션 등록
-					for (int AnimIndex = 0; AnimIndex < AssetData->AnimationSequences.Num(); AnimIndex++)
-					{
-						UAnimationSequence* AnimSeq = AssetData->AnimationSequences[AnimIndex];
-						// 애니메이션 이름 생성: 파일명_실제AnimStack이름
-						FString AnimStackName = (AnimIndex < AssetData->AnimationNames.Num())
-							? AssetData->AnimationNames[AnimIndex]
-							: ("Anim" + std::to_string(AnimIndex));
-						FString AnimName = FileName + "_" + AnimStackName;
-						RESOURCE.Add<UAnimationSequence>(AnimName, AnimSeq);
-						UE_LOG("UAnimationSequence(name: '%s') is successfully created!", AnimName.c_str());
-					}
-
-					delete AssetData; // 구조체 자체는 삭제 (내부 포인터는 리소스 매니저가 관리)
-					++LoadedCount;
-				}
+				// 캐시만 생성 (메모리 로드 X)
+				FbxLoader.BakeFbxCacheOnly(PathStr);
 			}
 		}
 		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
@@ -120,9 +71,20 @@ void UFbxLoader::PreLoad()
 			UResourceManager::GetInstance().Load<UTexture>(Path.string()); // 데칼 텍스쳐를 ui에서 고를 수 있게 하기 위해 임시로 만듬.
 		}
 	}
+
+	UE_LOG("UFbxLoader::Preload - Phase 1 completed: %zu FBX caches baked", FbxFilePaths.Num());
+
+	// ========== Phase 2: 캐시에서 메모리로 로드 ==========
+	UE_LOG("UFbxLoader::Preload - Phase 2: Loading from cache to memory...");
+
+	for (const FString& FbxPath : FbxFilePaths)
+	{
+		FbxLoader.LoadFromCacheToMemory(FbxPath);
+	}
+
 	RESOURCE.SetSkeletalMeshs();
 
-	UE_LOG("UFbxLoader::Preload: Loaded %zu .fbx files from %s", LoadedCount, DataDir.string().c_str());
+	UE_LOG("UFbxLoader::Preload: Completed! Processed %zu .fbx files from %s", FbxFilePaths.Num(), DataDir.string().c_str());
 }
 
 
@@ -1609,5 +1571,250 @@ FStaticMesh* UFbxLoader::ConvertSkeletalToStaticMesh(const FSkeletalMeshData* Sk
 	}
 
 	return StaticMesh;
+}
+
+bool UFbxLoader::IsCacheValid(const FString& FbxPath)
+{
+	FString NormalizedPath = NormalizePath(FbxPath);
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
+
+	if (!std::filesystem::exists(BinPathFileName))
+		return false;
+
+	try
+	{
+		auto binTime = std::filesystem::last_write_time(BinPathFileName);
+		auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
+
+		// FBX 파일이 캐시보다 오래되었으면 캐시 유효
+		return fbxTime <= binTime;
+	}
+	catch (const std::filesystem::filesystem_error&)
+	{
+		return false;
+	}
+}
+
+void UFbxLoader::BakeFbxCacheOnly(const FString& FilePath)
+{
+	MaterialInfos.clear();
+	FString NormalizedPath = NormalizePath(FilePath);
+
+	// 캐시가 이미 최신이면 스킵
+	if (IsCacheValid(FilePath))
+	{
+		UE_LOG("Cache already valid for '%s', skipping bake.", NormalizedPath.c_str());
+		return;
+	}
+
+	UE_LOG("Baking cache for '%s'...", NormalizedPath.c_str());
+
+	// Scene 생성 및 전처리
+	FbxScene* Scene = CreateAndPrepareFbxScene(FilePath);
+	if (!Scene)
+		return;
+
+	// 메시 추출
+	TMap<FbxNode*, int32> BoneToIndex;
+	FSkeletalMeshData* MeshData = ExtractMeshFromScene(Scene, BoneToIndex);
+
+	if (MeshData)
+	{
+		MeshData->PathFileName = NormalizedPath;
+
+		// 메시 캐시 저장
+		SaveMeshToCache(MeshData, FilePath);
+
+		// 애니메이션 캐시 저장 (UObject 생성 없이 파일로만 저장)
+		SaveAnimationCachesOnly(Scene, BoneToIndex, MeshData->Skeleton, FilePath);
+
+		// 메모리에서 즉시 해제!
+		delete MeshData;
+	}
+
+	UE_LOG("Cache baked: '%s'", NormalizedPath.c_str());
+}
+
+void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*, int32>& BoneToIndex, const FSkeleton& Skeleton, const FString& FbxPath)
+{
+	if (!InScene)
+		return;
+
+	int AnimStackCount = InScene->GetSrcObjectCount<FbxAnimStack>();
+
+	// FBX 파일명 추출 (확장자 제거)
+	std::filesystem::path FbxFilePath(FbxPath);
+	FString BaseName = FbxFilePath.stem().string();
+	FString CacheDir = ConvertDataPathToResourcePath(NormalizePath(FbxPath));
+	std::filesystem::path CacheDirPath(CacheDir);
+	CacheDirPath = CacheDirPath.parent_path();
+
+	// 캐시 디렉토리 생성
+	if (!CacheDirPath.empty())
+	{
+		std::filesystem::create_directories(CacheDirPath);
+	}
+
+	for (int AnimStackIndex = 0; AnimStackIndex < AnimStackCount; AnimStackIndex++)
+	{
+		FbxAnimStack* AnimStack = InScene->GetSrcObject<FbxAnimStack>(AnimStackIndex);
+		if (!AnimStack)
+			continue;
+
+		FString AnimName = AnimStack->GetName();
+
+		// AnimLayer 가져오기 (보통 0번만 사용)
+		FbxAnimLayer* AnimLayer = AnimStack->GetMember<FbxAnimLayer>(0);
+		if (!AnimLayer)
+			continue;
+
+		// 애니메이션 시간 범위 구하기
+		FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
+		FbxTime StartTime = TimeSpan.GetStart();
+		FbxTime StopTime = TimeSpan.GetStop();
+		FbxTime Duration = StopTime - StartTime;
+
+		double PlayLength = Duration.GetSecondDouble();
+		float FrameRate = 30.0f; // 기본 프레임레이트
+
+		// Scene의 프레임레이트 가져오기
+		FbxTime::EMode TimeMode = InScene->GetGlobalSettings().GetTimeMode();
+		FrameRate = static_cast<float>(FbxTime::GetFrameRate(TimeMode));
+
+		// 본별 애니메이션 트랙 생성
+		TArray<FBoneAnimationTrack> BoneTracks;
+
+		// Scene의 AnimStack 설정
+		InScene->SetCurrentAnimationStack(AnimStack);
+
+		// 전체 프레임 수 계산
+		FbxLongLong FrameCount = Duration.GetFrameCount(TimeMode);
+
+		for (const auto& BonePair : BoneToIndex)
+		{
+			FbxNode* BoneNode = BonePair.first;
+			int32 BoneIndex = BonePair.second;
+
+			FBoneAnimationTrack Track;
+			Track.Name = FName(Skeleton.Bones[BoneIndex].Name);
+
+			// 처음부터 끝까지 모든 프레임을 샘플링
+			for (FbxLongLong Frame = 0; Frame <= FrameCount; Frame++)
+			{
+				FbxTime CurrentTime;
+				CurrentTime.SetFrame(StartTime.GetFrameCount(TimeMode) + Frame, TimeMode);
+
+				// SDK가 알아서 보간/오일러→쿼터니언 변환/피벗 계산을 다 해줌
+				FbxAMatrix LocalTransform = BoneNode->EvaluateLocalTransform(CurrentTime);
+
+				// 행렬에서 T, R, S 추출
+				FbxVector4 Translation = LocalTransform.GetT();
+				FbxQuaternion Rotation = LocalTransform.GetQ();  // 쿼터니언으로 안전하게 받음
+				FbxVector4 Scale = LocalTransform.GetS();
+
+				// 트랙에 추가
+				Track.InternalTrack.PosKeys.Add(FVector(
+					static_cast<float>(Translation[0]),
+					static_cast<float>(Translation[1]),
+					static_cast<float>(Translation[2])));
+				Track.InternalTrack.RotKeys.Add(FVector4(
+					static_cast<float>(Rotation[0]),
+					static_cast<float>(Rotation[1]),
+					static_cast<float>(Rotation[2]),
+					static_cast<float>(Rotation[3])));
+				Track.InternalTrack.ScaleKeys.Add(FVector(
+					static_cast<float>(Scale[0]),
+					static_cast<float>(Scale[1]),
+					static_cast<float>(Scale[2])));
+			}
+
+			BoneTracks.Add(Track);
+		}
+
+		// 개별 애니메이션 파일로 저장 (메모리에 UObject 생성하지 않음!)
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".uanim")).string();
+
+		FWindowsBinWriter Writer(AnimFileName);
+		float PlayLengthFloat = static_cast<float>(PlayLength);
+		Writer << PlayLengthFloat;
+		Writer << FrameRate;
+		Serialization::WriteArray(Writer, BoneTracks);
+		Writer.Close();
+
+		UE_LOG("Animation cache saved: %s (%.2fs, %.2f fps, %d tracks)",
+			AnimFileName.c_str(), PlayLength, FrameRate, BoneTracks.Num());
+	}
+}
+
+void UFbxLoader::LoadFromCacheToMemory(const FString& FbxPath)
+{
+	FString NormalizedPath = NormalizePath(FbxPath);
+
+	// 메시 캐시 로드
+	FSkeletalMeshData* MeshData = TryLoadMeshFromCache(FbxPath);
+	if (!MeshData)
+	{
+		UE_LOG("Failed to load mesh cache for '%s'", NormalizedPath.c_str());
+		return;
+	}
+
+	// 바이너리 캐시 경로 계산 (이게 ResourceManager 키가 됨!)
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	// 예: "Resources/Models/character"
+
+	// 애니메이션 캐시 로드
+	TArray<FString> AnimationNames;
+	TArray<UAnimationSequence*> AnimSequences = TryLoadAnimationsFromCache(FbxPath, AnimationNames);
+
+	// 파일명 추출 (확장자 제거)
+	std::filesystem::path FilePath(FbxPath);
+	FString FileName = FilePath.stem().string();
+
+	ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
+
+	// StaticMesh 생성 및 등록
+	FStaticMesh* StaticMeshData = ConvertSkeletalToStaticMesh(MeshData);
+	if (StaticMeshData)
+	{
+		StaticMeshData->PathFileName = CachePathWithoutExt; // 바이너리 경로로!
+
+		// ObjManager 캐시에 등록 (메모리 관리)
+		FObjManager::RegisterStaticMeshAsset(CachePathWithoutExt, StaticMeshData);
+
+		// UStaticMesh 생성 및 초기화
+		UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
+		StaticMesh->SetStaticMeshAsset(StaticMeshData);
+
+		RESOURCE.Add<UStaticMesh>(CachePathWithoutExt, StaticMesh); // 키: "Resources/Models/character"
+		UE_LOG("UStaticMesh(key: '%s') loaded from cache!", CachePathWithoutExt.c_str());
+	}
+
+	// 스켈레톤이 있으면 SkeletalMesh도 생성
+	if (!MeshData->Skeleton.Bones.IsEmpty())
+	{
+		USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
+		SkeletalMesh->InitFromData(MeshData, Device);
+
+		RESOURCE.Add<USkeletalMesh>(CachePathWithoutExt, SkeletalMesh); // 키: "Resources/Models/character"
+		UE_LOG("USkeletalMesh(key: '%s') loaded from cache!", CachePathWithoutExt.c_str());
+	}
+
+	// 애니메이션 등록
+	for (int AnimIndex = 0; AnimIndex < AnimSequences.Num(); AnimIndex++)
+	{
+		UAnimationSequence* AnimSeq = AnimSequences[AnimIndex];
+		FString AnimStackName = (AnimIndex < AnimationNames.Num())
+			? AnimationNames[AnimIndex]
+			: ("Anim" + std::to_string(AnimIndex));
+		FString AnimName = FileName + "_" + AnimStackName;
+		RESOURCE.Add<UAnimationSequence>(AnimName, AnimSeq);
+		UE_LOG("UAnimationSequence(name: '%s') loaded from cache!", AnimName.c_str());
+	}
 }
 

@@ -5,7 +5,7 @@ IMPLEMENT_CLASS(UGizmoScaleComponent)
 
 UGizmoScaleComponent::UGizmoScaleComponent()
 {
-    SetStaticMesh(GDataDir + "/Gizmo/ScaleHandle.obj");
+    SetStaticMesh(GResourceDir + "/Gizmo/ScaleHandle.umesh");
     SetMaterialByName(0, "Shaders/UI/Gizmo.hlsl");
 }
 
