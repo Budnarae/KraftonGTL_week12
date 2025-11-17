@@ -114,20 +114,31 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
 struct FAnimState
 {
     FName Name{};
-    uint32 Index{};   // Animation State Machine에서의 Index
+    uint32 Index{};
     FAnimNode_Base* EntryNode = nullptr;
-    TArray<FAnimNode_Base*> Nodes;
+    TArray<FAnimNode_Base*> OwnedNodes;
 
-    void SetEntryNode(FAnimNode_Base* InNode)
+    template<typename TNode, typename... Args>
+    TNode* CreateNode(Args&&... args)
     {
-        EntryNode = InNode;
+        TNode* Node = new TNode(std::forward<Args>(args)...);
+        OwnedNodes.Add(Node);
+        return Node;
     }
 
-    template<typename TNode>
-    TNode* AddNode(TNode* InNode)
+    void SetEntryNode(FAnimNode_Base* Node)
     {
-        Nodes.Add(InNode);
-        return InNode;
+        EntryNode = Node;
+    }
+
+    void ResetNodes()
+    {
+        for (FAnimNode_Base* Node : OwnedNodes)
+        {
+            delete Node;
+        }
+        OwnedNodes.Empty();
+        EntryNode = nullptr;
     }
 };
 
@@ -158,7 +169,7 @@ struct FAnimStateTransition
     void SetBlendTime(float InBlendTime) { BlendTime = InBlendTime; }
 };
 
-struct FAnimNode_StateMachine : FAnimNode_Base 
+struct FAnimNode_StateMachine : FAnimNode_Base
 {
     TArray<FAnimState*> States;
     TArray<FAnimStateTransition*> Transitions;
@@ -247,3 +258,6 @@ private:
     // // State 체류 시간
     // float StateElapsedTime;
 };
+
+
+

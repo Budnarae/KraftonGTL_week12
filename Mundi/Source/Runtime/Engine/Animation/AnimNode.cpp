@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimNode.h"
 
 // ====================================
@@ -64,18 +64,25 @@ FAnimState* FAnimNode_StateMachine::FindStateByName(const FName& StateName) cons
 
 FAnimNode_StateMachine::~FAnimNode_StateMachine()
 {
-    while (!States.empty())
+    for (FAnimStateTransition* Transition : Transitions)
     {
-        DeleteState(States.back()->Name);
+        if (Transition)
+        {
+            Transition->CleanupDelegate();
+            delete Transition;
+        }
     }
+    Transitions.Empty();
 
-    while (!Transitions.empty())
+    for (FAnimState* State : States)
     {
-        FAnimStateTransition* Transition = Transitions.back();
-        Transition->CleanupDelegate();
-        delete Transition;
-        Transitions.pop_back();
+        if (State)
+        {
+            State->ResetNodes();
+            delete State;
+        }
     }
+    States.Empty();
 
     CurrentState = nullptr;
     CurrentTransition = nullptr;
@@ -85,109 +92,110 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
     if (bIsInTransition)
     {
-        if (!CurrentTransition) return;
-
-        TransitionBlendNode.Update(Context);
-
-        TransitionElapsed += Context.DeltaTime;
-        float Alpha = (TransitionDuration > 0.f)
-            ? FMath::Clamp(TransitionElapsed / TransitionDuration, 0.f, 1.f)
-            : 1.f;
-
-        TransitionBlendNode.Alpha = Alpha;
-
-        if (Alpha >= 1.f)
+        if (!CurrentTransition || !TransitionBlendNode.From || !TransitionBlendNode.To)
         {
-            // 전이 완료 → TargetState 정착
-            if (CurrentTransition && CurrentTransition->TargetState)
-            {
-                CurrentState = CurrentTransition->TargetState;
-            }
-
             bIsInTransition = false;
             CurrentTransition = nullptr;
-            TransitionElapsed = 0.f;
-            TransitionDuration = 0.f;
+            TransitionBlendNode.bIsBlending = false;
         }
-    }
-    else
-    {
-        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
-            return;
-
-        // 조건을 충족한 Transition이 있으면 State를 변환한다.
-        for (FAnimStateTransition* Transition : Transitions)
+        else
         {
-            if (!Transition) continue;
+            TransitionBlendNode.Update(Context);
 
-            if (Transition->CanEnterTransition &&
-                Transition->SourceState == CurrentState)
+            TransitionElapsed += Context.DeltaTime;
+            float Alpha = (TransitionDuration > 0.f)
+                ? FMath::Clamp(TransitionElapsed / TransitionDuration, 0.f, 1.f)
+                : 1.f;
+
+            TransitionBlendNode.Alpha = Alpha;
+
+            if (Alpha >= 1.f)
             {
-                // --- 전이 시작 설정 ---
-                CurrentTransition = Transition;
-                bIsInTransition = true;
-                TransitionElapsed = 0.f;
-                TransitionDuration = Transition->BlendTime;
-
-                // Source/Target의 entry 시퀀스 노드
-                FAnimNode_Sequence* SourceNode = nullptr;
-                FAnimNode_Sequence* TargetNode = nullptr;
-
-                if (CurrentState->AnimSequenceNodes.Num() > 0)
-                    SourceNode = &CurrentState->AnimSequenceNodes[0];
-
-                if (Transition->TargetState &&
-                    Transition->TargetState->AnimSequenceNodes.Num() > 0)
-                    TargetNode = &Transition->TargetState->AnimSequenceNodes[0];
-
-                // 간단한 페이즈 맞추기
-                if (SourceNode && TargetNode &&
-                    SourceNode->Sequence && TargetNode->Sequence)
+                if (CurrentTransition && CurrentTransition->TargetState)
                 {
-                    const float SrcLen = SourceNode->Sequence->GetPlayLength();
-                    const float DstLen = TargetNode->Sequence->GetPlayLength();
-
-                    if (SrcLen > 0.f && DstLen > 0.f)
-                    {
-                        float Phase = SourceNode->CurrentTime / SrcLen;
-                        Phase = FMath::Clamp(Phase, 0.f, 1.f);
-                        TargetNode->CurrentTime = Phase * DstLen;
-                    }
+                    CurrentState = CurrentTransition->TargetState;
                 }
 
-                // 블렌드 노드 구성
-                TransitionBlendNode.From = SourceNode;
-                TransitionBlendNode.To = TargetNode;
-                TransitionBlendNode.Alpha = 0.f;
-                TransitionBlendNode.BlendTime = Transition->BlendTime;
-                TransitionBlendNode.bIsBlending = true;
-
-                return; // 이번 프레임은 전이 세팅까지만
+                bIsInTransition = false;
+                CurrentTransition = nullptr;
+                TransitionElapsed = 0.f;
+                TransitionDuration = 0.f;
             }
 
-            // 전이 없다 -> 현재 상태의 그래프만 Update
-            FAnimNode_Sequence& SeqNode = CurrentState->AnimSequenceNodes[0];
-            SeqNode.Update(Context);
+            return;
         }
     }
+
+    if (!CurrentState || !CurrentState->EntryNode)
+        return;
+
+    for (FAnimStateTransition* Transition : Transitions)
+    {
+        if (!Transition)
+            continue;
+
+        if (Transition->CanEnterTransition &&
+            Transition->SourceState == CurrentState)
+        {
+            FAnimNode_Base* SourceEntry = CurrentState->EntryNode;
+            FAnimNode_Base* TargetEntry = (Transition->TargetState) ? Transition->TargetState->EntryNode : nullptr;
+
+            if (!SourceEntry || !TargetEntry)
+            {
+                continue;
+            }
+
+            CurrentTransition = Transition;
+            bIsInTransition = true;
+            TransitionElapsed = 0.f;
+            TransitionDuration = Transition->BlendTime;
+
+            if (auto* SourceSeq = dynamic_cast<FAnimNode_Sequence*>(SourceEntry))
+            {
+                if (auto* TargetSeq = dynamic_cast<FAnimNode_Sequence*>(TargetEntry))
+                {
+                    if (SourceSeq->Sequence && TargetSeq->Sequence)
+                    {
+                        const float SrcLen = SourceSeq->Sequence->GetPlayLength();
+                        const float DstLen = TargetSeq->Sequence->GetPlayLength();
+                        if (SrcLen > 0.f && DstLen > 0.f)
+                        {
+                            float Phase = SourceSeq->CurrentTime / SrcLen;
+                            Phase = FMath::Clamp(Phase, 0.f, 1.f);
+                            TargetSeq->CurrentTime = Phase * DstLen;
+                        }
+                    }
+                }
+            }
+
+            TransitionBlendNode.From = SourceEntry;
+            TransitionBlendNode.To = TargetEntry;
+            TransitionBlendNode.Alpha = 0.f;
+            TransitionBlendNode.BlendTime = Transition->BlendTime;
+            TransitionBlendNode.bIsBlending = true;
+
+            return;
+        }
+    }
+
+    CurrentState->EntryNode->Update(Context);
 }
-    
 void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
 {
-    if (bIsInTransition && CurrentTransition)
+    if (bIsInTransition)
     {
-        TransitionBlendNode.Evaluate(Output);
-    }
-    else
-    {
-        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
+        if (TransitionBlendNode.From && TransitionBlendNode.To)
+        {
+            TransitionBlendNode.Evaluate(Output);
             return;
-
-        FAnimNode_Sequence* SequenceToEvaluate = &CurrentState->AnimSequenceNodes.front();
-        SequenceToEvaluate->Evaluate(Output);
+        }
     }
-}
 
+    if (!CurrentState || !CurrentState->EntryNode)
+        return;
+
+    CurrentState->EntryNode->Evaluate(Output);
+}
 FAnimState* FAnimNode_StateMachine::AddState(const FName& StateName)
 {
     // 같은 이름을 가진 State가 있으면 거부
@@ -244,7 +252,8 @@ void FAnimNode_StateMachine::DeleteState(const FName& TargetName)
     {
         if (*It == TargetState)
         {
-            delete* It;
+            (*It)->ResetNodes();
+            delete *It;
             States.erase(It);
             break;
         }

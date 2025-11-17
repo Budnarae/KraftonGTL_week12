@@ -224,19 +224,28 @@ void UAnimInstance::InitializeAnimationStateMachine()
     FAnimState* StateA = ASM.AddState("StateA");
     if (StateA)
     {
-        StateA->AddAnimSequence(AnimA);
+        FAnimNode_Sequence* SequenceNode = StateA->CreateNode<FAnimNode_Sequence>();
+        SequenceNode->SetSequence(AnimA);
+        SequenceNode->SetLooping(true);
+        StateA->SetEntryNode(SequenceNode);
     }
 
     FAnimState* StateB = ASM.AddState("StateB");
     if (StateB)
     {
-        StateB->AddAnimSequence(AnimB);
+        FAnimNode_Sequence* SequenceNode = StateB->CreateNode<FAnimNode_Sequence>();
+        SequenceNode->SetSequence(AnimB);
+        SequenceNode->SetLooping(true);
+        StateB->SetEntryNode(SequenceNode);
     }
 
     FAnimState* StateC = ASM.AddState("StateC");
     if (StateC)
     {
-        StateC->AddAnimSequence(AnimC);
+        FAnimNode_Sequence* SequenceNode = StateC->CreateNode<FAnimNode_Sequence>();
+        SequenceNode->SetSequence(AnimC);
+        SequenceNode->SetLooping(true);
+        StateC->SetEntryNode(SequenceNode);
     }
 
     // AnimationMode를 AnimationBlueprint로 설정
