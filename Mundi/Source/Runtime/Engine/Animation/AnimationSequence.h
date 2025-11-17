@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "AnimationAsset.h"
 #include "AnimDataModel.h"
+#include "AnimationType.h"
 
 class UAnimationSequence : public UAnimationAsset
 {
@@ -21,55 +22,39 @@ public:
     float GetPlayLength() const override;
     float GetFrameRate() const override;
 
+    virtual void Update(const FAnimationUpdateContext& Context) override;
+    virtual void Evaluate(FPoseContext& Output) override;
+
     // ====================================
     // AnimSequence 전용
     // ====================================
 
-    /**
-     * @brief 내부 DataModel에 접근합니다
-     */
     UAnimDataModel* GetDataModel() const { return DataModel; }
-
-    /**
-     * @brief DataModel을 설정합니다
-     */
     void SetDataModel(UAnimDataModel* InDataModel) { DataModel = InDataModel; }
 
-    /**
-     * @brief Skeleton을 설정합니다
-     */
     void SetSkeleton(const FSkeleton& InSkeleton) { Skeleton = InSkeleton; }
 
-    /**
-     * @brief 루핑 여부를 설정합니다
-     */
-    void SetLooping(bool InLooping) { bIsLooping = InLooping; }
+    void SetLooping(bool bInLooping) { bIsLooping = bInLooping; }
+    bool IsLooping() const { return bIsLooping; }
 
-    /**
-     * @brief 모든 본의 애니메이션 트랙을 반환합니다
-     */
+    void ResetPlaybackTime() { CurrentAnimationTime = 0.0f; }
+
+    void SetCurrentTime(float InTime) { CurrentAnimationTime = InTime; }
+    float GetCurrentTime() const { return CurrentAnimationTime; }
+
     const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const;
 
-    void EvaluatePose(float Time, const FSkeleton& Skeleton, FPoseContext& Out) const;
+    void EvaluatePose(float Time, FPoseContext& Out) const;
 
-    /**
-     * @brief 총 프레임 수를 반환합니다
-     */
     int32 GetNumberOfFrames() const;
-
-    /**
-     * @brief 총 키프레임 수를 반환합니다
-     */
     int32 GetNumberOfKeys() const;
-
-    void Update(const FAnimationUpdateContext& Context) override;
-    void Evaluate(FPoseContext& Output) override;
 
 private:
     UAnimDataModel* DataModel = nullptr;
     FSkeleton Skeleton{};
-
-    /* 재생 관련 */
-    float CurrentAnimationTime = 0.0f;  // 현재 애니메이션 재생 시간
-    bool bIsLooping = false;
+    float CurrentAnimationTime = 0.0f;
+    bool bIsLooping = true;
 };
+
+
+

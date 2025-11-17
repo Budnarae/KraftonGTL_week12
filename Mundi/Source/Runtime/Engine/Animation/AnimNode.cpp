@@ -1,35 +1,8 @@
 ﻿#include "pch.h"
-#include "AnimationStateMachine.h"
-#include "AnimationSequence.h"
+#include "AnimNode.h"
 #include "AnimNodeTransitionRule.h"
 
-#include "Keyboard.h"
-
-IMPLEMENT_CLASS(UAnimationStateMachine)
-
-UAnimationStateMachine::UAnimationStateMachine()
-{
-}
-
-UAnimationStateMachine::~UAnimationStateMachine()
-{
-    // States 메모리 해제
-    for (FAnimState* State : States)
-    {
-        delete State;
-    }
-    States.clear();
-
-    // Transitions 메모리 해제
-    for (FAnimStateTransition* Transition : Transitions)
-    {
-        Transition->CleanupDelegate();
-        delete Transition;
-    }
-    Transitions.clear();
-}
-
-FAnimState* UAnimationStateMachine::FindStateByName(const FName& StateName) const
+FAnimState* FAnimNode_StateMachine::FindStateByName(const FName& StateName) const
 {
     for (FAnimState* State : States)
     {
@@ -39,18 +12,42 @@ FAnimState* UAnimationStateMachine::FindStateByName(const FName& StateName) cons
     return nullptr;
 }
 
-void UAnimationStateMachine::Update(const FAnimationUpdateContext& Context)
+FAnimNode_StateMachine::~FAnimNode_StateMachine()
+{
+    while (!States.empty())
+    {
+        DeleteState(States.back()->Name);
+    }
+
+    while (!Transitions.empty())
+    {
+        FAnimStateTransition* Transition = Transitions.back();
+        Transition->CleanupDelegate();
+        delete Transition;
+        Transitions.pop_back();
+    }
+
+    CurrentState = nullptr;
+    CurrentTransition = nullptr;
+}
+
+void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
     if (bIsInTransition)
     {
+        if (!CurrentTransition) return;
+
         CurrentTransition->Update(Context);
 
         // Transition 중에도 Target State 애니메이션 업데이트 (블렌딩 전까지 임시)
         if (CurrentTransition->TargetState &&
-            !CurrentTransition->TargetState->AnimSequences.empty())
+            !CurrentTransition->TargetState->AnimSequenceNodes.empty())
         {
-            UAnimationSequence* SequenceToUpdate = CurrentTransition->TargetState->AnimSequences.front();
-            SequenceToUpdate->Update(Context);
+            FAnimNode_Sequence* SequenceToUpdate = &CurrentTransition->TargetState->AnimSequenceNodes.front();
+            if (SequenceToUpdate)
+            {
+                SequenceToUpdate->Update(Context);
+            }
         }
 
         // Transition 완료 처리
@@ -64,12 +61,14 @@ void UAnimationStateMachine::Update(const FAnimationUpdateContext& Context)
     }
     else
     {
-        if (!CurrentState || CurrentState->AnimSequences.empty())
+        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
             return;
 
         // 조건을 충족한 Transition이 있으면 State를 변환한다.
         for (FAnimStateTransition* Transition : Transitions)
         {
+            if (!Transition) continue;
+
             if (Transition->CanEnterTransition &&
                 Transition->SourceState == CurrentState)
             {
@@ -81,41 +80,44 @@ void UAnimationStateMachine::Update(const FAnimationUpdateContext& Context)
         }
 
         // 블렌드 구현 이전까지 State의 첫번째 Sequence를 우선하여 적용합니다.
-        UAnimationSequence* SequenceToUpdate = CurrentState->AnimSequences.front();
-        SequenceToUpdate->Update(Context);
+        FAnimNode_Sequence* SequenceToUpdate = &CurrentState->AnimSequenceNodes.front();
+        if (SequenceToUpdate)
+        {
+            SequenceToUpdate->Update(Context);
+        }
     }
 }
 
-void UAnimationStateMachine::Evaluate(FPoseContext& Output)
+void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
 {
     if (bIsInTransition)
     {
         // 블렌딩 구현 전까지 임시로 Target State를 평가
         if (CurrentTransition->TargetState &&
-            !CurrentTransition->TargetState->AnimSequences.empty())
+            !CurrentTransition->TargetState->AnimSequenceNodes.empty())
         {
-            UAnimationSequence* SequenceToEvaluate = CurrentTransition->TargetState->AnimSequences.front();
+            FAnimNode_Sequence* SequenceToEvaluate = &CurrentTransition->TargetState->AnimSequenceNodes.front();
             SequenceToEvaluate->Evaluate(Output);
         }
     }
     else
     {
-        if (!CurrentState || CurrentState->AnimSequences.empty())
+        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
             return;
 
-        UAnimationSequence* SequenceToEvaluate = CurrentState->AnimSequences.front();
+        FAnimNode_Sequence* SequenceToEvaluate = &CurrentState->AnimSequenceNodes.front();
         SequenceToEvaluate->Evaluate(Output);
     }
 }
 
-FAnimState* UAnimationStateMachine::AddState(const FName& StateName)
+FAnimState* FAnimNode_StateMachine::AddState(const FName& StateName)
 {
     // 같은 이름을 가진 State가 있으면 거부
     for (const FAnimState* State : States)
     {
         if (State->Name == StateName)
         {
-            UE_LOG("[UAnimationStateMachine::AddState] Warning : A state with the same name already exists in the Animation State Machine.");
+            UE_LOG("[FAnimNode_StateMachine::AddState] Warning : A state with the same name already exists in the Animation State Machine.");
             return nullptr;
         }
     }
@@ -135,25 +137,26 @@ FAnimState* UAnimationStateMachine::AddState(const FName& StateName)
     return State;
 }
 
-void UAnimationStateMachine::DeleteState(const FName& TargetName)
+void FAnimNode_StateMachine::DeleteState(const FName& TargetName)
 {
     // 삭제할 State 찾기
     FAnimState* TargetState = FindStateByName(TargetName);
 
     if (!TargetState)
     {
-        UE_LOG("[UAnimationStateMachine::DeleteState] Warning : The state you are trying to delete does not exist in the state machine.");
+        UE_LOG("[FAnimNode_StateMachine::DeleteState] Warning : The state you are trying to delete does not exist in the state machine.");
         return;
     }
 
     // 해당 State를 참조하는 Transition들을 먼저 제거
     for (int32 i = Transitions.Num() - 1; i >= 0; i--)
     {
-        if (Transitions[i]->SourceState == TargetState ||
-            Transitions[i]->TargetState == TargetState)
+        FAnimStateTransition* Transition = Transitions[i];
+        if (Transition->SourceState == TargetState ||
+            Transition->TargetState == TargetState)
         {
-            Transitions[i]->CleanupDelegate();
-            delete Transitions[i];
+             Transition->CleanupDelegate();
+             delete Transition;
             Transitions.erase(Transitions.begin() + i);
         }
     }
@@ -163,7 +166,7 @@ void UAnimationStateMachine::DeleteState(const FName& TargetName)
     {
         if (*It == TargetState)
         {
-            delete *It;
+            delete* It;
             States.erase(It);
             break;
         }
@@ -176,7 +179,7 @@ void UAnimationStateMachine::DeleteState(const FName& TargetName)
     }
 }
 
-FAnimStateTransition* UAnimationStateMachine::AddTransition
+FAnimStateTransition* FAnimNode_StateMachine::AddTransition
 (
     const FName& SourceName,
     const FName& TargetName
@@ -188,17 +191,18 @@ FAnimStateTransition* UAnimationStateMachine::AddTransition
 
     if (!SourceState || !TargetState)
     {
-        UE_LOG("[UAnimationStateMachine::AddTransition] Warning : The target state you are trying to connect with this transition does not exist in the state machine.");
+        UE_LOG("[FAnimNode_StateMachine::AddTransition] Warning : The target state you are trying to connect with this transition does not exist in the state machine.");
         return nullptr;
     }
 
     // 이미 같은 노드에 대한 연결이 있으면 거부
     for (const FAnimStateTransition* Transition : Transitions)
     {
+        if (!Transition) continue;
         if (Transition->SourceState == SourceState &&
             Transition->TargetState == TargetState)
         {
-            UE_LOG("[UAnimationStateMachine::AddTransition] Warning : A transition to the same target state already exists in the state machine.");
+            UE_LOG("[FAnimNode_StateMachine::AddTransition] Warning : A transition to the same target state already exists in the state machine.");
             return nullptr;
         }
     }
@@ -213,7 +217,7 @@ FAnimStateTransition* UAnimationStateMachine::AddTransition
     return Transition;
 }
 
-FAnimStateTransition* UAnimationStateMachine::AddTransition
+FAnimStateTransition* FAnimNode_StateMachine::AddTransition
 (
     const FName& SourceName,
     const FName& TargetName,
@@ -228,7 +232,7 @@ FAnimStateTransition* UAnimationStateMachine::AddTransition
 
     if (!TransitionRule)
     {
-        UE_LOG("[UAnimationStateMachine::AddTransition] Warning : TransitionRule is nullptr.");
+        UE_LOG("[FAnimNode_StateMachine::AddTransition] Warning : TransitionRule is nullptr.");
         return Transition;
     }
 
@@ -240,7 +244,7 @@ FAnimStateTransition* UAnimationStateMachine::AddTransition
     return Transition;
 }
 
-void UAnimationStateMachine::DeleteTransition(const FName& SourceName, const FName& TargetName)
+void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FName& TargetName)
 {
     // 입력된 이름과 일치하는 State 찾기
     FAnimState* SourceState = FindStateByName(SourceName);
@@ -248,7 +252,7 @@ void UAnimationStateMachine::DeleteTransition(const FName& SourceName, const FNa
 
     if (!SourceState || !TargetState)
     {
-        UE_LOG("[UAnimationStateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
+        UE_LOG("[FAnimNode_StateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
         return;
     }
 
@@ -258,10 +262,10 @@ void UAnimationStateMachine::DeleteTransition(const FName& SourceName, const FNa
             (*It)->TargetState == TargetState)
         {
             (*It)->CleanupDelegate();
-            delete *It;
+            delete* It;
             Transitions.erase(It);
             return;
         }
     }
-    UE_LOG("[UAnimationStateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
+    UE_LOG("[FAnimNode_StateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
 }

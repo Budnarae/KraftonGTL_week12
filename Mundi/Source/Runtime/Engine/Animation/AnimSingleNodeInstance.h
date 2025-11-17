@@ -29,8 +29,10 @@ class UAnimSingleNodeInstance : public UAnimInstance
      */
     UAnimationAsset* GetCurrentAnimation() const { return CurrentAnimation; }
 
-    void NativeUpdateAnimation(float DeltaSeconds) override;
-    void EvaluateAnimation() override;
+protected:
+    virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+    virtual void EvaluateAnimation() override;
+
 private:
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
 };

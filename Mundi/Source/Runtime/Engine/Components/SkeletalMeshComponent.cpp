@@ -24,34 +24,19 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 
     if (AnimInstance && AnimInstance->GetSkeletalComponent() != this)
     {
+        DeleteObject(AnimInstance);
         AnimInstance = nullptr;
     }
 
     if (!AnimInstance)
     {
         /* UAnimInstanceTest */
-        // UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
-        // SetAnimInstanceClass(NewAnimInstanceClass);
+         UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
+         SetAnimInstanceClass(NewAnimInstanceClass);
 
         /* UAnimSingleNodeInstanceTest */
-        UAnimInstance* NewAnimInstanceClass = NewObject<UAnimSingleNodeInstance>();
-        SetAnimInstanceClass(NewAnimInstanceClass);
-    }
-
-    if (AnimInstance)
-    {
-        /* UAnimSingleNodeInstanceTest */
-        UAnimationSequence* AnimToPlay = RESOURCE.Load<UAnimationSequence>("vanguard_mixamo.com");
-        Cast<UAnimSingleNodeInstance>(AnimInstance)->PlayAnimation(AnimToPlay);
-
-        /* UAnimInstanceTest */
-        // UAnimationSequence* SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
-        // AnimInstance->PlayAnimation(RESOURCE.Load<UAnimationAsset>("vanguard_mixamo.com"), true);
-        // FOR TEST
-        // UAnimationSequence* SeqA = RESOURCE.Load<UAnimationSequence>("Standard Run_mixamo.com");
-        // UAnimationSequence* SeqB = RESOURCE.Load<UAnimationSequence>("Standard Walk_mixamo.com");
-
-        // AnimInstance->PlayBlendedAnimation(*SeqA, *SeqB);
+        //UAnimInstance* NewAnimInstanceClass = NewObject<UAnimSingleNodeInstance>();
+        //SetAnimInstanceClass(NewAnimInstanceClass);
     }
 }
 
@@ -62,27 +47,8 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
     if (AnimInstance && (AnimationMode == EAnimationMode::AnimationSingleNode ||
                          AnimationMode == EAnimationMode::AnimationBlueprint))
     {
-        // FOR TEST
-        AnimInstance->UpdateBlendedAnimation(DeltaTime, Alpha);
         AnimInstance->UpdateAnimation(DeltaTime);
     }
-
-    // // FOR TEST ////
-    //  if (!SkeletalMesh) { return; }
-    //  constexpr int32 TEST_BONE_INDEX = 2;
-    //  if (!bIsInitialized)
-    //  {
-    //      TestBoneBasePose = CurrentLocalSpacePose[TEST_BONE_INDEX];
-    //      bIsInitialized = true;
-    //  }
-    //  TestTime += DeltaTime;
-    //  float Angle = sinf(TestTime * 2.f);
-    //  FQuat TestRotation = FQuat::FromAxisAngle(FVector(1.f, 0.f, 0.f), Angle);
-    //  TestRotation.Normalize();
-    //  FTransform NewLocalPose = TestBoneBasePose;
-    //  NewLocalPose.Rotation = TestRotation * TestBoneBasePose.Rotation;
-    //  SetBoneLocalTransform(TEST_BONE_INDEX, NewLocalPose);
-    // // FOR TEST ////
 }
 
 void USkeletalMeshComponent::SetSkeletalMesh(const FString& PathFileName)

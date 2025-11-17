@@ -40,8 +40,9 @@ void UAnimSingleNodeInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool
             AnimSequence->SetSkeleton(Skeleton);
         }
 
-        // 루핑 설정
+        // 루핑 및 재생 시간 설정
         AnimSequence->SetLooping(bLooping);
+        AnimSequence->ResetPlaybackTime();
     }
 }
 
@@ -60,7 +61,11 @@ void UAnimSingleNodeInstance::EvaluateAnimation()
     if (!CurrentAnimation || !OwnerSkeletalComp)
         return;
 
-    FPoseContext CurrentPose;
+    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
+    const FSkeleton* Skeleton = (SkeletalMesh && SkeletalMesh->GetSkeletalMeshData()) ?
+        &SkeletalMesh->GetSkeletalMeshData()->Skeleton : nullptr;
+
+    FPoseContext CurrentPose(Skeleton);
     CurrentAnimation->Evaluate(CurrentPose);
 
     // 평가된 포즈를 SkeletalMeshComponent에 적용
