@@ -318,10 +318,20 @@ void UEditorEngine::MainLoop()
             UE_LOG("[info] END PIE");
 
             bChangedPieToEditor = false;
+            bSkipNextRender = true;  // PIE 종료 직후 한 프레임 렌더링 스킵 (해제된 리소스 참조 방지)
         }
 
         Tick(DeltaSeconds);
-        Render();
+
+        // PIE 종료 직후에는 렌더링 스킵 (Component 소멸로 인해 해제된 GPU 리소스 참조 방지)
+        if (!bSkipNextRender)
+        {
+            Render();
+        }
+        else
+        {
+            bSkipNextRender = false;
+        }
         
         // Shader Hot Reloading - Call AFTER render to avoid mid-frame resource conflicts
         // This ensures all GPU commands are submitted before we check for shader updates
