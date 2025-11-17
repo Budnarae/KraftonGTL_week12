@@ -236,7 +236,7 @@ void UAnimInstance::InitializeAnimationStateMachine()
     // AnimationMode를 AnimationBlueprint로 설정
     if (OwnerSkeletalComp)
     {
-        OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationBlueprint);
+        OwnerSkeletalComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
     }
 
     // Transition Rule 생성 및 추가 (10초마다 전환)

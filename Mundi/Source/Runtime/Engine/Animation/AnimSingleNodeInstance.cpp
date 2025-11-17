@@ -25,7 +25,7 @@ void UAnimSingleNodeInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool
         return;
     }
 
-    OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationSingleNode);
+    OwnerSkeletalComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
     SetAnimation(NewAnimToPlay);
 
     // AnimationSequence인 경우 추가 설정
