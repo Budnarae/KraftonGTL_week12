@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimationSequence.h"
 #include "WindowsBinWriter.h"
 #include <filesystem>
@@ -71,6 +71,53 @@ bool UAnimationSequence::Save(const FString& InFilePath)
     }
 }
 
+void UAnimationSequence::Update(const FAnimationUpdateContext& Context)
+{
+    if (!DataModel)
+    {
+        return;
+    }
+
+    const float PlayLength = GetPlayLength();
+    if (PlayLength <= 0.0f)
+    {
+        return;
+    }
+
+    CurrentAnimationTime += Context.DeltaTime;
+
+    if (bIsLooping)
+    {
+        CurrentAnimationTime = std::fmod(CurrentAnimationTime, PlayLength);
+        if (CurrentAnimationTime < 0.0f)
+        {
+            CurrentAnimationTime += PlayLength;
+        }
+    }
+    else
+    {
+        CurrentAnimationTime = FMath::Clamp(CurrentAnimationTime, 0.0f, PlayLength);
+    }
+}
+
+void UAnimationSequence::Evaluate(FPoseContext& Output)
+{
+    if (!DataModel)
+    {
+        return;
+    }
+
+    if (!Output.Skeleton)
+    {
+        if (Skeleton.Bones.Num() == 0)
+        {
+            return;
+        }
+        Output.Skeleton = &Skeleton;
+    }
+
+    EvaluatePose(CurrentAnimationTime, Output);
+}
 FTransform UAnimationSequence::GetBonePose(const FName& BoneName, float Time) const
 {
     if (!DataModel)
@@ -151,7 +198,7 @@ const TArray<FBoneAnimationTrack>& UAnimationSequence::GetBoneAnimationTracks() 
     return DataModel ? DataModel->GetBoneAnimationTracks() : Empty;
 }
 
-void UAnimationSequence::EvaluatePose(float Time, const FSkeleton& Skeleton, FPoseContext& OutContext) const
+void UAnimationSequence::EvaluatePose(float Time, FPoseContext& OutContext) const
 {
     if (!DataModel)
     {
@@ -159,17 +206,27 @@ void UAnimationSequence::EvaluatePose(float Time, const FSkeleton& Skeleton, FPo
         return;
     }
 
-    float CurTime = fmod(Time, GetPlayLength());
+    if (!OutContext.Skeleton)
+    {
+        if (Skeleton.Bones.Num() == 0)
+        {
+            OutContext.EvaluatedPoses.SetNum(0);
+            return;
+        }
+        OutContext.Skeleton = &Skeleton;
+    }
 
-    const int32 BoneNum = Skeleton.Bones.Num();
+    const FSkeleton& EvalSkeleton = *OutContext.Skeleton;
+
+    const int32 BoneNum = EvalSkeleton.Bones.Num();
     OutContext.EvaluatedPoses.SetNum(BoneNum);
 
     for (int32 BoneIndex = 0; BoneIndex < BoneNum; BoneIndex++)
     {
-        const FBone CurBone = Skeleton.Bones[BoneIndex];
+        const FBone CurBone = EvalSkeleton.Bones[BoneIndex];
         const FName BoneName(CurBone.Name);
 
-        OutContext.EvaluatedPoses[BoneIndex] = GetBonePose(BoneName, CurTime);
+        OutContext.EvaluatedPoses[BoneIndex] = GetBonePose(BoneName, Time);
     }
 }
 
@@ -193,32 +250,4 @@ int32 UAnimationSequence::GetNumberOfKeys() const
     return DataModel ? DataModel->GetNumberOfKeys() : 0;
 }
 
-void UAnimationSequence::Update(const FAnimationUpdateContext& Context)
-{
-    if (!DataModel) return;
 
-    CurrentAnimationTime += Context.DeltaTime;
-    float PlayLength = GetPlayLength();
-
-    if (CurrentAnimationTime >= PlayLength)
-    {
-        if (bIsLooping)
-            CurrentAnimationTime = fmod(CurrentAnimationTime, PlayLength);
-        else
-            CurrentAnimationTime = PlayLength;
-    }
-}
-
-void UAnimationSequence::Evaluate(FPoseContext& Output)
-{
-    const int32 NumBones = Skeleton.Bones.Num();
-
-    Output.EvaluatedPoses.clear();
-    Output.EvaluatedPoses.resize(NumBones);
-
-    for (int32 BoneIndex = 0; BoneIndex < NumBones; BoneIndex++)
-    {
-        const FBone& Bone = Skeleton.Bones[BoneIndex];
-        Output.EvaluatedPoses[BoneIndex] = GetBonePose(Bone.Name, CurrentAnimationTime);
-    }
-}
