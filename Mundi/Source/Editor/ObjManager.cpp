@@ -462,39 +462,43 @@ void FObjManager::Clear()
 FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FString& PathFileName)
 {
 	FString NormalizedPathStr = NormalizePath(PathFileName);
+	FString PathWithoutExt = RemoveExtension(NormalizedPathStr);
 
-	// 1. 메모리 캐시 확인
-	if (FStaticMesh** It = ObjStaticMeshMap.Find(NormalizedPathStr))
+	// 1. 메모리 캐시 확인 (확장자 제거한 키로 검색)
+	if (FStaticMesh** It = ObjStaticMeshMap.Find(PathWithoutExt))
 	{
 		return *It;
 	}
 
-	// 2. 확장자 확인
+	// 2. 확장자 확인 (.obj 또는 .umesh 허용)
 	std::filesystem::path Path(NormalizedPathStr);
 	FString Extension = Path.extension().string();
 	std::transform(Extension.begin(), Extension.end(), Extension.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-	if (Extension != ".umesh")
+	if (Extension != ".umesh" && Extension != ".obj")
 	{
-		UE_LOG("ERROR: LoadObjStaticMeshAsset expects .umesh file, got: %s", NormalizedPathStr.c_str());
+		UE_LOG("ERROR: LoadObjStaticMeshAsset expects .umesh or .obj file, got: %s", NormalizedPathStr.c_str());
 		return nullptr;
 	}
 
-	// 3. .umesh 파일 로드
+	// 3. .umesh 캐시 파일 경로 생성 (확장자를 .umesh로 강제)
+	FString UmeshPath = PathWithoutExt + ".umesh";
+	FString UmatPath = PathWithoutExt + ".umat";
+
+	// 4. .umesh 파일 로드
 	FStaticMesh* NewMesh = new FStaticMesh();
 	TArray<FMaterialInfo> MaterialInfos; // 사용하지 않지만 호환성을 위해 남김
 
-	if (!LoadFromCache(NormalizedPathStr, Path.parent_path().string() + "/" + Path.stem().string() + ".umat",
-	                   NewMesh, MaterialInfos))
+	if (!LoadFromCache(UmeshPath, UmatPath, NewMesh, MaterialInfos))
 	{
 		delete NewMesh;
-		UE_LOG("ERROR: Failed to load .umesh file: %s", NormalizedPathStr.c_str());
+		UE_LOG("ERROR: Failed to load .umesh file: %s", UmeshPath.c_str());
 		return nullptr;
 	}
 
-	// 4. 메모리 캐시에 등록 후 반환
-	ObjStaticMeshMap.Add(NormalizedPathStr, NewMesh);
+	// 5. 메모리 캐시에 등록 후 반환 (확장자 제거한 키로 저장)
+	ObjStaticMeshMap.Add(PathWithoutExt, NewMesh);
 	return NewMesh;
 }
 
@@ -506,26 +510,28 @@ void FObjManager::RegisterStaticMeshAsset(const FString& PathFileName, FStaticMe
 	}
 
 	FString NormalizedPathStr = NormalizePath(PathFileName);
+	FString PathWithoutExt = RemoveExtension(NormalizedPathStr);
 
-	// 이미 등록된 경우 기존 것을 삭제하고 새로 등록
-	if (FStaticMesh** Existing = ObjStaticMeshMap.Find(NormalizedPathStr))
+	// 이미 등록된 경우 기존 것을 삭제하고 새로 등록 (확장자 제거한 키로 확인)
+	if (FStaticMesh** Existing = ObjStaticMeshMap.Find(PathWithoutExt))
 	{
 		delete *Existing;
 	}
 
-	ObjStaticMeshMap.Add(NormalizedPathStr, InStaticMesh);
+	ObjStaticMeshMap.Add(PathWithoutExt, InStaticMesh);
 }
 
 // .umesh 파일로부터 UStaticMesh 생성 및 리소스 등록
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName)
 {
 	FString NormalizedPathStr = NormalizePath(PathFileName);
+	FString PathWithoutExt = RemoveExtension(NormalizedPathStr);
 
-	// 1) 이미 로드된 UStaticMesh가 있는지 확인
+	// 1) 이미 로드된 UStaticMesh가 있는지 확인 (확장자 제거한 경로로 비교)
 	for (TObjectIterator<UStaticMesh> It; It; ++It)
 	{
 		UStaticMesh* StaticMesh = *It;
-		if (StaticMesh->GetFilePath() == NormalizedPathStr)
+		if (StaticMesh->GetFilePath() == PathWithoutExt)
 		{
 			return StaticMesh;
 		}
@@ -540,8 +546,7 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName)
 	}
 
 	// 3) .umat 파일에서 머티리얼 정보 로드
-	std::filesystem::path UmeshPath(NormalizedPathStr);
-	FString UmatPath = UmeshPath.parent_path().string() + "/" + UmeshPath.stem().string() + ".umat";
+	FString UmatPath = PathWithoutExt + ".umat";
 
 	TArray<FMaterialInfo> MaterialInfos;
 
@@ -626,16 +631,16 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName)
 
 	// 6) UStaticMesh 생성 및 GPU 버퍼 초기화
 	UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
-	StaticMesh->SetFilePath(NormalizedPathStr);
+	StaticMesh->SetFilePath(PathWithoutExt);  // 확장자 제거한 경로로 통일
 
 	// GPU 버퍼 생성 (VertexBuffer, IndexBuffer, LocalBound)
 	ID3D11Device* Device = UResourceManager::GetInstance().GetDevice();
 	StaticMesh->InitializeFromAsset(StaticMeshAsset, Device, EVertexLayoutType::PositionColorTexturNormal);
 
-	// ResourceManager에 등록
-	UResourceManager::GetInstance().Add<UStaticMesh>(NormalizedPathStr, StaticMesh);
+	// ResourceManager에 등록 (확장자 제거한 경로)
+	UResourceManager::GetInstance().Add<UStaticMesh>(PathWithoutExt, StaticMesh);
 
-	UE_LOG("UStaticMesh created and registered: %s", NormalizedPathStr.c_str());
+	UE_LOG("UStaticMesh created and registered: %s", PathWithoutExt.c_str());
 	return StaticMesh;
 }
 

@@ -1787,9 +1787,9 @@ void UFbxLoader::LoadFromCacheToMemory(const FString& FbxPath)
 		// ObjManager 캐시에 등록 (메모리 관리)
 		FObjManager::RegisterStaticMeshAsset(CachePathWithoutExt, StaticMeshData);
 
-		// UStaticMesh 생성 및 초기화
+		// UStaticMesh 생성 및 GPU 버퍼 초기화
 		UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
-		StaticMesh->SetStaticMeshAsset(StaticMeshData);
+		StaticMesh->InitializeFromAsset(StaticMeshData, Device, EVertexLayoutType::PositionColorTexturNormal);
 
 		RESOURCE.Add<UStaticMesh>(CachePathWithoutExt, StaticMesh); // 키: "Resources/Models/character"
 		UE_LOG("UStaticMesh(key: '%s') loaded from cache!", CachePathWithoutExt.c_str());
