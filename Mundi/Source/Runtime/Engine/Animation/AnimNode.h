@@ -1,6 +1,7 @@
 ﻿#pragma once
-#include "AnimationType.h"
 #include "AnimationSequence.h"
+#include "Delegates.h"
+#include "AnimNodeTransitionRule.h"
 
 struct FAnimNode_Base {
 	virtual void Update(const FAnimationUpdateContext& Context) = 0;
@@ -58,8 +59,58 @@ struct FAnimNode_Sequence : FAnimNode_Base
     }
 };
 
-class UAnimationSequence;
+struct FAnimNode_TwoWayBlend : FAnimNode_Base
+{
+    FAnimNode_Base* From = nullptr;
+    FAnimNode_Base* To = nullptr;
 
+    float Alpha = 0.f;        // 0 → A, 1 → B
+    float BlendTime = 0.2f;
+    float BlendTimeElapsed = 0.f;
+    bool bIsBlending = false;
+
+    virtual void Update(const FAnimationUpdateContext& Context) override
+    {
+        if (From) From->Update(Context);
+        if (To) To->Update(Context);
+
+        if (bIsBlending)
+        {
+            BlendTimeElapsed += Context.DeltaTime;
+            Alpha = FMath::Clamp(BlendTimeElapsed / BlendTime, 0.f, 1.f);
+
+            if (BlendTimeElapsed >= BlendTime)
+                bIsBlending = false;
+        }
+    }
+
+    virtual void Evaluate(FPoseContext& Output) override
+    {
+        if (!From || !To)
+            return;
+
+        FPoseContext PoseFrom(Output.Skeleton);
+        FPoseContext PoseTo(Output.Skeleton);
+
+        From->Evaluate(PoseFrom);
+        To->Evaluate(PoseTo);
+
+        Blend(PoseFrom, PoseTo, Alpha, Output);
+    }
+
+    void Blend(const FPoseContext& Start, const FPoseContext& End, float Alpha, FPoseContext& Out)
+    {
+        const int32 BoneCnt = std::min(Start.EvaluatedPoses.Num(), End.EvaluatedPoses.Num());
+        Out.EvaluatedPoses.SetNum(BoneCnt);
+
+        const float ClampedWeight = std::clamp(Alpha, 0.0f, 1.0f);
+
+        for (int i = 0; i < BoneCnt; i++)
+        {
+            Out.EvaluatedPoses[i] = FTransform::Lerp(Start.EvaluatedPoses[i], End.EvaluatedPoses[i], Alpha);
+        }
+    }
+};
 struct FAnimState
 {
     FName Name{};
@@ -83,21 +134,47 @@ struct FAnimState
     }
 };
 
-class UAnimNodeTransitionRule;
+struct FAnimStateTransition
+{
+    FAnimState* SourceState = nullptr;
+    FAnimState* TargetState = nullptr;
+
+    uint32 Index{}; // Animation State Machine에서의 Index
+
+    bool CanEnterTransition = false; // true가 되면 Transition 발동
+
+    // Delegate 관리
+    UAnimNodeTransitionRule* AssociatedRule = nullptr;
+    FDelegateHandle DelegateHandle;
+
+    float BlendTime = 0.2f;       // ActiveState Pose -> TargetState Pose로 자연스럽게 Blend
+
+    FAnimStateTransition() = default;
+    FAnimStateTransition(const FAnimStateTransition& Other);
+    FAnimStateTransition& operator=(const FAnimStateTransition& Other);
+    ~FAnimStateTransition();
+
+    void CleanupDelegate();
+
+    void TriggerTransition() { CanEnterTransition = true; } // 특정 조건을 충족하면 외부의 delegate에서 호출
+
+    void SetBlendTime(float InBlendTime) { BlendTime = InBlendTime; }
+};
+
 struct FAnimNode_StateMachine : FAnimNode_Base 
 {
-    // 현재 활성화된 State (포인터)
+    TArray<FAnimState*> States;
+    TArray<FAnimStateTransition*> Transitions;
+
     FAnimState* CurrentState = nullptr;
-    FAnimStateTransition* CurrentTransition = nullptr;
 
     // Transition 중인지 여부
     bool bIsInTransition = false;
+    FAnimStateTransition* CurrentTransition = nullptr;
 
-    // State 리스트 (동적 할당)
-    TArray<FAnimState*> States;
-
-    // Transition 리스트 (동적 할당)
-    TArray<FAnimStateTransition*> Transitions;
+    float TransitionElapsed = 0.f;
+    float TransitionDuration = 0.f;
+    FAnimNode_TwoWayBlend TransitionBlendNode;
 
     virtual ~FAnimNode_StateMachine();
 
