@@ -1,6 +1,9 @@
 #pragma once
 #include "SViewerWindowBase.h"
 #include "Source/Runtime/Engine/SkeletalViewer/ViewerState.h"
+#include "Source/Slate/Widgets/BoneHierarchyWidget.h"
+#include "Source/Slate/Widgets/BonePropertyEditor.h"
+#include "Source/Slate/Widgets/AssetBrowserWidget.h"
 
 class FViewport;
 class FViewportClient;
@@ -59,6 +62,11 @@ private:
 
     // Cached center region used for viewport sizing and input mapping
     FRect CenterRect;
+
+    // UI Widgets (재사용 가능)
+    FAssetBrowserWidget AssetBrowser;
+    FBoneHierarchyWidget BoneHierarchy;
+    FBonePropertyEditor PropertyEditor;
 
 private:
     void UpdateBoneTransformFromSkeleton(ViewerState* State);

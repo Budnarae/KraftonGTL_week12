@@ -131,62 +131,42 @@ void SSkeletalMeshViewerWindow::OnRender()
             ImGui::PopStyleColor();
             ImGui::Spacing();
 
-            // Mesh path section
-            ImGui::BeginGroup();
-            ImGui::Text("Mesh Path:");
-            ImGui::PushItemWidth(-1.0f);
-            ImGui::InputTextWithHint("##MeshPath", "Browse for FBX file...", State->MeshPathBuffer, sizeof(State->MeshPathBuffer));
-            ImGui::PopItemWidth();
-
-            ImGui::Spacing();
-
-            // Buttons
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.28f, 0.40f, 0.55f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.50f, 0.70f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.35f, 0.50f, 1.0f));
-
+            // === Asset Browser Widget (리팩토링됨) ===
             float buttonWidth = (leftWidth - 24.0f) * 0.5f - 4.0f;
-            if (ImGui::Button("Browse...", ImVec2(buttonWidth, 32)))
+
+            // 현재 경로를 위젯에 반영 (처음에만)
+            if (AssetBrowser.GetPath()[0] == '\0' && State->MeshPathBuffer[0] != '\0')
             {
-                auto widePath = FPlatformProcess::OpenLoadFileDialog(UTF8ToWide(GDataDir), L"fbx", L"FBX Files");
-                if (!widePath.empty())
-                {
-                    std::string s = widePath.string();
-                    strncpy_s(State->MeshPathBuffer, s.c_str(), sizeof(State->MeshPathBuffer) - 1);
-                }
+                AssetBrowser.SetPath(State->MeshPathBuffer);
             }
 
-            ImGui::SameLine();
-
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.40f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.70f, 0.50f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.50f, 0.30f, 1.0f));
-            if (ImGui::Button("Load FBX", ImVec2(buttonWidth, 32)))
+            // Asset Browser 렌더링 (Load 버튼 클릭 시 true 반환)
+            if (AssetBrowser.Render("fbx", "FBX Files", buttonWidth))
             {
-                FString Path = State->MeshPathBuffer;
-                if (!Path.empty())
+                // 로드 성공 시 처리
+                FString Path = AssetBrowser.GetPath();
+                USkeletalMesh* Mesh = UResourceManager::GetInstance().Load<USkeletalMesh>(Path);
+                if (Mesh && State->PreviewActor)
                 {
-                    USkeletalMesh* Mesh = UResourceManager::GetInstance().Load<USkeletalMesh>(Path);
-                    if (Mesh && State->PreviewActor)
+                    State->PreviewActor->SetSkeletalMesh(Path);
+                    State->CurrentMesh = Mesh;
+                    State->LoadedMeshPath = Path;  // Track for resource unloading
+
+                    // 경로를 State에 반영
+                    strncpy_s(State->MeshPathBuffer, Path.c_str(), sizeof(State->MeshPathBuffer) - 1);
+
+                    if (auto* Skeletal = State->PreviewActor->GetSkeletalMeshComponent())
                     {
-                        State->PreviewActor->SetSkeletalMesh(Path);
-                        State->CurrentMesh = Mesh;
-                        State->LoadedMeshPath = Path;  // Track for resource unloading
-                        if (auto* Skeletal = State->PreviewActor->GetSkeletalMeshComponent())
-                        {
-                            Skeletal->SetVisibility(State->bShowMesh);
-                        }
-                        State->bBoneLinesDirty = true;
-                        if (auto* LineComp = State->PreviewActor->GetBoneLineComponent())
-                        {
-                            LineComp->ClearLines();
-                            LineComp->SetLineVisible(State->bShowBones);
-                        }
+                        Skeletal->SetVisibility(State->bShowMesh);
+                    }
+                    State->bBoneLinesDirty = true;
+                    if (auto* LineComp = State->PreviewActor->GetBoneLineComponent())
+                    {
+                        LineComp->ClearLines();
+                        LineComp->SetLineVisible(State->bShowBones);
                     }
                 }
             }
-            ImGui::PopStyleColor(6);
-            ImGui::EndGroup();
 
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.35f, 0.45f, 0.60f, 0.7f));
@@ -231,132 +211,27 @@ void SSkeletalMeshViewerWindow::OnRender()
             ImGui::PopStyleColor();
             ImGui::Spacing();
 
-            // Bone Hierarchy Section
+            // === Bone Hierarchy Widget (리팩토링됨) ===
             ImGui::Text("Bone Hierarchy:");
             ImGui::Spacing();
 
-            if (!State->CurrentMesh)
+            const FSkeleton* Skeleton = State->CurrentMesh ? State->CurrentMesh->GetSkeleton() : nullptr;
+
+            // Bone Hierarchy Widget 렌더링
+            if (BoneHierarchy.Render(Skeleton, State->SelectedBoneIndex, State->ExpandedBoneIndices))
             {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-                ImGui::TextWrapped("No skeletal mesh loaded.");
-                ImGui::PopStyleColor();
-            }
-            else
-            {
-                const FSkeleton* Skeleton = State->CurrentMesh->GetSkeleton();
-                if (!Skeleton || Skeleton->Bones.IsEmpty())
+                // 본 선택 변경 시 처리
+                State->bBoneLinesDirty = true;
+                ExpandToSelectedBone(State, State->SelectedBoneIndex);
+
+                if (State->PreviewActor && State->World)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-                    ImGui::TextWrapped("This mesh has no skeleton data.");
-                    ImGui::PopStyleColor();
-                }
-                else
-                {
-                    // Scrollable tree view
-                    ImGui::BeginChild("BoneTreeView", ImVec2(0, 0), true);
-                    const TArray<FBone>& Bones = Skeleton->Bones;
-                    TArray<TArray<int32>> Children;
-                    Children.resize(Bones.size());
-                    for (int32 i = 0; i < Bones.size(); ++i)
+                    State->PreviewActor->RepositionAnchorToBone(State->SelectedBoneIndex);
+                    if (USceneComponent* Anchor = State->PreviewActor->GetBoneGizmoAnchor())
                     {
-                        int32 Parent = Bones[i].ParentIndex;
-                        if (Parent >= 0 && Parent < Bones.size())
-                        {
-                            Children[Parent].Add(i);
-                        }
+                        State->World->GetSelectionManager()->SelectActor(State->PreviewActor);
+                        State->World->GetSelectionManager()->SelectComponent(Anchor);
                     }
-
-                    std::function<void(int32)> DrawNode = [&](int32 Index)
-                    {
-                        const bool bLeaf = Children[Index].IsEmpty();
-                        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanFullWidth;
-
-                        if (bLeaf)
-                        {
-                            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                        }
-
-                        // 펼쳐진 노드는 명시적으로 열린 상태로 설정
-                        if (State->ExpandedBoneIndices.count(Index) > 0)
-                        {
-                            ImGui::SetNextItemOpen(true);
-                        }
-
-                        if (State->SelectedBoneIndex == Index)
-                        {
-                            flags |= ImGuiTreeNodeFlags_Selected;
-                        }
-
-                        ImGui::PushID(Index);
-                        const char* Label = Bones[Index].Name.c_str();
-
-                        if (State->SelectedBoneIndex == Index)
-                        {
-                            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.35f, 0.55f, 0.85f, 0.8f));
-                            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.40f, 0.60f, 0.90f, 1.0f));
-                            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
-                        }
-
-                        bool open = ImGui::TreeNodeEx((void*)(intptr_t)Index, flags, "%s", Label ? Label : "<noname>");
-
-                        if (State->SelectedBoneIndex == Index)
-                        {
-                            ImGui::PopStyleColor(3);
-
-                            // 선택된 본까지 스크롤
-                            ImGui::SetScrollHereY(0.5f);
-                        }
-
-                        // 사용자가 수동으로 노드를 접거나 펼쳤을 때 상태 업데이트
-                        if (ImGui::IsItemToggledOpen())
-                        {
-                            if (open)
-                                State->ExpandedBoneIndices.insert(Index);
-                            else
-                                State->ExpandedBoneIndices.erase(Index);
-                        }
-
-                        if (ImGui::IsItemClicked())
-                        {
-                            if (State->SelectedBoneIndex != Index)
-                            {
-                                State->SelectedBoneIndex = Index;
-                                State->bBoneLinesDirty = true;
-
-                                ExpandToSelectedBone(State, Index);
-
-                                if (State->PreviewActor && State->World)
-                                {
-                                    State->PreviewActor->RepositionAnchorToBone(Index);
-                                    if (USceneComponent* Anchor = State->PreviewActor->GetBoneGizmoAnchor())
-                                    {
-                                        State->World->GetSelectionManager()->SelectActor(State->PreviewActor);
-                                        State->World->GetSelectionManager()->SelectComponent(Anchor);
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!bLeaf && open)
-                        {
-                            for (int32 Child : Children[Index])
-                            {
-                                DrawNode(Child);
-                            }
-                            ImGui::TreePop();
-                        }
-                        ImGui::PopID();
-                    };
-
-                    for (int32 i = 0; i < Bones.size(); ++i)
-                    {
-                        if (Bones[i].ParentIndex < 0)
-                        {
-                            DrawNode(i);
-                        }
-                    }
-
-                    ImGui::EndChild();
                 }
             }
         }
@@ -400,7 +275,7 @@ void SSkeletalMeshViewerWindow::OnRender()
         ImGui::PopStyleColor();
         ImGui::Spacing();
 
-        // === 선택된 본의 트랜스폼 편집 UI ===
+        // === Bone Property Editor Widget (리팩토링됨) ===
         if (State && State->SelectedBoneIndex >= 0 && State->CurrentMesh)
         {
             const FSkeleton* Skeleton = State->CurrentMesh->GetSkeleton();
@@ -408,103 +283,29 @@ void SSkeletalMeshViewerWindow::OnRender()
             {
                 const FBone& SelectedBone = Skeleton->Bones[State->SelectedBoneIndex];
 
-                // Selected bone header with icon-like prefix
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.90f, 0.40f, 1.0f));
-                ImGui::Text("> Selected Bone");
-                ImGui::PopStyleColor();
-
-                ImGui::Spacing();
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.90f, 0.95f, 1.00f, 1.0f));
-                ImGui::TextWrapped("%s", SelectedBone.Name.c_str());
-                ImGui::PopStyleColor();
-
-                ImGui::Spacing();
-                ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(0.45f, 0.55f, 0.70f, 0.8f));
-                ImGui::Separator();
-                ImGui::PopStyleColor();
-
                 // 본의 현재 트랜스폼 가져오기 (편집 중이 아닐 때만)
-                if (!State->bBoneRotationEditing)
+                if (!PropertyEditor.IsEditing())
                 {
                     UpdateBoneTransformFromSkeleton(State);
                 }
 
-                ImGui::Spacing();
+                // Property Editor 렌더링
+                FBonePropertyEditResult EditResult = PropertyEditor.Render(
+                    SelectedBone.Name.c_str(),
+                    State->EditBoneLocation,
+                    State->EditBoneRotation,
+                    State->EditBoneScale
+                );
 
-                // Location 편집
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
-                ImGui::Text("Location");
-                ImGui::PopStyleColor();
-
-                ImGui::PushItemWidth(-1);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.28f, 0.20f, 0.20f, 0.6f));
-                bool bLocationChanged = false;
-                bLocationChanged |= ImGui::DragFloat("##BoneLocX", &State->EditBoneLocation.X, 0.1f, 0.0f, 0.0f, "X: %.3f");
-                bLocationChanged |= ImGui::DragFloat("##BoneLocY", &State->EditBoneLocation.Y, 0.1f, 0.0f, 0.0f, "Y: %.3f");
-                bLocationChanged |= ImGui::DragFloat("##BoneLocZ", &State->EditBoneLocation.Z, 0.1f, 0.0f, 0.0f, "Z: %.3f");
-                ImGui::PopStyleColor();
-                ImGui::PopItemWidth();
-
-                if (bLocationChanged)
+                // 트랜스폼 변경 시 처리
+                if (EditResult.AnyChanged())
                 {
                     ApplyBoneTransform(State);
                     State->bBoneLinesDirty = true;
                 }
 
-                ImGui::Spacing();
-
-                // Rotation 편집
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 1.0f, 0.5f, 1.0f));
-                ImGui::Text("Rotation");
-                ImGui::PopStyleColor();
-
-                ImGui::PushItemWidth(-1);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.20f, 0.28f, 0.20f, 0.6f));
-                bool bRotationChanged = false;
-
-                if (ImGui::IsAnyItemActive())
-                {
-                    State->bBoneRotationEditing = true;
-                }
-
-                bRotationChanged |= ImGui::DragFloat("##BoneRotX", &State->EditBoneRotation.X, 0.5f, -180.0f, 180.0f, "X: %.2f°");
-                bRotationChanged |= ImGui::DragFloat("##BoneRotY", &State->EditBoneRotation.Y, 0.5f, -180.0f, 180.0f, "Y: %.2f°");
-                bRotationChanged |= ImGui::DragFloat("##BoneRotZ", &State->EditBoneRotation.Z, 0.5f, -180.0f, 180.0f, "Z: %.2f°");
-                ImGui::PopStyleColor();
-                ImGui::PopItemWidth();
-
-                if (!ImGui::IsAnyItemActive())
-                {
-                    State->bBoneRotationEditing = false;
-                }
-
-                if (bRotationChanged)
-                {
-                    ApplyBoneTransform(State);
-                    State->bBoneLinesDirty = true;
-                }
-
-                ImGui::Spacing();
-
-                // Scale 편집
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 1.0f, 1.0f));
-                ImGui::Text("Scale");
-                ImGui::PopStyleColor();
-
-                ImGui::PushItemWidth(-1);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.20f, 0.20f, 0.28f, 0.6f));
-                bool bScaleChanged = false;
-                bScaleChanged |= ImGui::DragFloat("##BoneScaleX", &State->EditBoneScale.X, 0.01f, 0.001f, 100.0f, "X: %.3f");
-                bScaleChanged |= ImGui::DragFloat("##BoneScaleY", &State->EditBoneScale.Y, 0.01f, 0.001f, 100.0f, "Y: %.3f");
-                bScaleChanged |= ImGui::DragFloat("##BoneScaleZ", &State->EditBoneScale.Z, 0.01f, 0.001f, 100.0f, "Z: %.3f");
-                ImGui::PopStyleColor();
-                ImGui::PopItemWidth();
-
-                if (bScaleChanged)
-                {
-                    ApplyBoneTransform(State);
-                    State->bBoneLinesDirty = true;
-                }
+                // bBoneRotationEditing 플래그 동기화 (기존 코드 호환성)
+                State->bBoneRotationEditing = PropertyEditor.IsEditing();
             }
         }
         else
