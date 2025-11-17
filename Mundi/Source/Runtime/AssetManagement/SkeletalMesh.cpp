@@ -42,6 +42,45 @@ void USkeletalMesh::Load(const FString& InFilePath, ID3D11Device* InDevice)
     VertexStride = sizeof(FVertexDynamic);
 }
 
+bool USkeletalMesh::Save(const FString& InOutputPath)
+{
+    if (!Data)
+    {
+        UE_LOG("SkeletalMesh::Save failed: No mesh data to save");
+        return false;
+    }
+
+    FString SavePath = InOutputPath.empty() ? FilePath : InOutputPath;
+    if (SavePath.empty())
+    {
+        UE_LOG("SkeletalMesh::Save failed: No file path specified");
+        return false;
+    }
+
+    // 디렉토리 생성
+    std::filesystem::path FilePathObj(SavePath);
+    if (FilePathObj.has_parent_path())
+    {
+        std::filesystem::create_directories(FilePathObj.parent_path());
+    }
+
+    try
+    {
+        FWindowsBinWriter Writer(SavePath);
+        Writer << *Data;
+        Writer.Close();
+
+        UE_LOG("SkeletalMesh saved: %s (%d vertices, %d indices)",
+               SavePath.c_str(), Data->Vertices.Num(), Data->Indices.Num());
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        UE_LOG("SkeletalMesh::Save failed: %s", e.what());
+        return false;
+    }
+}
+
 void USkeletalMesh::InitFromData(FSkeletalMeshData* InData, ID3D11Device* InDevice)
 {
     if (Data)

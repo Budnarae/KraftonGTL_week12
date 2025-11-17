@@ -1,7 +1,7 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SkeletalMeshComponent.h"
 #include "../Animation/AnimInstance.h"
-#include "Source/Runtime/Engine/Animation/AnimationAsset.h"
+#include "../Animation/AnimSingleNodeInstance.h"
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
@@ -13,7 +13,7 @@ USkeletalMeshComponent::~USkeletalMeshComponent()
 {
     if (AnimInstance)
     {
-        delete AnimInstance;
+        DeleteObject(AnimInstance);
         AnimInstance = nullptr;
     }
 }
@@ -29,7 +29,12 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 
     if (!AnimInstance)
     {
-        UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
+        /* UAnimInstanceTest */
+        // UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
+        // SetAnimInstanceClass(NewAnimInstanceClass);
+
+        /* UAnimSingleNodeInstanceTest */
+        UAnimInstance* NewAnimInstanceClass = NewObject<UAnimSingleNodeInstance>();
         SetAnimInstanceClass(NewAnimInstanceClass);
     }
 }

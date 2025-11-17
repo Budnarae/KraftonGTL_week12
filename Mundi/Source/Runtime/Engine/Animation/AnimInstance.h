@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "AnimNodeTransitionRule.h"
 #include "AnimNode.h"
 
@@ -123,26 +123,7 @@ public:
      * @brief Animation State Machine 접근자
      */
 
-// ====================================
-// State Query
-// ====================================
-public:
-    /**
-     * @brief 현재 재생 중인 애니메이션 반환
-     */
-    UAnimationAsset* GetCurrentAnimation() const { return CurrentAnimation; }
-    
-    /**
-     * @brief 현재 애니메이션 재생 시간 반환
-     */
-    float GetCurrentAnimationTime() const { return CurrentAnimationTime; }
-    
-    /**
-     * @brief 재생 중인지 여부 반환
-     */
-    bool IsPlaying() const { return bIsPlaying; }
-    
-private:
+protected:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
 

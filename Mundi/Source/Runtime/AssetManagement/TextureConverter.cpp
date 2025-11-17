@@ -181,19 +181,21 @@ FString FTextureConverter::GetDDSCachePath(const FString& SourcePath)
 	// 1. 원본 경로 정규화 (백슬래시 -> 슬래시)
 	FString NormalizedPath = NormalizePath(SourcePath);
 
-	// 2. 이미 DDS 캐시 경로인지 확인
-	if (NormalizedPath.find(GCacheDir) != FString::npos &&
-		NormalizedPath.find(".dds") != FString::npos)
+	// 2. 이미 Content 경로인지 확인
+	if (NormalizedPath.find(GResourceDir) != FString::npos &&
+		NormalizedPath.find(".utxt") != FString::npos)
 	{
 		return NormalizedPath;
 	}
 
 	// 3. 경로 변환
-	// (PathUtils::ConvertDataPathToCachePath가 절대/상대 경로 및 Data/ 접두사 처리를 모두 담당)
-	FString CachePath = ConvertDataPathToCachePath(NormalizedPath);
+	// (PathUtils::ConvertDataPathToResourcePath가 절대/상대 경로 및 Data/ 접두사 처리를 모두 담당)
+	FString CachePath = ConvertDataPathToResourcePath(NormalizedPath);
 
-	// 4. .dds 확장자 추가
-	CachePath += ".dds";
+	// 4. 확장자 제거 후 .utxt 추가 (예: "Content/Textures/wood.png" → "Content/Textures/wood.utxt")
+	std::filesystem::path ContentPath(CachePath);
+	FString CachePathWithoutExt = ContentPath.parent_path().string() + "/" + ContentPath.stem().string();
+	CachePath = CachePathWithoutExt + ".utxt";
 
 	return NormalizePath(CachePath);
 }
@@ -204,7 +206,7 @@ bool FTextureConverter::IsSupportedFormat(const FString& Extension)
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
 	static const std::unordered_set<FString> SupportedFormats = {
-		".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr", ".dds", ".tif", ".tiff"
+		".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr", ".dds", ".utxt", ".tif", ".tiff"
 	};
 
 	return SupportedFormats.find(ext) != SupportedFormats.end();

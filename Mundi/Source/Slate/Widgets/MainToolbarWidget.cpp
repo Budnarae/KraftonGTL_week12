@@ -456,7 +456,7 @@ void UMainToolbarWidget::RenderLoadPrefabButton()
 
     if (bButtonClicked)
     {
-        const FWideString BaseDir = UTF8ToWide(GDataDir) + L"/Prefabs";
+        const FWideString BaseDir = UTF8ToWide(GPrefabDir);
         const FWideString Extension = L".prefab";
         const FWideString Description = L"Prefab Files";
 

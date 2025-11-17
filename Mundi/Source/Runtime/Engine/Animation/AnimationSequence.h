@@ -16,7 +16,7 @@ public:
     // ====================================
 
     void Load(const FString& InFilePath, ID3D11Device* InDevice) override;
-    void Save(const FString& InFilePath) override;
+    bool Save(const FString& InFilePath = "") override;
 
     FTransform GetBonePose(const FName& BoneName, float Time) const override;
     float GetPlayLength() const override;
@@ -63,8 +63,8 @@ public:
      */
     int32 GetNumberOfKeys() const;
 
-    void Update(const FAnimationUpdateContext& Context);
-    void Evaluate(FPoseContext& Output);
+    void Update(const FAnimationUpdateContext& Context) override;
+    void Evaluate(FPoseContext& Output) override;
 
 private:
     UAnimDataModel* DataModel = nullptr;

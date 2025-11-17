@@ -8,8 +8,11 @@ public:
 
     USkeletalMesh();
     virtual ~USkeletalMesh() override;
-    
+
     void Load(const FString& InFilePath, ID3D11Device* InDevice);
+
+    // UResourceBase 인터페이스 구현
+    virtual bool Save(const FString& InOutputPath = "") override;
 
     // LoadFbxAssets를 통해 미리 로드된 데이터로 초기화
     void InitFromData(FSkeletalMeshData* InData, ID3D11Device* InDevice);

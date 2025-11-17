@@ -11,8 +11,10 @@
 #include "PathUtils.h"
 #include <filesystem>
 
+#include "ObjManager.h"
 #include "Source/Runtime/Engine/Animation/AnimationSequence.h"
 #include "Source/Runtime/Engine/Animation/AnimDataModel.h"
+#include "Source/Runtime/AssetManagement/StaticMesh.h"
 
 IMPLEMENT_CLASS(UFbxLoader)
 
@@ -66,13 +68,33 @@ void UFbxLoader::PreLoad()
 					// 메시 등록
 					if (AssetData->MeshData)
 					{
-						// USkeletalMesh 생성 및 리소스 매니저에 등록
-						USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
 						ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
-						SkeletalMesh->InitFromData(AssetData->MeshData, Device);
 
-						RESOURCE.Add<USkeletalMesh>(PathStr, SkeletalMesh);
-						UE_LOG("USkeletalMesh(filename: '%s') is successfully created!", PathStr.c_str());
+						FStaticMesh* StaticMeshData = FbxLoader.ConvertSkeletalToStaticMesh(AssetData->MeshData);
+						if (StaticMeshData)
+						{
+							StaticMeshData->PathFileName = PathStr;
+
+							// ObjManager 캐시에 등록 (메모리 관리)
+							FObjManager::RegisterStaticMeshAsset(PathStr, StaticMeshData);
+
+							// UStaticMesh 생성 및 초기화
+							UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
+							StaticMesh->SetStaticMeshAsset(StaticMeshData);
+
+							RESOURCE.Add<UStaticMesh>(PathStr, StaticMesh);
+							UE_LOG("UStaticMesh(filename: '%s') is successfully created from FBX!", PathStr.c_str());
+						}
+
+						// 스켈레톤이 있으면 SkeletalMesh도 생성
+						if (!AssetData->MeshData->Skeleton.Bones.IsEmpty())
+						{
+							USkeletalMesh* SkeletalMesh = NewObject<USkeletalMesh>();
+							SkeletalMesh->InitFromData(AssetData->MeshData, Device);
+
+							RESOURCE.Add<USkeletalMesh>(PathStr, SkeletalMesh);
+							UE_LOG("USkeletalMesh(filename: '%s') is successfully created!", PathStr.c_str());
+						}
 					}
 
 					// 애니메이션 등록
@@ -411,7 +433,34 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 	int VertexId = 0;
 
 	// 위의 이유로 ControlPoint를 인덱스 버퍼로 쓸 수가 없어서 Vertex마다 대응되는 Index Map을 따로 만들어서 계산할 것임.
-	TMap<FSkinnedVertex, uint32> IndexMap;
+	// ✅ 최적화: FSkinnedVertex 전체 대신 실제 FBX 인덱스 조합을 키로 사용 (10배+ 빠름)
+	// FBX는 Position, Normal, UV, Tangent 각각에 대해 서로 다른 인덱스를 가질 수 있음
+	struct FVertexKey {
+		int ControlPointIndex;  // Position 인덱스
+		int NormalIndex;        // Normal MappingIndex
+		int UVIndex;            // UV MappingIndex
+		int TangentIndex;       // Tangent MappingIndex
+
+		bool operator==(const FVertexKey& Other) const {
+			return ControlPointIndex == Other.ControlPointIndex &&
+			       NormalIndex == Other.NormalIndex &&
+			       UVIndex == Other.UVIndex &&
+			       TangentIndex == Other.TangentIndex;
+		}
+	};
+
+	struct FVertexKeyHash {
+		size_t operator()(const FVertexKey& Key) const {
+			// 4개 정수를 결합한 해시
+			size_t hash = std::hash<int>()(Key.ControlPointIndex);
+			hash ^= std::hash<int>()(Key.NormalIndex) << 1;
+			hash ^= std::hash<int>()(Key.UVIndex) << 2;
+			hash ^= std::hash<int>()(Key.TangentIndex) << 3;
+			return hash;
+		}
+	};
+
+	std::unordered_map<FVertexKey, uint32, FVertexKeyHash> IndexMap;
 
 
 	for (int PolygonIndex = 0; PolygonIndex < PolygonCount; PolygonIndex++)
@@ -435,6 +484,9 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 			FSkinnedVertex SkinnedVertex{};
 			// 폴리곤 인덱스와 폴리곤 내에서의 vertexIndex로 ControlPointIndex 얻어냄
 			int ControlPointIndex = InMesh->GetPolygonVertex(PolygonIndex, VertexIndex);
+
+			// ✅ 중복 체크용 키 인덱스 (각 속성 샘플링 시 기록)
+			int NormalIdx = -1, UVIdx = -1, TangentIdx = -1;
 
 			const FbxVector4& Position = FbxSceneWorld.MultT(ControlPoints[ControlPointIndex]);
 			//const FbxVector4& Position = ControlPoints[ControlPointIndex];
@@ -545,6 +597,8 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 					break;
 				}
 
+				NormalIdx = MappingIndex;  // ✅ 중복 체크용 저장
+
 				switch (Normals->GetReferenceMode())
 				{
 				case FbxGeometryElement::eDirect:
@@ -591,6 +645,8 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				default:
 					break;
 				}
+
+				TangentIdx = MappingIndex;  // ✅ 중복 체크용 저장
 
 				switch (Tangents->GetReferenceMode())
 				{
@@ -649,6 +705,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				switch (UVs->GetMappingMode())
 				{
 				case FbxGeometryElement::eByControlPoint:
+					UVIdx = ControlPointIndex;  // ✅ 중복 체크용 저장
 					switch (UVs->GetReferenceMode())
 					{
 					case FbxGeometryElement::eDirect:
@@ -671,6 +728,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				case FbxGeometryElement::eByPolygonVertex:
 				{
 					int TextureUvIndex = InMesh->GetTextureUVIndex(PolygonIndex, VertexIndex);
+					UVIdx = TextureUvIndex;  // ✅ 중복 체크용 저장
 					switch (UVs->GetReferenceMode())
 					{
 					case FbxGeometryElement::eDirect:
@@ -690,12 +748,16 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				}
 			}
 
-			// 실제 인덱스 버퍼에서 사용할 인덱스
+			// ✅ 실제 인덱스 버퍼에서 사용할 인덱스
+			// 위에서 이미 NormalIdx, UVIdx, TangentIdx를 샘플링하면서 저장했음
 			uint32 IndexOfVertex;
+			FVertexKey Key{ ControlPointIndex, NormalIdx, UVIdx, TangentIdx };
+
 			// 기존의 Vertex맵에 있으면 그 인덱스를 사용
-			if (IndexMap.Contains(SkinnedVertex))
+			auto it = IndexMap.find(Key);
+			if (it != IndexMap.end())
 			{
-				IndexOfVertex = IndexMap[SkinnedVertex];
+				IndexOfVertex = it->second;
 			}
 			else
 			{
@@ -704,7 +766,7 @@ void UFbxLoader::LoadMesh(FbxMesh* InMesh, FSkeletalMeshData& MeshData, TMap<int
 				IndexOfVertex = MeshData.Vertices.Num() - 1;
 
 				// 인덱스 맵에 추가
-				IndexMap.Add(SkinnedVertex, IndexOfVertex);
+				IndexMap[Key] = IndexOfVertex;
 			}
 			// 대응하는 머티리얼 인덱스 리스트에 추가
 			TArray<uint32>& GroupIndexList = MaterialGroupIndexList[MaterialIndex];
@@ -1007,7 +1069,7 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 	// FBX 파일명 추출 (확장자 제거)
 	std::filesystem::path FbxFilePath(FbxPath);
 	FString BaseName = FbxFilePath.stem().string();  // 확장자 없는 파일명
-	FString CacheDir = ConvertDataPathToCachePath(NormalizePath(FbxPath));
+	FString CacheDir = ConvertDataPathToResourcePath(NormalizePath(FbxPath));
 	std::filesystem::path CacheDirPath(CacheDir);
 	CacheDirPath = CacheDirPath.parent_path();
 
@@ -1095,8 +1157,8 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 			BoneTracks.Add(Track);
 		}
 
-		// 개별 애니메이션 파일로 저장: BaseName_AnimName.anim.bin
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".anim.bin")).string();
+		// 개별 애니메이션 파일로 저장: BaseName_AnimName.uanim
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".uanim")).string();
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
@@ -1222,8 +1284,13 @@ FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
 {
 #ifdef USE_OBJ_CACHE
 	FString NormalizedPath = NormalizePath(FbxPath);
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString BinPathFileName = CachePathStr + ".bin";
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+
+	// 확장자 제거 (예: "Content/Models/character.fbx" → "Content/Models/character")
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
+	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
 	// 캐시 유효성 검사
 	bool bShouldRegenerate = true;
@@ -1270,7 +1337,7 @@ FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
 				if (MeshData->GroupInfos[Index].InitialMaterialName.empty())
 					continue;
 				const FString& MaterialName = MeshData->GroupInfos[Index].InitialMaterialName;
-				const FString& MaterialFilePath = ConvertDataPathToCachePath(MaterialName + ".mat.bin");
+				const FString& MaterialFilePath = ConvertDataPathToResourcePath(MaterialName + ".umat");
 				FWindowsBinReader MatReader(MaterialFilePath);
 				if (!MatReader.IsOpen())
 				{
@@ -1311,8 +1378,13 @@ void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& Fbx
 		return;
 
 	FString NormalizedPath = NormalizePath(FbxPath);
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
-	const FString BinPathFileName = CachePathStr + ".bin";
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+
+	// 확장자 제거 (예: "Content/Models/character.fbx" → "Content/Models/character")
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
+	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
 	// 캐시를 저장할 디렉토리가 없으면 생성
 	std::filesystem::path CacheFileDirPath(BinPathFileName);
@@ -1330,7 +1402,7 @@ void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& Fbx
 		// 머티리얼 저장
 		for (FMaterialInfo& MaterialInfo : MaterialInfos)
 		{
-			const FString MaterialFilePath = ConvertDataPathToCachePath(MaterialInfo.MaterialName + ".mat.bin");
+			const FString MaterialFilePath = ConvertDataPathToResourcePath(MaterialInfo.MaterialName + ".umat");
 			FWindowsBinWriter MatWriter(MaterialFilePath);
 			Serialization::WriteAsset<FMaterialInfo>(MatWriter, &MaterialInfo);
 			MatWriter.Close();
@@ -1360,7 +1432,7 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 	FString BaseName = FbxFilePath.stem().string();
 
 	// 캐시 디렉토리 경로
-	FString CachePathStr = ConvertDataPathToCachePath(NormalizedPath);
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
 	std::filesystem::path CacheDirPath(CachePathStr);
 	CacheDirPath = CacheDirPath.parent_path();
 
@@ -1371,8 +1443,8 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 
 	try
 	{
-		// BaseName_*.anim.bin 패턴의 모든 파일 찾기
-		FString AnimFilePattern = BaseName + "_*.anim.bin";
+		// BaseName_*.uanim 패턴의 모든 파일 찾기
+		FString AnimFilePattern = BaseName + "_*.uanim";
 		auto fbxTime = std::filesystem::last_write_time(NormalizedPath);
 
 		for (const auto& Entry : std::filesystem::directory_iterator(CacheDirPath))
@@ -1382,8 +1454,8 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 
 			FString FileName = Entry.path().filename().string();
 
-			// 패턴 매칭: BaseName_로 시작하고 .anim.bin으로 끝나는지 확인
-			if (FileName.find(BaseName + "_") == 0 && FileName.ends_with(".anim.bin"))
+			// 패턴 매칭: BaseName_로 시작하고 .uanim으로 끝나는지 확인
+			if (FileName.find(BaseName + "_") == 0 && FileName.ends_with(".uanim"))
 			{
 				// 캐시 파일이 FBX보다 최신인지 확인
 				auto animTime = std::filesystem::last_write_time(Entry.path());
@@ -1420,7 +1492,7 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 
 				Animations.Add(AnimSequence);
 
-				// 파일명에서 AnimName 추출: "BaseName_AnimName.anim.bin" → "AnimName"
+				// 파일명에서 AnimName 추출: "BaseName_AnimName.uanim" → "AnimName"
 				FString AnimNameWithExt = Entry.path().stem().string(); // "BaseName_AnimName.anim"
 				FString AnimNameFull = std::filesystem::path(AnimNameWithExt).stem().string(); // "BaseName_AnimName"
 				FString Prefix = BaseName + "_";
@@ -1502,5 +1574,40 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 	UE_LOG("FBX Assets loaded: Mesh with %d animations", AssetData->AnimationSequences.Num());
 
 	return AssetData;
+}
+
+FStaticMesh* UFbxLoader::ConvertSkeletalToStaticMesh(const FSkeletalMeshData* SkeletalData)
+{
+	if (!SkeletalData)
+		return nullptr;
+
+	FStaticMesh* StaticMesh = new FStaticMesh();
+
+	// 경로 정보 복사
+	StaticMesh->PathFileName = SkeletalData->PathFileName;
+	StaticMesh->CacheFilePath = SkeletalData->CacheFilePath;
+	StaticMesh->bHasMaterial = SkeletalData->bHasMaterial;
+
+	// 인덱스 복사
+	StaticMesh->Indices = SkeletalData->Indices;
+
+	// GroupInfo 복사
+	StaticMesh->GroupInfos = SkeletalData->GroupInfos;
+
+	// FSkinnedVertex를 FNormalVertex로 변환 (스킨 정보 제거)
+	StaticMesh->Vertices.reserve(SkeletalData->Vertices.size());
+	for (const FSkinnedVertex& SkinnedVertex : SkeletalData->Vertices)
+	{
+		FNormalVertex NormalVertex;
+		NormalVertex.pos = SkinnedVertex.Position;
+		NormalVertex.normal = SkinnedVertex.Normal;
+		NormalVertex.tex = SkinnedVertex.UV;
+		NormalVertex.Tangent = SkinnedVertex.Tangent;
+		NormalVertex.color = SkinnedVertex.Color;
+
+		StaticMesh->Vertices.push_back(NormalVertex);
+	}
+
+	return StaticMesh;
 }
 

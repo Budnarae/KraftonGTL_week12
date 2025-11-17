@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
@@ -10,6 +10,11 @@
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
 {
+    // TestSeqA, TestSeqB는 ResourceManager가 관리하므로 delete하지 않음
+    // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
+    // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
+
+    // nullptr로만 설정
     TestSeqA = nullptr;
     TestSeqB = nullptr;
     OwnerSkeletalComp = nullptr;
