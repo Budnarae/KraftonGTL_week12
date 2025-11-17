@@ -359,7 +359,7 @@ FLuaManager::FLuaManager()
 
     // FAnimState usertype 등록
     SharedLib.new_usertype<FAnimState>("FAnimState",
-        sol::no_constructor,
+        sol::constructors<FAnimState()>(),
         "Name", &FAnimState::Name,
         "Index", &FAnimState::Index,
         "AddAnimSequence", &FAnimState::AddAnimSequence
@@ -367,7 +367,7 @@ FLuaManager::FLuaManager()
 
     // FAnimStateTransition usertype 등록
     SharedLib.new_usertype<FAnimStateTransition>("FAnimStateTransition",
-        sol::no_constructor,
+        sol::constructors<FAnimStateTransition()>(),
         "SourceState", &FAnimStateTransition::SourceState,
         "TargetState", &FAnimStateTransition::TargetState,
         "Index", &FAnimStateTransition::Index,

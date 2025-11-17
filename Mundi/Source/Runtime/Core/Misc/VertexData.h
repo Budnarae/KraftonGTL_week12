@@ -598,6 +598,9 @@ class UAnimationSequence;
 
 struct FAnimState
 {
+    FAnimState() = default;
+    ~FAnimState() = default;
+    
     FName Name{};
     uint32 Index{};   // Animation State Machine에서의 Index
     TArray<UAnimationSequence*> AnimSequences;

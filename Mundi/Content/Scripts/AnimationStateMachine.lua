@@ -30,13 +30,13 @@ end
 -- state 추가
 function AnimationStateMachine:add_state(state_name)
     -- type 검사
-    if type(state_name) ~= "FName" then
+    if not sol.is_usertype<FName>(state_name) then
         print("[Lua][AnimationStateMachine:add_state][Warning] Type of parameter should be FName.");
         return nil;
     end
 
     -- 같은 이름을 가진 State가 있으면 거부
-    for state in ipairs(self.states) do
+    for i, state in ipairs(self.states) do
         if state.Name == state_name then
             print("[Lua][AnimationStateMachine:add_state][Warning] A state with the same name already exists in the Animation State Machine.");
             return nil;
@@ -45,19 +45,19 @@ function AnimationStateMachine:add_state(state_name)
     
     -- 내부에서 state 생성
     local state = FAnimState.new();
-    state.Name = state_Name;
+    state.Name = state_name;
     state.Index = #self.states;
     table.insert(self.states, state);
 
     if self.current_state == nil then
-        current_state = state;
+        self.current_state = state;
     end
     
     return state;
 end
 
 function AnimationStateMachine:delete_state(target_name)
-    if type(target_name) ~= "FName" then
+    if not sol.is_usertype<FName>(target_name) then
         print("[Lua][AnimationStateMachine:delete_state][Warning] Type of parameter should be FName.");
         return;
     end
@@ -69,16 +69,16 @@ function AnimationStateMachine:delete_state(target_name)
     end
     
     -- 해당 state를 참조하는 transition들을 먼저 제거
-    for i = 1, #self.transitions do
+    for i = #self.transitions, 1, -1 do
         local transition = self.transitions[i];
         if transition.SourceState == target_state or transition.TargetState == target_state then
-            transition:CleanupDelegete();
+            transition:CleanupDelegate();
             table.remove(self.transitions, i);
         end
     end
     
     -- State 제거
-    for i = 1, #self.states do
+    for i = #self.states, 1, -1 do
         local state = self.states[i];
         if state == target_state then
             table.remove(self.states, i);
@@ -99,12 +99,12 @@ end
 
 -- 보유하고 있는 state 중 이름이 일치하는 state를 반환
 function AnimationStateMachine:find_state_by_name(state_name)
-    if type(state_name) ~= "FName" then
+    if not sol.is_usertype<FName>(state_name) then
         print("[Lua][AnimationStateMachine:find_state_by_name][Warning] Type of parameter should be FName.");
         return nil;
     end
 
-    for state in ipairs(self.states) do
+    for i, state in ipairs(self.states) do
         if state.Name == state_name then
             return state
         end
@@ -114,7 +114,7 @@ function AnimationStateMachine:find_state_by_name(state_name)
 end
 
 function AnimationStateMachine:add_transition(source_name, target_name)
-    if type(source_name) ~= "FName" or type(target_name) ~= "FName" then
+    if not sol.is_usertype<FName>(source_name) or not sol.is_usertype<FName>(target_name) then
         print("[Lua][AnimationStateMachine:add_transition][Warning] Type of parameter should be FName.");
         return nil;
     end
@@ -128,7 +128,7 @@ function AnimationStateMachine:add_transition(source_name, target_name)
     end
     
     -- 이미 같은 노드에 대한 연결이 있으면 거부
-    for transition in ipairs(self.transitions) do
+    for i, transition in ipairs(self.transitions) do
         if (transition.SourceState == source_state and transition.TargetState == target_state) then
             print("[Lua][AnimationStateMachine:add_transition][Warning] A transition to the same target state already exists in the state machine.");
             return nil;
@@ -157,7 +157,7 @@ function AnimationStateMachine:add_transition_with_rule(
     end
 
     -- transition_rule이 유효하지 않다면 조기 반환
-    if transition_rule == nil or type(transition_rule) ~= "UAnimNodeTransitionRule" then
+    if transition_rule == nil or not sol.is_usertype<UAnimNodeTransitionRule>(transition_rule) then
         print("[Lua][AnimationStateMachine:add_transition_with_rule][Warning] TransitionRule is not valid.");
         return transition;
     end
@@ -174,19 +174,19 @@ end
 
 function AnimationStateMachine:delete_transition(source_name, target_name)
     -- 입력된 이름과 일치하는 state 찾기
-    source_state = self:find_state_by_name(source_name);
-    target_state = self:find_state_by_name(target_name);
+    local source_state = self:find_state_by_name(source_name);
+    local target_state = self:find_state_by_name(target_name);
 
     if (source_state == nil or target_state == nil) then
         print("[Lua][AnimationStateMachine:delete_transition][Warning] The transition you are trying to delete does not exist in the state machine.");
         return;
     end
 
-    for i = 0, #self.transitions do
+    for i = #self.transitions, 1, -1 do
         local transition = self.transitions[i];
         if transition.SourceState == source_state and transition.TargetState == target_state then
-            transition:CleanupDelegete();
-            table.remove(self.transitions, transition);
+            transition:CleanupDelegate();
+            table.remove(self.transitions, i);
             return;
         end
     end
