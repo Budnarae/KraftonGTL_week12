@@ -55,25 +55,27 @@ function BeginPlay()
     -- State 생성 및 애니메이션 추가
     StateA = ASM:add_state(FName("StateA"))
     if StateA then
-        StateA:AddAnimSequence(AnimA, true)
+        local SeqNode = StateA:CreateSequenceNode(AnimA, true)
+        StateA:SetEntryNode(SeqNode)
     else
         print("[SkeletalMeshActor] ERROR: Failed to create StateA")
     end
 
     StateB = ASM:add_state(FName("StateB"))
     if StateB then
-        StateB:AddAnimSequence(AnimB, true)
+        local SeqNode = StateB:CreateSequenceNode(AnimB, true)
+        StateB:SetEntryNode(SeqNode)
     else
         print("[SkeletalMeshActor] ERROR: Failed to create StateB")
     end
 
     StateC = ASM:add_state(FName("StateC"))
     if StateC then
-        StateC:AddAnimSequence(AnimC, true)
+        local SeqNode = StateC:CreateSequenceNode(AnimC, true)
+        StateC:SetEntryNode(SeqNode)
     else
         print("[SkeletalMeshActor] ERROR: Failed to create StateC")
     end
-
     -- Transition 생성 및 조건 함수 설정
     local TransitionAtoB = ASM:add_transition(FName("StateA"), FName("StateB"))
     if TransitionAtoB then

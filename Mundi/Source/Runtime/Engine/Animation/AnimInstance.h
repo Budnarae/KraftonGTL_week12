@@ -9,19 +9,7 @@ class UAnimInstance : public UObject
 public:
     DECLARE_CLASS(UAnimInstance, UObject)
     
-    template<typename TNode, typename... TArgs> 
-    TNode* NewNode(TArgs&&... Args) 
-    { 
-        static_assert(std::is_base_of_v<FAnimNode_Base, TNode>, "TNode must derive from FAnimNode_Base"); 
-        TNode* Node = new TNode(std::forward<TArgs>(Args)...); 
-        NodePool.Add(Node); 
-        return Node; 
-    }
-
     virtual ~UAnimInstance();
-
-protected:
-    TArray<FAnimNode_Base*> NodePool;
 
 public:
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
@@ -33,8 +21,7 @@ public:
 
     // 현재 포즈를 저장할 변수
     FPoseContext CurrentPose;
-
-    float CurTime = 0.0;
+    float GlobalSpeed = 1.0f;
 
     /**
      * @brief AnimInstance 초기화 (최초 1회 호출)
@@ -79,9 +66,6 @@ protected:
     // float TransitionTimer = 0.0f;
     // const float TransitionInterval = 10.0f;
     // FAnimState* PreviousState = nullptr;
-
-    // TEST
-    float CurrentMoveSpeed = 0.0f;
 
     FAnimNode_Sequence* IdleSequenceNode = nullptr;
     FAnimNode_Sequence* WalkSequenceNode = nullptr;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "AnimationSequence.h"
 #include "Delegates.h"
 #include "AnimNodeTransitionRule.h"
@@ -183,6 +183,8 @@ struct FAnimState
         return Node;
     }
 
+    FAnimNode_Base* GetEntryNode() const { return EntryNode; }
+
     void SetEntryNode(FAnimNode_Base* Node)
     {
         EntryNode = Node;
@@ -198,26 +200,20 @@ struct FAnimState
         EntryNode = nullptr;
     }
 
-    /**
-     * @brief 첫 번째 AnimSequence 노드를 업데이트
-     */
-    void Update(const FAnimationUpdateContext& Context)
+    FAnimNode_Sequence* CreateSequenceNode(UAnimationSequence* Sequence, bool bLoop = true)
     {
-        if (!AnimSequenceNodes.empty())
+        FAnimNode_Sequence* Node = CreateNode<FAnimNode_Sequence>();
+        if (Node)
         {
-            AnimSequenceNodes.front().Update(Context);
+            Node->SetSequence(Sequence, bLoop);
+            Node->SetLooping(bLoop);
         }
+        return Node;
     }
 
-    /**
-     * @brief 첫 번째 AnimSequence 노드를 평가하여 Output에 Pose 데이터 채우기
-     */
-    void Evaluate(FPoseContext& Output)
+    FAnimNode_BlendSpace1D* CreateBlendSpace1DNode()
     {
-        if (!AnimSequenceNodes.empty())
-        {
-            AnimSequenceNodes.front().Evaluate(Output);
-        }
+        return CreateNode<FAnimNode_BlendSpace1D>();
     }
 };
 

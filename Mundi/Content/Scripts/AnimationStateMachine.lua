@@ -1,5 +1,10 @@
-﻿-- AnimationStateMachine (Lua implementation)
 -- C++의 FAnimNode_StateMachine 구조를 Lua로 구현
+local function GetEntryNode(State)
+    if State ~= nil and State.GetEntryNode ~= nil then
+        return State:GetEntryNode()
+    end
+    return nil
+end
 
 AnimationStateMachine = {};
 AnimationStateMachine.__index = AnimationStateMachine;
@@ -84,15 +89,15 @@ function AnimationStateMachine:update(context)
             self.TransitionDuration = 0.0
         end
     else
-        if not self.current_state or #self.current_state.AnimSequenceNodes == 0 then
-            return
-        end
-
-        -- 조건을 충족한 Transition이 있으면 State를 변환
-        for i, transition in ipairs(self.transitions) do
-            if not transition then
-                goto continue
+        local EntryNode = GetEntryNode(self.current_state)
+            if not EntryNode then -- 조건을 충족한 Transition이 있으면 State를 변환
+                return
             end
+            
+            for i, transition in ipairs(self.transitions) do
+                if not transition then
+                    goto continue
+                end
 
             if transition.CanEnterTransition and transition.SourceState == self.current_state then
                 -- --- 전이 시작 설정 ---
@@ -102,17 +107,8 @@ function AnimationStateMachine:update(context)
                 self.TransitionDuration = transition.BlendTime
 
                 -- Source/Target의 첫 번째 시퀀스 노드
-                local SourceNode = nil
-                local TargetNode = nil
-
-                if #self.current_state.AnimSequenceNodes > 0 then
-                    SourceNode = self.current_state.AnimSequenceNodes[1]
-                end
-
-                if transition.TargetState and #transition.TargetState.AnimSequenceNodes > 0 then
-                    TargetNode = transition.TargetState.AnimSequenceNodes[1]
-                end
-
+                local SourceNode = GetEntryNode(self.current_state)
+                local TargetNode = GetEntryNode(transition.TargetState)
                 -- Phase 동기화 비활성화 (부풀어오름 문제 디버깅용)
                 -- 서로 다른 애니메이션 간 Phase 동기화는 부자연스러울 수 있음
                 --if SourceNode and TargetNode and SourceNode.Sequence and TargetNode.Sequence then
@@ -137,14 +133,13 @@ function AnimationStateMachine:update(context)
             ::continue::
         end
 
-        -- 전이 없다 -> 현재 상태의 첫 번째 AnimSequence만 Update
-        if #self.current_state.AnimSequenceNodes > 0 then
-            local SeqNode = self.current_state.AnimSequenceNodes[1]
-            if SeqNode and SeqNode.Update then
-                SeqNode:Update(context)
-            end
+        -- 전이 없다 -> 현재 상태의 첫 번째 EntryNode만 Update
+        local EntryNode = GetEntryNode(self.current_state)
+        if not EntryNode or not EntryNode.Update then
+            return
         end
-    end
+        EntryNode:Update(context)
+     end
 end
 
 -- Evaluate: 최종 Pose 계산
@@ -186,14 +181,11 @@ function AnimationStateMachine:evaluate(output)
         end
     else
         -- 일반 상태: CurrentState의 첫 번째 AnimSequence 평가
-        if not self.current_state or #self.current_state.AnimSequenceNodes == 0 then
+        local EntryNode = GetEntryNode(self.current_state)
+        if not EntryNode or not EntryNode.Evaluate then
             return
         end
-
-        local SequenceToEvaluate = self.current_state.AnimSequenceNodes[1]
-        if SequenceToEvaluate and SequenceToEvaluate.Evaluate then
-            SequenceToEvaluate:Evaluate(output)
-        end
+        EntryNode:Evaluate(output)
     end
 end
 

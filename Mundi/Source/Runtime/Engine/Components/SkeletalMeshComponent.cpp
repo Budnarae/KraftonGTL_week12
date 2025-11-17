@@ -49,12 +49,12 @@ void USkeletalMeshComponent::InitAnimInstance()
     {
         case EAnimationMode::AnimationSingleNode:
             NewInstance = NewObject<UAnimSingleNodeInstance>();
-            SetAnimInstanceClass(NewInstance);
+            SetAnimInstance(NewInstance);
             break;
 
         case EAnimationMode::AnimationBlueprint:
             NewInstance = NewObject<UAnimInstance>();
-            SetAnimInstanceClass(NewInstance);
+            SetAnimInstance(NewInstance);
             break;
 
         default:
@@ -119,7 +119,7 @@ void USkeletalMeshComponent::SetSkeletalMesh(const FString& PathFileName)
     }
 }
 
-void USkeletalMeshComponent::SetAnimInstanceClass(UAnimInstance* NewAnimInstanceClass)
+void USkeletalMeshComponent::SetAnimInstance(UAnimInstance* NewAnimInstanceClass)
 {
     if (AnimInstance && AnimInstance->GetSkeletalComponent() == this)
     {

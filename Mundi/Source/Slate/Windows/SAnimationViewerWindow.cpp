@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "SAnimationViewerWindow.h"
 #include "Source/Runtime/Engine/AnimationViewer/AnimationViewerBootstrap.h"
 #include "Source/Runtime/Engine/GameFramework/SkeletalMeshActor.h"
@@ -268,14 +268,14 @@ void SAnimationViewerWindow::LoadAnimation(const FString& Path)
                 }
 
                 // AnimSingleNodeInstance 생성 및 설정
-                auto* AnimInstance = SkeletalMeshComp->GetAnimInstanceClass();
+                auto* AnimInstance = SkeletalMeshComp->GetAnimInstance();
                 UAnimSingleNodeInstance* SingleNodeInstance = dynamic_cast<UAnimSingleNodeInstance*>(AnimInstance);
 
                 if (!SingleNodeInstance)
                 {
                     // 기존 AnimInstance가 SingleNode가 아니면 새로 생성
                     SingleNodeInstance = NewObject<UAnimSingleNodeInstance>();
-                    SkeletalMeshComp->SetAnimInstanceClass(SingleNodeInstance);
+                    SkeletalMeshComp->SetAnimInstance(SingleNodeInstance);
                     UE_LOG("SAnimationViewerWindow: Created new AnimSingleNodeInstance");
                 }
 
@@ -512,13 +512,13 @@ void SAnimationViewerWindow::OnRender()
                                 }
 
                                 // AnimSingleNodeInstance로 재생
-                                auto* AnimInstance = SkeletalMeshComp->GetAnimInstanceClass();
+                                auto* AnimInstance = SkeletalMeshComp->GetAnimInstance();
                                 UAnimSingleNodeInstance* SingleNodeInstance = dynamic_cast<UAnimSingleNodeInstance*>(AnimInstance);
 
                                 if (!SingleNodeInstance)
                                 {
                                     SingleNodeInstance = NewObject<UAnimSingleNodeInstance>();
-                                    SkeletalMeshComp->SetAnimInstanceClass(SingleNodeInstance);
+                                    SkeletalMeshComp->SetAnimInstance(SingleNodeInstance);
                                 }
 
                                 SingleNodeInstance->PlayAnimation(AllAnims[i], State->bLooping);
@@ -908,7 +908,7 @@ void SAnimationViewerWindow::OnUpdate(float DeltaSeconds)
         auto* SkeletalMeshComp = State->PreviewActor->GetSkeletalMeshComponent();
         if (SkeletalMeshComp)
         {
-            auto* AnimInstance = SkeletalMeshComp->GetAnimInstanceClass();
+            auto* AnimInstance = SkeletalMeshComp->GetAnimInstance();
             UAnimSingleNodeInstance* SingleNodeInstance = dynamic_cast<UAnimSingleNodeInstance*>(AnimInstance);
             if (SingleNodeInstance)
             {

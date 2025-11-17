@@ -1,10 +1,6 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
-#include "AnimationAsset.h"
-#include "AnimationSequence.h"
-#include "ResourceManager.h"
-#include "FloatComparisonRule.h"
 #include "LuaScriptComponent.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
@@ -13,17 +9,6 @@ UAnimInstance::~UAnimInstance()
     // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
     // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
     OwnerSkeletalComp = nullptr;
-
-    if (RootNode)
-    {
-        RootNode = nullptr;
-    }
-
-    for (FAnimNode_Base* Node : NodePool)
-    {
-        delete Node;
-    }
-    NodePool.clear();
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
@@ -54,7 +39,7 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
         return;
 
     // 변수 업데이트
-    NativeUpdateAnimation(DeltaTime);
+    NativeUpdateAnimation(DeltaTime * GlobalSpeed);
 
     // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
     // FAnimationUpdateContext Context;
@@ -100,28 +85,23 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
     //     }
     // }
 
-    CurrentMoveSpeed += DeltaSeconds * 20.0f;
-    if (CurrentMoveSpeed > 600.0f) { CurrentMoveSpeed = 0.0f; }
+    //CurrentMoveSpeed += DeltaSeconds * 20.0f;
+    //if (CurrentMoveSpeed > 600.0f) { CurrentMoveSpeed = 0.0f; }
 
-    if (MoveBlendSpaceNode)
-    {
-        MoveBlendSpaceNode->SetBlendInput(CurrentMoveSpeed);
-    }
-
+    //if (MoveBlendSpaceNode)
+    //{
+    //    MoveBlendSpaceNode->SetBlendInput(CurrentMoveSpeed);
+    //}
     
-    // 매 프레임 모든 Rule에 현재 타이머 값 전달 및 평가
-    for (UAnimNodeTransitionRule* Rule : TransitionRules)
+    AActor* OwnerActor = OwnerSkeletalComp ? OwnerSkeletalComp->GetOwner() : nullptr;
+    if (OwnerActor)
     {
-        AActor* OwnerActor = OwnerSkeletalComp->GetOwner();
-        if (OwnerActor)
+        ULuaScriptComponent* ScriptComp = static_cast<ULuaScriptComponent*>(
+            OwnerActor->GetComponent(ULuaScriptComponent::StaticClass())
+        );
+        if (ScriptComp)
         {
-            ULuaScriptComponent* ScriptComp = static_cast<ULuaScriptComponent*>(
-                OwnerActor->GetComponent(ULuaScriptComponent::StaticClass())
-            );
-            if (ScriptComp)
-            {
-                ScriptComp->CallFunction("AnimUpdate", DeltaSeconds);
-            }
+            ScriptComp->CallFunction("AnimUpdate", DeltaSeconds);
         }
     }
 }

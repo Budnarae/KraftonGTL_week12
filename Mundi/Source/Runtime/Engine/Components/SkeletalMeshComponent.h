@@ -35,8 +35,8 @@ public:
     UPROPERTY(EditAnywhere, Category = "Animation")
     EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;
 
-    void SetAnimInstanceClass(UAnimInstance* NewAnimInstanceClass);
-    UAnimInstance* GetAnimInstanceClass() const {return AnimInstance;};
+    void SetAnimInstance(UAnimInstance* NewAnimInstanceClass);
+    UAnimInstance* GetAnimInstance() const {return AnimInstance;};
 
     void SetAnimationMode(EAnimationMode InAnimationMode) { AnimationMode = InAnimationMode; }
 

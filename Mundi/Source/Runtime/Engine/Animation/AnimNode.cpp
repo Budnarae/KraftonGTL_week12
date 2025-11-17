@@ -50,7 +50,6 @@ FAnimNode_StateMachine::~FAnimNode_StateMachine()
     {
         if (Transition)
         {
-            Transition->CleanupDelegate();
             delete Transition;
         }
     }
