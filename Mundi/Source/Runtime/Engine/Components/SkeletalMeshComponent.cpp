@@ -30,13 +30,19 @@ void USkeletalMeshComponent::OnRegister(UWorld* InWorld)
 
     if (!AnimInstance)
     {
-        /* UAnimInstanceTest */
-         UAnimInstance* NewAnimInstanceClass = NewObject<UAnimInstance>();
-         SetAnimInstanceClass(NewAnimInstanceClass);
+        UAnimInstance* NewInstance;
+        switch (AnimationMode)
+        {
+            case EAnimationMode::AnimationSingleNode:
+                NewInstance = NewObject<UAnimSingleNodeInstance>();
+                SetAnimInstanceClass(NewInstance);
+                break;
 
-        /* UAnimSingleNodeInstanceTest */
-        //UAnimInstance* NewAnimInstanceClass = NewObject<UAnimSingleNodeInstance>();
-        //SetAnimInstanceClass(NewAnimInstanceClass);
+            case EAnimationMode::AnimationBlueprint:
+                NewInstance = NewObject<UAnimInstance>();
+                SetAnimInstanceClass(NewInstance);
+                break;
+        }
     }
 }
 

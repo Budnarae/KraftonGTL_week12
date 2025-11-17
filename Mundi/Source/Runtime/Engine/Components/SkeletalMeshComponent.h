@@ -1,6 +1,12 @@
-#pragma once
+﻿#pragma once
 #include "SkinnedMeshComponent.h"
 #include "USkeletalMeshComponent.generated.h"
+
+enum class EAnimationMode : uint8
+{
+    AnimationSingleNode,  ///< AnimInstance 없이 단일 애니메이션 재생
+    AnimationBlueprint    ///< AnimInstance를 통한 복잡한 애니메이션 로직 (블렌딩, 스테이트 머신)
+};
 
 class UWorld;
 class UAnimInstance;
@@ -18,7 +24,7 @@ public:
     UPROPERTY(EditAnywhere, Category = "Animation", Range = "0, 1")
     float Alpha = 0.0;
 
-    void OnRegister(UWorld* InWorld) override;
+    void OnRegister(UWorld* InWorld) override; // AnimInstance 초기화
     void TickComponent(float DeltaTime) override;
     void SetSkeletalMesh(const FString& PathFileName) override;
 
@@ -26,22 +32,12 @@ public:
 // Animation System
 // ====================================
 public:
-    /**
-     * @brief 애니메이션 재생 모드
-     */
-    enum class EAnimationMode : uint8
-    {
-        AnimationSingleNode,  ///< AnimInstance 없이 단일 애니메이션 재생
-        AnimationBlueprint    ///< AnimInstance를 통한 복잡한 애니메이션 로직 (블렌딩, 스테이트 머신)
-    };
+    UPROPERTY(EditAnywhere, Category = "Animation")
+    EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;
 
     void SetAnimInstanceClass(UAnimInstance* NewAnimInstanceClass);
     UAnimInstance* GetAnimInstanceClass() const {return AnimInstance;};
 
-    /**
-     * @brief 애니메이션 모드를 설정합니다
-     * @param InAnimationMode SingleNode 또는 AnimationBlueprint
-     */
     void SetAnimationMode(EAnimationMode InAnimationMode) { AnimationMode = InAnimationMode; }
 
 // ====================================
@@ -101,7 +97,6 @@ protected:
      * @brief 애니메이션 로직 담당
      */
     UAnimInstance* AnimInstance = nullptr;
-    EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;
 
 // ====================================
 // Pose Data (Bone Transforms)

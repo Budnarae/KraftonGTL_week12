@@ -18,7 +18,7 @@ public:
     FAnimNode_Base* RootNode = nullptr;
 
     // 현재 포즈를 저장할 변수
-    FPoseContext           CurrentPose;
+    FPoseContext CurrentPose;
 
     float CurTime = 0.0;
 
@@ -95,8 +95,6 @@ protected:
     const float TransitionInterval = 10.0f;
     FAnimState* PreviousState = nullptr;  // 상태 변경 감지용
 
-// FOR TEST!!!
 private:
     bool bIsInitialized = false;
 };
-
