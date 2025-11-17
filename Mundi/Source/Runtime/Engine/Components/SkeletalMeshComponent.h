@@ -47,6 +47,12 @@ public:
     UFUNCTION(LuaBind, DisplayName="SetAnimationModeInt")
     void SetAnimationModeInt(int InAnimationMode) { AnimationMode = static_cast<EAnimationMode>(InAnimationMode); }
 
+    /**
+     * @brief AnimInstance를 초기화/재생성합니다 (Lua용)
+     */
+    UFUNCTION(LuaBind)
+    void InitAnimInstance();
+
 // ====================================
 // Pose Management
 // ====================================

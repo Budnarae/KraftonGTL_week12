@@ -47,5 +47,7 @@ LUA_BIND_BEGIN(USkeletalMeshComponent)
 {
     AddAlias<USkeletalMeshComponent, int>(
         T, "SetAnimationModeInt", &USkeletalMeshComponent::SetAnimationModeInt);
+    AddAlias<USkeletalMeshComponent>(
+        T, "InitAnimInstance", &USkeletalMeshComponent::InitAnimInstance);
 }
 LUA_BIND_END()

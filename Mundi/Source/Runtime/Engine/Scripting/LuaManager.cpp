@@ -406,7 +406,11 @@ FLuaManager::FLuaManager()
     );
 
     // FPoseContext 생성자 함수 등록 (전역과 SharedLib 모두)
-    auto fposectx_constructor = []() { return FPoseContext(); };
+    // 오버로드: FPoseContext() 또는 FPoseContext(Skeleton)
+    auto fposectx_constructor = sol::overload(
+        []() { return FPoseContext(); },
+        [](const FSkeleton* Skeleton) { return FPoseContext(Skeleton); }
+    );
     SharedLib.set_function("FPoseContext", fposectx_constructor);
     Lua->set_function("FPoseContext", fposectx_constructor);
 

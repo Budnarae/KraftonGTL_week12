@@ -31,8 +31,6 @@ local function ShouldTransitionCtoA()
 end
 
 function BeginPlay()
-    print("[SkeletalMeshActor] BeginPlay")
-
     -- SkeletalMeshComponent 가져오기
     SkeletalComp = GetComponent(Obj, "USkeletalMeshComponent")
     if not SkeletalComp then
@@ -58,19 +56,22 @@ function BeginPlay()
     StateA = ASM:add_state(FName("StateA"))
     if StateA then
         StateA:AddAnimSequence(AnimA, true)
-        print("[SkeletalMeshActor] StateA created")
+    else
+        print("[SkeletalMeshActor] ERROR: Failed to create StateA")
     end
 
     StateB = ASM:add_state(FName("StateB"))
     if StateB then
         StateB:AddAnimSequence(AnimB, true)
-        print("[SkeletalMeshActor] StateB created")
+    else
+        print("[SkeletalMeshActor] ERROR: Failed to create StateB")
     end
 
     StateC = ASM:add_state(FName("StateC"))
     if StateC then
         StateC:AddAnimSequence(AnimC, true)
-        print("[SkeletalMeshActor] StateC created")
+    else
+        print("[SkeletalMeshActor] ERROR: Failed to create StateC")
     end
 
     -- Transition 생성 및 조건 함수 설정
@@ -78,35 +79,37 @@ function BeginPlay()
     if TransitionAtoB then
         TransitionAtoB:SetBlendTime(0.3)
         TransitionAtoB:SetTransitionCondition(ShouldTransitionAtoB)
-        print("[SkeletalMeshActor] Transition A->B created")
     end
 
     local TransitionBtoC = ASM:add_transition(FName("StateB"), FName("StateC"))
     if TransitionBtoC then
         TransitionBtoC:SetBlendTime(0.3)
         TransitionBtoC:SetTransitionCondition(ShouldTransitionBtoC)
-        print("[SkeletalMeshActor] Transition B->C created")
     end
 
     local TransitionCtoA = ASM:add_transition(FName("StateC"), FName("StateA"))
     if TransitionCtoA then
         TransitionCtoA:SetBlendTime(0.3)
         TransitionCtoA:SetTransitionCondition(ShouldTransitionCtoA)
-        print("[SkeletalMeshActor] Transition C->A created")
     end
 
-    -- AnimationMode 설정
+    -- AnimationMode 설정 및 AnimInstance 생성
     SkeletalComp:SetAnimationModeInt(1)  -- AnimationBlueprint = 1
+
+    -- AnimInstance 수동 생성 (OnRegister가 이미 끝났으므로)
+    SkeletalComp:InitAnimInstance()
 
     -- 초기 State 저장
     PreviousState = ASM.current_state
 
-    print("[SkeletalMeshActor] ASM initialized successfully")
+    if not ASM.current_state then
+        print("[SkeletalMeshActor] ERROR: No initial state!")
+    end
 end
 
 -- AnimUpdate: UAnimInstance::NativeUpdateAnimation에서 호출
 function AnimUpdate(DeltaTime)
-    if not ASM then
+    if not ASM or not ASM.current_state then
         return
     end
 
@@ -142,7 +145,7 @@ end
 
 -- AnimEvaluate: UAnimInstance::EvaluateAnimation에서 호출
 function AnimEvaluate(PoseContext)
-    if not ASM then
+    if not ASM or not ASM.current_state then
         return
     end
 
