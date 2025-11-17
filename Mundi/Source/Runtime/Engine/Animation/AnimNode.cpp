@@ -4,53 +4,35 @@
 // ====================================
 // FAnimStateTransition 구현
 // ====================================
-
-void FAnimStateTransition::CleanupDelegate()
-{
-    if (AssociatedRule && DelegateHandle != 0)
-    {
-        AssociatedRule->GetTransitionDelegate().Remove(DelegateHandle);
-        DelegateHandle = 0;
-        AssociatedRule = nullptr;
-    }
-}
-
-FAnimStateTransition::~FAnimStateTransition()
-{
-    CleanupDelegate();
-}
+// Note: Delegate 시스템 제거됨, Lua 함수 기반으로 단순화
 
 FAnimStateTransition::FAnimStateTransition(const FAnimStateTransition& Other)
     : SourceState(Other.SourceState)
     , TargetState(Other.TargetState)
     , Index(Other.Index)
-    , CanEnterTransition(false)  // 새로 생성되는 Transition은 항상 false로 초기화
-    , AssociatedRule(nullptr)  // Delegate는 복사하지 않음
-    , DelegateHandle(0)
+    , CanEnterTransition(Other.CanEnterTransition)
+    , TransitionConditionFunc(Other.TransitionConditionFunc)  // Lua 함수 복사
     , BlendTime(Other.BlendTime)
 {
-    // Delegate는 복사 후 재바인딩 필요
 }
 
 FAnimStateTransition& FAnimStateTransition::operator=(const FAnimStateTransition& Other)
 {
     if (this != &Other)
     {
-        // 기존 Delegate 정리
-        CleanupDelegate();
-
         SourceState = Other.SourceState;
         TargetState = Other.TargetState;
         Index = Other.Index;
         CanEnterTransition = Other.CanEnterTransition;
-        BlendTime = Other.BlendTime;;
-
-        // Delegate는 복사하지 않음 (재바인딩 필요)
-        AssociatedRule = nullptr;
-        DelegateHandle = 0;
+        TransitionConditionFunc = Other.TransitionConditionFunc;  // Lua 함수 복사
+        BlendTime = Other.BlendTime;
     }
     return *this;
 }
+
+// ====================================
+// FAnimNode_StateMachine 구현
+// ====================================
 
 FAnimState* FAnimNode_StateMachine::FindStateByName(const FName& StateName) const
 {
@@ -164,7 +146,9 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
                 return; // 이번 프레임은 전이 세팅까지만
             }
 
+            // TODO: BUG - 이 코드가 for 루프 안에 있어서 transition 개수만큼 반복 호출됨!
             // 전이 없다 -> 현재 상태의 그래프만 Update
+            // 이 부분은 for 루프 밖으로 빼야 함 (Lua 구현 참고)
             FAnimNode_Sequence& SeqNode = CurrentState->AnimSequenceNodes[0];
             SeqNode.Update(Context);
         }

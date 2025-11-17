@@ -417,6 +417,16 @@ FLuaManager::FLuaManager()
         "EvaluatedPoses", &FPoseContext::EvaluatedPoses
     );
 
+    // FTransform usertype 등록
+    SharedLib.new_usertype<FTransform>("FTransform",
+        sol::constructors<FTransform(), FTransform(const FVector&, const FQuat&, const FVector&)>(),
+        "Translation", &FTransform::Translation,
+        "Rotation", &FTransform::Rotation,
+        "Scale3D", &FTransform::Scale3D,
+        // Static Lerp 함수
+        "Lerp", &FTransform::Lerp
+    );
+
     // TArray<FTransform> usertype 등록 (Lua에서 배열처럼 접근 가능하도록)
     SharedLib.new_usertype<TArray<FTransform>>("TArrayFTransform",
         sol::no_constructor,
@@ -457,7 +467,11 @@ FLuaManager::FLuaManager()
         "CanEnterTransition", &FAnimStateTransition::CanEnterTransition,
         "BlendTime", &FAnimStateTransition::BlendTime,
         "TriggerTransition", &FAnimStateTransition::TriggerTransition,
-        "SetBlendTime", &FAnimStateTransition::SetBlendTime
+        "SetBlendTime", &FAnimStateTransition::SetBlendTime,
+        // Lua 함수 기반 Transition 조건
+        "SetTransitionCondition", &FAnimStateTransition::SetTransitionCondition,
+        "EvaluateCondition", &FAnimStateTransition::EvaluateCondition,
+        "Update", &FAnimStateTransition::Update
     );
 
     // FAnimNode_Sequence usertype 등록

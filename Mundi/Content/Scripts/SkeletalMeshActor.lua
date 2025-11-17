@@ -162,6 +162,7 @@ function EndPlay()
         ASM:shutdown()
     end
 
+    -- 모든 전역 변수 정리
     TransitionTimer = 0.0
     PreviousState = nil
     ASM = nil
