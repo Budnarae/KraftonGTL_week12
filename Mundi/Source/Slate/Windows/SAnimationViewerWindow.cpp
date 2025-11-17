@@ -590,64 +590,10 @@ void SAnimationViewerWindow::OnRender()
 
     ImGui::SameLine(0, 0);
 
-    // === Right Panel: Playback + Bone Transform Controls ===
+    // === Right Panel: Bone Transform Controls ===
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
     ImGui::BeginChild("RightPanel", ImVec2(rightWidth, totalHeight), true);
     ImGui::PopStyleVar();
-
-    // === Playback Controls ===
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.25f, 0.35f, 0.50f, 0.8f));
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4);
-    ImGui::Indent(8.0f);
-    ImGui::Text("Playback");
-    ImGui::Unindent(8.0f);
-    ImGui::PopStyleColor();
-
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    ImGui::Indent(8.0f);
-
-    if (State->CurrentAnimation)
-    {
-        // Play/Pause/Stop buttons
-        if (ImGui::Button(State->bIsPlaying ? "Pause" : "Play", ImVec2(100, 30)))
-        {
-            State->bIsPlaying = !State->bIsPlaying;
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Stop", ImVec2(100, 30)))
-        {
-            State->bIsPlaying = false;
-            State->CurrentTime = 0.0f;
-        }
-
-        ImGui::Spacing();
-
-        // Playback speed
-        ImGui::Text("Speed:");
-        ImGui::SliderFloat("##Speed", &State->PlaybackSpeed, 0.1f, 2.0f);
-
-        ImGui::Spacing();
-
-        // Loop toggle
-        ImGui::Checkbox("Loop", &State->bLooping);
-    }
-    else
-    {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-        ImGui::TextWrapped("Load an animation to preview it.");
-        ImGui::PopStyleColor();
-    }
-
-    ImGui::Unindent(8.0f);
-
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
 
     // === Bone Transform Editor ===
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.25f, 0.35f, 0.50f, 0.8f));
@@ -703,7 +649,7 @@ void SAnimationViewerWindow::OnRender()
 
     ImGui::PopStyleVar();
 
-    // === Bottom Panel: Timeline ===
+    // === Bottom Panel: Timeline & Playback ===
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
     ImGui::BeginChild("Timeline", ImVec2(totalWidth, BottomPanelHeight), true);
     ImGui::PopStyleVar();
@@ -711,20 +657,230 @@ void SAnimationViewerWindow::OnRender()
     if (State->CurrentAnimation)
     {
         float animLength = State->CurrentAnimation->GetPlayLength();
+        float frameRate = State->CurrentAnimation->GetFrameRate();
+        int32 totalFrames = (int32)(animLength * frameRate);
+        int32 currentFrame = (int32)(State->CurrentTime * frameRate);
 
-        // 디버그: 값 출력
-        char debugText[128];
-        snprintf(debugText, sizeof(debugText), "Time: %.2f / %.2f sec", State->CurrentTime, animLength);
-        ImGui::Text("%s", debugText);
+        // === Save Button (우상단) ===
+        float saveButtonWidth = 80.0f;
+        ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x - saveButtonWidth + ImGui::GetCursorPosX());
+        if (ImGui::Button("Save", ImVec2(saveButtonWidth, 25)))
+        {
+            if (State->CurrentAnimation && !State->LoadedAnimPath.empty())
+            {
+                UAnimationSequence* AnimSeq = State->CurrentAnimation;
+                if (AnimSeq->Save(State->LoadedAnimPath))
+                {
+                    UE_LOG("Animation saved successfully: %s", State->LoadedAnimPath.c_str());
+                }
+                else
+                {
+                    UE_LOG("Failed to save animation: %s", State->LoadedAnimPath.c_str());
+                }
+            }
+            else
+            {
+                UE_LOG("No animation loaded to save");
+            }
+        }
 
+        // === Playback Controls (Unreal Style) ===
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.25f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.35f, 0.4f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.2f, 0.25f, 1.0f));
+
+        // Play/Pause/Stop buttons
+        if (ImGui::Button(State->bIsPlaying ? "|| Pause" : "|> Play", ImVec2(80, 25)))
+        {
+            State->bIsPlaying = !State->bIsPlaying;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("[] Stop", ImVec2(70, 25)))
+        {
+            State->bIsPlaying = false;
+            State->CurrentTime = 0.0f;
+        }
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine();
+        ImGui::Text("|");
+        ImGui::SameLine();
+
+        // Frame info
+        ImGui::Text("Frame: %d / %d", currentFrame, totalFrames);
+        ImGui::SameLine();
+        ImGui::Text("(%.2fs / %.2fs)", State->CurrentTime, animLength);
+
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20.0f);
+
+        // Speed
+        ImGui::Text("Speed:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120);
+        ImGui::SliderFloat("##Speed", &State->PlaybackSpeed, 0.1f, 2.0f, "%.2fx");
+
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0f);
+
+        // Loop
+        ImGui::Checkbox("Loop", &State->bLooping);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // === Timeline Slider ===
+        ImGui::Text("Timeline:");
         ImGui::PushItemWidth(-1);
-        ImGui::SliderFloat("##Timeline", &State->CurrentTime, 0.0f, animLength, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.4f, 0.6f, 1.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.5f, 0.7f, 1.0f, 1.0f));
+
+        if (ImGui::SliderFloat("##Timeline", &State->CurrentTime, 0.0f, animLength, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+        {
+            // 타임라인을 수동으로 조작하면 애니메이션 시간 즉시 반영
+            UAnimationSequence* AnimSeq = dynamic_cast<UAnimationSequence*>(State->CurrentAnimation);
+            if (AnimSeq)
+            {
+                AnimSeq->SetCurrentTime(State->CurrentTime);
+            }
+        }
+        ImGui::PopStyleColor(4);
         ImGui::PopItemWidth();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // === Notifies Track ===
+        ImGui::Text("Notifies:");
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
+        ImGui::BeginChild("NotifyTrack", ImVec2(-1, 70), true);
+
+        ImVec2 trackPos = ImGui::GetCursorScreenPos();
+        ImVec2 trackSize = ImGui::GetContentRegionAvail();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // Draw timeline background grid
+        float pixelsPerSecond = trackSize.x / animLength;
+        int numMarkers = (int)animLength + 1;
+
+        for (int i = 0; i <= numMarkers; i++)
+        {
+            float time = (float)i;
+            float xPos = trackPos.x + (time * pixelsPerSecond);
+
+            // Draw tick marks
+            drawList->AddLine(
+                ImVec2(xPos, trackPos.y),
+                ImVec2(xPos, trackPos.y + (i % 5 == 0 ? 10 : 5)),
+                IM_COL32(80, 80, 80, 255),
+                1.0f
+            );
+
+            // Draw second labels
+            if (i % 1 == 0 && xPos < trackPos.x + trackSize.x - 20)
+            {
+                char label[16];
+                snprintf(label, sizeof(label), "%.0fs", time);
+                drawList->AddText(
+                    ImVec2(xPos + 2, trackPos.y + 12),
+                    IM_COL32(120, 120, 120, 255),
+                    label
+                );
+            }
+        }
+
+        // Draw notify markers
+        for (const auto& notify : NotifyMarkers)
+        {
+            float notifyX = trackPos.x + (notify.Time * pixelsPerSecond);
+
+            // Draw notify diamond
+            ImVec2 top(notifyX, trackPos.y + 35);
+            ImVec2 left(notifyX - 8, trackPos.y + 45);
+            ImVec2 bottom(notifyX, trackPos.y + 55);
+            ImVec2 right(notifyX + 8, trackPos.y + 45);
+
+            drawList->AddQuadFilled(top, right, bottom, left, IM_COL32(255, 180, 0, 255));
+            drawList->AddQuad(top, right, bottom, left, IM_COL32(255, 220, 100, 255), 2.0f);
+
+            // Draw notify name
+            drawList->AddText(ImVec2(notifyX + 10, trackPos.y + 38), IM_COL32(255, 255, 255, 255), notify.Name.c_str());
+        }
+
+        // Draw current time indicator (vertical line)
+        float currentX = trackPos.x + (State->CurrentTime * pixelsPerSecond);
+        drawList->AddLine(
+            ImVec2(currentX, trackPos.y),
+            ImVec2(currentX, trackPos.y + trackSize.y),
+            IM_COL32(100, 150, 255, 255),
+            2.0f
+        );
+
+        // Draw playhead triangle at top
+        ImVec2 triangleTop(currentX, trackPos.y);
+        ImVec2 triangleLeft(currentX - 6, trackPos.y + 10);
+        ImVec2 triangleRight(currentX + 6, trackPos.y + 10);
+        drawList->AddTriangleFilled(triangleTop, triangleLeft, triangleRight, IM_COL32(100, 150, 255, 255));
+
+        // Handle right-click to open notify context menu
+        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        {
+            ImVec2 mousePos = ImGui::GetMousePos();
+            float clickedTime = (mousePos.x - trackPos.x) / pixelsPerSecond;
+
+            if (clickedTime >= 0.0f && clickedTime <= animLength)
+            {
+                PendingNotifyTime = clickedTime;
+                ImGui::OpenPopup("NotifyContextMenu");
+            }
+        }
+
+        // Notify context menu
+        if (ImGui::BeginPopup("NotifyContextMenu"))
+        {
+            ImGui::Text("Add Notify:");
+            ImGui::Separator();
+
+            // 노티파이 타입 목록 (stub - 추후 확장 가능)
+            const char* notifyTypes[] = {
+                "PlaySound",
+                "PlayParticleEffect",
+                "FootStep",
+                "CameraShake",
+                "Custom"
+            };
+
+            for (int i = 0; i < IM_ARRAYSIZE(notifyTypes); i++)
+            {
+                if (ImGui::Selectable(notifyTypes[i]))
+                {
+                    FNotifyMarker newNotify;
+                    newNotify.Time = PendingNotifyTime;
+                    newNotify.Type = notifyTypes[i];
+                    newNotify.Name = FString(notifyTypes[i]) + "_" + std::to_string(NotifyMarkers.Num());
+                    NotifyMarkers.push_back(newNotify);
+
+                    UE_LOG("Added notify '%s' at time %.2f", notifyTypes[i], PendingNotifyTime);
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
     }
     else
     {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-        ImGui::Text("No animation loaded");
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 100);
+        ImGui::Text("  Load an animation to use the timeline");
         ImGui::PopStyleColor();
     }
 
@@ -745,33 +901,44 @@ void SAnimationViewerWindow::OnUpdate(float DeltaSeconds)
     if (!State || !State->Viewport)
         return;
 
-    // Update animation time
-    if (State->CurrentAnimation)
+    // Update animation time and playback speed
+    if (State->CurrentAnimation && State->PreviewActor)
     {
-        if (State->bIsPlaying)
+        // AnimInstance에 PlaybackSpeed 설정
+        auto* SkeletalMeshComp = State->PreviewActor->GetSkeletalMeshComponent();
+        if (SkeletalMeshComp)
         {
-            State->CurrentTime += DeltaSeconds * State->PlaybackSpeed;
-
-            float animLength = State->CurrentAnimation->GetPlayLength();
-            if (State->CurrentTime >= animLength)
+            auto* AnimInstance = SkeletalMeshComp->GetAnimInstanceClass();
+            UAnimSingleNodeInstance* SingleNodeInstance = dynamic_cast<UAnimSingleNodeInstance*>(AnimInstance);
+            if (SingleNodeInstance)
             {
-                if (State->bLooping)
-                {
-                    State->CurrentTime = fmod(State->CurrentTime, animLength);
-                }
-                else
-                {
-                    State->CurrentTime = animLength;
-                    State->bIsPlaying = false;
-                }
+                SingleNodeInstance->SetPlaybackSpeed(State->PlaybackSpeed);
             }
         }
 
-        // 애니메이션 시간 동기화 (타임라인 슬라이더를 통한 수동 변경 지원)
+        // 애니메이션 시간 및 루프 설정 동기화
         UAnimationSequence* AnimSeq = dynamic_cast<UAnimationSequence*>(State->CurrentAnimation);
         if (AnimSeq)
         {
-            AnimSeq->SetCurrentTime(State->CurrentTime);
+            // UI Loop 체크박스 상태를 애니메이션에 동기화
+            AnimSeq->SetLooping(State->bLooping);
+
+            if (State->bIsPlaying)
+            {
+                // Playing 중: AnimInstance가 관리하는 시간을 UI에 반영
+                State->CurrentTime = AnimSeq->GetCurrentTime();
+            }
+            else
+            {
+                // 일시정지 중: 타임라인 슬라이더 값을 애니메이션에 설정
+                AnimSeq->SetCurrentTime(State->CurrentTime);
+            }
+        }
+
+        // 선택된 본이 있으면 기즈모를 본 위치로 업데이트 (애니메이션 중 추적)
+        if (SelectedBoneIndex >= 0)
+        {
+            State->PreviewActor->RepositionAnchorToBone(SelectedBoneIndex);
         }
     }
 

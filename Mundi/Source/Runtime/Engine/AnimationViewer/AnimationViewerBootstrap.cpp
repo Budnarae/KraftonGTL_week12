@@ -42,6 +42,9 @@ AnimationViewerState* AnimationViewerBootstrap::CreateViewerState(
     // 프리뷰 액터 스폰
     State->PreviewActor = State->World->SpawnActor<ASkeletalMeshActor>();
 
+    // 프리뷰 월드에서 Tick이 가능하도록 설정
+    State->PreviewActor->SetTickInEditor(true);
+
     return State;
 }
 

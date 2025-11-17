@@ -64,7 +64,7 @@ private:
     // Layout state
     float LeftPanelRatio = 0.25f;
     float RightPanelRatio = 0.25f;
-    float BottomPanelHeight = 120.0f;  // 타임라인 높이
+    float BottomPanelHeight = 250.0f;  // 타임라인 + 노티파이 트랙 높이
 
     // Cached regions
     FRect CenterRect;
@@ -80,6 +80,19 @@ private:
     // 드롭다운 선택 상태
     int32 SelectedMeshIndex = -1;
     int32 SelectedAnimIndex = -1;
+
+    // 노티파이 (UI only - stub)
+    struct FNotifyMarker
+    {
+        float Time = 0.0f;
+        FString Name = "Notify";
+        FString Type = "Default";  // 노티파이 타입
+    };
+    TArray<FNotifyMarker> NotifyMarkers;
+
+    // 컨텍스트 메뉴 상태
+    bool bShowNotifyContextMenu = false;
+    float PendingNotifyTime = 0.0f;
 
     // 헬퍼 함수
     void UpdateBoneTransformFromSkeleton(AnimationViewerState* State);

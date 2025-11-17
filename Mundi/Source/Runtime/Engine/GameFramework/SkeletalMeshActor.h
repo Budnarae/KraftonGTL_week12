@@ -77,6 +77,7 @@ protected:
 
     void BuildBoneLinesCache();
     void UpdateBoneSubtreeTransforms(int32 BoneIndex);
+    void UpdateAllBoneTransforms();
     void UpdateBoneSelectionHighlight(int32 SelectedBoneIndex);
 
     // Lazily create viewer-only components (BoneLineComponent, BoneAnchor) if in preview world

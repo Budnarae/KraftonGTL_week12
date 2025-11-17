@@ -130,11 +130,8 @@ void ASkeletalMeshActor::RebuildBoneLines(int32 SelectedBoneIndex)
         CachedSelected = SelectedBoneIndex;
     }
 
-    // Update transforms only for the selected bone subtree
-    if (SelectedBoneIndex >= 0 && SelectedBoneIndex < BoneCount)
-    {
-        UpdateBoneSubtreeTransforms(SelectedBoneIndex);
-    }
+    // Always update all bone transforms
+    UpdateAllBoneTransforms();
 }
 
 void ASkeletalMeshActor::RepositionAnchorToBone(int32 BoneIndex)
@@ -512,6 +509,38 @@ void ASkeletalMeshActor::UpdateBoneSubtreeTransforms(int32 BoneIndex)
             BL.Rings[base+2]->SetLine(
                 Center + FVector(0.0f, BoneJointRadius * std::cos(a0), BoneJointRadius * std::sin(a0)),
                 Center + FVector(0.0f, BoneJointRadius * std::cos(a1), BoneJointRadius * std::sin(a1)));
+        }
+    }
+}
+
+void ASkeletalMeshActor::UpdateAllBoneTransforms()
+{
+    if (!SkeletalMeshComponent)
+    {
+        return;
+    }
+
+    USkeletalMesh* SkeletalMesh = SkeletalMeshComponent->GetSkeletalMesh();
+    if (!SkeletalMesh)
+    {
+        return;
+    }
+
+    const FSkeletalMeshData* Data = SkeletalMesh->GetSkeletalMeshData();
+    if (!Data)
+    {
+        return;
+    }
+
+    const auto& Bones = Data->Skeleton.Bones;
+    const int32 BoneCount = static_cast<int32>(Bones.size());
+
+    // Update all root bones (and their subtrees)
+    for (int32 i = 0; i < BoneCount; ++i)
+    {
+        if (Bones[i].ParentIndex == -1)  // Root bone
+        {
+            UpdateBoneSubtreeTransforms(i);
         }
     }
 }

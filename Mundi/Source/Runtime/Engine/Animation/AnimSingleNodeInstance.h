@@ -29,10 +29,17 @@ class UAnimSingleNodeInstance : public UAnimInstance
      */
     UAnimationAsset* GetCurrentAnimation() const { return CurrentAnimation; }
 
+    /**
+     * @brief 재생 속도 설정
+     */
+    void SetPlaybackSpeed(float InSpeed) { PlaybackSpeed = InSpeed; }
+    float GetPlaybackSpeed() const { return PlaybackSpeed; }
+
 protected:
     virtual void NativeUpdateAnimation(float DeltaSeconds) override;
     virtual void EvaluateAnimation() override;
 
 private:
     UAnimationAsset* CurrentAnimation = nullptr;        // 현재 재생 중인 애니메이션
+    float PlaybackSpeed = 1.0f;
 };
