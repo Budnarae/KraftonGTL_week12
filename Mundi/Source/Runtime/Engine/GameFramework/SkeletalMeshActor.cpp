@@ -172,6 +172,13 @@ void ASkeletalMeshActor::RepositionAnchorToBone(int32 BoneIndex)
     BoneAnchor->SetVisibility(true);
 }
 
+void ASkeletalMeshActor::ResetBoneLinesCache()
+{
+    bBoneLinesInitialized = false;
+    BoneLinesCache.clear();
+    CachedSelected = -1;
+}
+
 void ASkeletalMeshActor::DuplicateSubObjects()
 {
     Super::DuplicateSubObjects();

@@ -2,8 +2,8 @@
 
 #include "SViewerWindowBase.h"
 #include "Source/Runtime/Engine/AnimationViewer/AnimationViewerState.h"
-#include "Source/Slate/Widgets/AssetBrowserWidget.h"
 #include "Source/Slate/Widgets/BoneHierarchyWidget.h"
+#include "Source/Slate/Widgets/BonePropertyEditor.h"
 
 class FViewport;
 class FViewportClient;
@@ -69,12 +69,20 @@ private:
     // Cached regions
     FRect CenterRect;
 
-    // UI Widgets (재사용!)
-    FAssetBrowserWidget MeshBrowser;
-    FAssetBrowserWidget AnimBrowser;
-    FBoneHierarchyWidget BoneHierarchy;  // 재사용!
+    // UI Widgets
+    FBoneHierarchyWidget BoneHierarchy;
+    FBonePropertyEditor PropertyEditor;
 
     // 본 선택 상태 (BoneHierarchyWidget용)
     int32 SelectedBoneIndex = -1;
     std::set<int32> ExpandedBoneIndices;
+
+    // 드롭다운 선택 상태
+    int32 SelectedMeshIndex = -1;
+    int32 SelectedAnimIndex = -1;
+
+    // 헬퍼 함수
+    void UpdateBoneTransformFromSkeleton(AnimationViewerState* State);
+    void ApplyBoneTransform(AnimationViewerState* State);
+    void ExpandToSelectedBone(AnimationViewerState* State, int32 BoneIndex);
 };

@@ -41,4 +41,17 @@ public:
     float CurrentTime = 0.0f;
     float PlaybackSpeed = 1.0f;
     bool bLooping = true;
+
+    // 본 표시 및 편집 관련
+    bool bShowMesh = true;
+    bool bShowBones = true;
+    bool bBoneLinesDirty = true;
+    int32 LastSelectedBoneIndex = -1;
+
+    // 본 트랜스폼 편집 관련
+    FVector EditBoneLocation;
+    FVector EditBoneRotation;  // Euler angles in degrees
+    FVector EditBoneScale;
+    bool bBoneTransformChanged = false;
+    bool bBoneRotationEditing = false;
 };
