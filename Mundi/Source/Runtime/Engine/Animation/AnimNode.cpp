@@ -82,15 +82,6 @@ FAnimNode_StateMachine::~FAnimNode_StateMachine()
 
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
-    // 모든 Transition의 조건을 평가 (Lua 함수 호출)
-    for (FAnimStateTransition* Transition : Transitions)
-    {
-        if (Transition)
-        {
-            Transition->Update(Context);
-        }
-    }
-
     if (bIsInTransition)
     {
         if (!CurrentTransition) return;

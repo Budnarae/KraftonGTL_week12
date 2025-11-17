@@ -456,17 +456,8 @@ FLuaManager::FLuaManager()
         "Index", &FAnimStateTransition::Index,
         "CanEnterTransition", &FAnimStateTransition::CanEnterTransition,
         "BlendTime", &FAnimStateTransition::BlendTime,
-        "BlendTimeElapsed", &FAnimStateTransition::BlendTimeElapsed,
-        "BlendAlpha", &FAnimStateTransition::BlendAlpha,
-        "bIsBlending", &FAnimStateTransition::bIsBlending,
-        "StartBlending", &FAnimStateTransition::StartBlending,
-        "Update", &FAnimStateTransition::Update,
-        "Evaluate", &FAnimStateTransition::Evaluate,
         "TriggerTransition", &FAnimStateTransition::TriggerTransition,
-        "SetBlendTime", &FAnimStateTransition::SetBlendTime,
-        // Lua 함수 기반 Transition 조건
-        "SetTransitionCondition", &FAnimStateTransition::SetTransitionCondition,
-        "EvaluateCondition", &FAnimStateTransition::EvaluateCondition
+        "SetBlendTime", &FAnimStateTransition::SetBlendTime
     );
 
     // FAnimNode_Sequence usertype 등록
