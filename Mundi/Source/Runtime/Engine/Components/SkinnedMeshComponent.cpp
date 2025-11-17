@@ -128,6 +128,12 @@ void USkinnedMeshComponent::Serialize(const bool bInIsLoading, JSON& InOutHandle
 void USkinnedMeshComponent::DuplicateSubObjects()
 {
    Super::DuplicateSubObjects();
+
+   // 복제된 포인터 값을 초기화 (원본의 버퍼를 해제하지 않도록)
+   VertexBuffer = nullptr;
+   BoneMatrixBuffer = nullptr;
+   BoneNormalMatrixBuffer = nullptr;
+
    if (SkeletalMesh)
    {
        SkeletalMesh->CreateVertexBuffer(&VertexBuffer, IsGpuSkinning);

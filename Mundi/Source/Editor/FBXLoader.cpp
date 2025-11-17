@@ -130,6 +130,11 @@ FSkeletalMeshData* UFbxLoader::LoadFbxMeshAsset(const FString& FilePath)
 	MaterialInfos.clear();
 	FString NormalizedPath = NormalizePath(FilePath);
 
+	// Cooked 경로 계산
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
 	// 캐시에서 로드 시도
 	FSkeletalMeshData* MeshData = TryLoadMeshFromCache(FilePath);
 	if (MeshData)
@@ -153,7 +158,7 @@ FSkeletalMeshData* UFbxLoader::LoadFbxMeshAsset(const FString& FilePath)
 
 	if (MeshData)
 	{
-		MeshData->PathFileName = NormalizedPath;
+		MeshData->PathFileName = CachePathWithoutExt;  // Cooked 경로 사용
 
 		// 캐시 저장
 		SaveMeshToCache(MeshData, FilePath);
@@ -1283,7 +1288,7 @@ FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
 		try
 		{
 			FSkeletalMeshData* MeshData = new FSkeletalMeshData();
-			MeshData->PathFileName = NormalizedPath;
+			MeshData->PathFileName = CachePathWithoutExt;  // Cooked 경로 사용
 
 			FWindowsBinReader Reader(BinPathFileName);
 			if (!Reader.IsOpen())
@@ -1488,6 +1493,11 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 	MaterialInfos.clear();
 	FString NormalizedPath = NormalizePath(FilePath);
 
+	// Cooked 경로 계산
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
 	FFbxAssetData* AssetData = new FFbxAssetData();
 
 #ifdef USE_OBJ_CACHE
@@ -1523,7 +1533,7 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 
 	if (MeshData)
 	{
-		MeshData->PathFileName = NormalizedPath;
+		MeshData->PathFileName = CachePathWithoutExt;  // Cooked 경로 사용
 		AssetData->MeshData = MeshData;
 
 		// 애니메이션 로드 (개별 파일로 자동 저장됨)
@@ -1604,6 +1614,11 @@ void UFbxLoader::BakeFbxCacheOnly(const FString& FilePath)
 	MaterialInfos.clear();
 	FString NormalizedPath = NormalizePath(FilePath);
 
+	// Cooked 경로 계산
+	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
+	std::filesystem::path CachePath(CachePathStr);
+	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+
 	// 캐시가 이미 최신이면 스킵
 	if (IsCacheValid(FilePath))
 	{
@@ -1624,7 +1639,7 @@ void UFbxLoader::BakeFbxCacheOnly(const FString& FilePath)
 
 	if (MeshData)
 	{
-		MeshData->PathFileName = NormalizedPath;
+		MeshData->PathFileName = CachePathWithoutExt;  // Cooked 경로 사용
 
 		// 메시 캐시 저장
 		SaveMeshToCache(MeshData, FilePath);
