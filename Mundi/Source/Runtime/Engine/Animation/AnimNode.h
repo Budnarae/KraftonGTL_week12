@@ -114,23 +114,31 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
 struct FAnimState
 {
     FName Name{};
-    uint32 Index{};   // Animation State Machine에서의 Index
-    TArray<FAnimNode_Sequence> AnimSequenceNodes;
+    uint32 Index{};
+    FAnimNode_Base* EntryNode = nullptr;
+    TArray<FAnimNode_Base*> OwnedNodes;
 
-    /**
-     * @brief AnimSequence를 이 State에 추가
-     */
-    FAnimNode_Sequence* AddAnimSequence(UAnimationSequence* AnimSequence, bool bLoop = true)
+    template<typename TNode, typename... Args>
+    TNode* CreateNode(Args&&... args)
     {
-        if (!AnimSequence)
-        {
-            return nullptr;
-        }
+        TNode* Node = new TNode(std::forward<Args>(args)...);
+        OwnedNodes.Add(Node);
+        return Node;
+    }
 
-        AnimSequenceNodes.Emplace();
-        FAnimNode_Sequence& Node = AnimSequenceNodes.Last();
-        Node.SetSequence(AnimSequence, bLoop);
-        return &Node;
+    void SetEntryNode(FAnimNode_Base* Node)
+    {
+        EntryNode = Node;
+    }
+
+    void ResetNodes()
+    {
+        for (FAnimNode_Base* Node : OwnedNodes)
+        {
+            delete Node;
+        }
+        OwnedNodes.Empty();
+        EntryNode = nullptr;
     }
 };
 
@@ -161,7 +169,7 @@ struct FAnimStateTransition
     void SetBlendTime(float InBlendTime) { BlendTime = InBlendTime; }
 };
 
-struct FAnimNode_StateMachine : FAnimNode_Base 
+struct FAnimNode_StateMachine : FAnimNode_Base
 {
     TArray<FAnimState*> States;
     TArray<FAnimStateTransition*> Transitions;
@@ -178,18 +186,8 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     virtual ~FAnimNode_StateMachine();
 
-    /**
-    * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)
-    * @return 없음
-    */
     virtual void Update(const FAnimationUpdateContext& Context) override;
-
-    /**
-     * @brief 이 노드가 생성하는 최종 Pose 계산(모든 애니메이션 노드는 반드시 이 함수를 통해 Pose를 출력)
-     * @return 인자로 받는 Output을 갱신
-     */
     virtual void Evaluate(FPoseContext& Output) override;
-
 
     // --------- 상태 API ----------
     /**
@@ -198,11 +196,6 @@ struct FAnimNode_StateMachine : FAnimNode_Base
      * @return 추가된 State의 포인터
      */
     FAnimState* AddState(const FName& StateName);
-
-    /**
-     * @brief 이름으로 State 제거
-     * @return 없음
-     */
     void DeleteState(const FName& TargetName);
 
     // --------- 트랜지션 API ----------
@@ -265,3 +258,6 @@ private:
     // // State 체류 시간
     // float StateElapsedTime;
 };
+
+
+
