@@ -936,7 +936,7 @@ void SAnimationViewerWindow::OnUpdate(float DeltaSeconds)
         }
 
         // 선택된 본이 있으면 기즈모를 본 위치로 업데이트 (애니메이션 중 추적)
-        if (SelectedBoneIndex >= 0)
+        if (SelectedBoneIndex >= 0 && State->PreviewActor)
         {
             State->PreviewActor->RepositionAnchorToBone(SelectedBoneIndex);
         }

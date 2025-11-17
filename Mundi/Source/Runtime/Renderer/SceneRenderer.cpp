@@ -450,6 +450,12 @@ void FSceneRenderer::RenderShadowMaps()
 
 void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, const TArray<FMeshBatchElement>& InShadowBatches)
 {
+	// 배치 유효성 검사 (PIE 종료 시 해제된 리소스 참조 방지)
+	if (InShadowBatches.IsEmpty())
+	{
+		return;
+	}
+
 	// 1. 뎁스 전용 셰이더 로드
 	UShader* DepthVS = UResourceManager::GetInstance().Load<UShader>("Shaders/Shadows/DepthOnly_VS.hlsl");
 	if (!DepthVS || !DepthVS->GetVertexShader()) return;
@@ -496,6 +502,13 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 
 	for (const FMeshBatchElement& Batch : InShadowBatches)
 	{
+		// 버퍼 유효성 검사 (PIE 종료 시 해제된 리소스 참조 방지)
+		if (!Batch.VertexBuffer || !Batch.IndexBuffer)
+		{
+			UE_LOG("Warning: Invalid buffer in shadow batch, skipping");
+			continue;
+		}
+
 		// 셰이더/픽셀 상태 변경 불필요
 
 		// IA 상태 변경

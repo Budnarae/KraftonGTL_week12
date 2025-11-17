@@ -21,6 +21,7 @@ class UEditorEngine final
 {
 public:
     bool bChangedPieToEditor = false;
+    bool bSkipNextRender = false;
 
     UEditorEngine();
     ~UEditorEngine();
