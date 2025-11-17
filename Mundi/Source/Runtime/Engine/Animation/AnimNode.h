@@ -132,6 +132,28 @@ struct FAnimState
         Node.SetSequence(AnimSequence, bLoop);
         return &Node;
     }
+
+    /**
+     * @brief 첫 번째 AnimSequence 노드를 업데이트
+     */
+    void Update(const FAnimationUpdateContext& Context)
+    {
+        if (!AnimSequenceNodes.empty())
+        {
+            AnimSequenceNodes.front().Update(Context);
+        }
+    }
+
+    /**
+     * @brief 첫 번째 AnimSequence 노드를 평가하여 Output에 Pose 데이터 채우기
+     */
+    void Evaluate(FPoseContext& Output)
+    {
+        if (!AnimSequenceNodes.empty())
+        {
+            AnimSequenceNodes.front().Evaluate(Output);
+        }
+    }
 };
 
 struct FAnimStateTransition
@@ -207,27 +229,13 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     // --------- 트랜지션 API ----------
     /**
-     * @brief Source와 Target의 이름으로 새로운 Transition 추가 (기본 버전)
+     * @brief Source와 Target의 이름으로 새로운 Transition 추가
      * @return 추가된 Transition의 포인터
      */
     FAnimStateTransition* AddTransition
     (
         const FName& SourceName,
         const FName& TargetName
-    );
-
-    /**
-     * @brief Source와 Target의 이름으로 새로운 Transition 추가 및 Rule 연결
-     * @param SourceName 출발 State 이름
-     * @param TargetName 도착 State 이름
-     * @param TransitionRule Transition 조건을 판단할 Rule
-     * @return 추가된 Transition의 포인터
-     */
-    FAnimStateTransition* AddTransition
-    (
-        const FName& SourceName,
-        const FName& TargetName,
-        UAnimNodeTransitionRule* TransitionRule
     );
 
     /**

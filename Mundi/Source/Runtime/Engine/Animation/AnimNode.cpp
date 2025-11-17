@@ -72,7 +72,6 @@ FAnimNode_StateMachine::~FAnimNode_StateMachine()
     while (!Transitions.empty())
     {
         FAnimStateTransition* Transition = Transitions.back();
-        Transition->CleanupDelegate();
         delete Transition;
         Transitions.pop_back();
     }
@@ -83,6 +82,15 @@ FAnimNode_StateMachine::~FAnimNode_StateMachine()
 
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
+    // 모든 Transition의 조건을 평가 (Lua 함수 호출)
+    for (FAnimStateTransition* Transition : Transitions)
+    {
+        if (Transition)
+        {
+            Transition->Update(Context);
+        }
+    }
+
     if (bIsInTransition)
     {
         if (!CurrentTransition) return;
@@ -233,7 +241,6 @@ void FAnimNode_StateMachine::DeleteState(const FName& TargetName)
         if (Transition->SourceState == TargetState ||
             Transition->TargetState == TargetState)
         {
-             Transition->CleanupDelegate();
              delete Transition;
             Transitions.erase(Transitions.begin() + i);
         }
@@ -295,33 +302,6 @@ FAnimStateTransition* FAnimNode_StateMachine::AddTransition
     return Transition;
 }
 
-FAnimStateTransition* FAnimNode_StateMachine::AddTransition
-(
-    const FName& SourceName,
-    const FName& TargetName,
-    UAnimNodeTransitionRule* TransitionRule
-)
-{
-    // 기본 Transition 생성
-    FAnimStateTransition* Transition = AddTransition(SourceName, TargetName);
-
-    if (!Transition)
-        return nullptr;
-
-    if (!TransitionRule)
-    {
-        UE_LOG("[FAnimNode_StateMachine::AddTransition] Warning : TransitionRule is nullptr.");
-        return Transition;
-    }
-
-    // Rule 연결 및 Delegate 바인딩
-    Transition->AssociatedRule = TransitionRule;
-    Transition->DelegateHandle = TransitionRule->GetTransitionDelegate().AddDynamic(
-        Transition, &FAnimStateTransition::TriggerTransition);
-
-    return Transition;
-}
-
 void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FName& TargetName)
 {
     // 입력된 이름과 일치하는 State 찾기
@@ -339,7 +319,6 @@ void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FNa
         if ((*It)->SourceState == SourceState &&
             (*It)->TargetState == TargetState)
         {
-            (*It)->CleanupDelegate();
             delete* It;
             Transitions.erase(It);
             return;

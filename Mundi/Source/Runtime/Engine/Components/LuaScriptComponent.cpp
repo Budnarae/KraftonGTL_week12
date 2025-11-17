@@ -209,6 +209,30 @@ void ULuaScriptComponent::EndPlay()
 	CleanupLuaResources();
 }
 
+bool ULuaScriptComponent::Call(const char* FuncName, sol::variadic_args VarArgs)
+{
+	if (!Env.valid())
+	{
+		return false;
+	}
+
+	sol::protected_function Func = FLuaManager::GetFunc(Env, FuncName);
+	if (!Func.valid())
+	{
+		return false;
+	}
+
+	auto Result = Func(VarArgs);
+	if (!Result.valid())
+	{
+		sol::error Err = Result;
+		UE_LOG("[Lua][error] %s\n", Err.what());
+		return false;
+	}
+
+	return true;
+}
+
 void ULuaScriptComponent::CleanupLuaResources()
 {
 	// 이미 정리되었다면 중복 실행 방지

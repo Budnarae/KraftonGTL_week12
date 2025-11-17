@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <sol/sol.hpp>
+
 struct FRawAnimSequenceTrack
 {
     TArray<FVector> PosKeys; // 위치 키프레임
