@@ -1,7 +1,6 @@
 ﻿#pragma once
-
-#include "AnimationStateMachine.h"
 #include "AnimNodeTransitionRule.h"
+#include "AnimNode.h"
 
 class USkeletalMeshComponent;
 class UAnimationSequence;
@@ -15,13 +14,12 @@ public:
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
 
-    // FOR TEST
-    void PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB);
-    void UpdateBlendedAnimation(float DeltaTime, float Alpha);
+    FAnimNode_StateMachine ASM;
+    FAnimNode_Base* RootNode = nullptr;
 
-    UAnimationSequence* TestSeqA = nullptr;
-    UAnimationSequence* TestSeqB = nullptr;
-    bool IsBlending = false;
+    // 현재 포즈를 저장할 변수
+    FPoseContext           CurrentPose;
+
     float CurTime = 0.0;
 
     /**
@@ -35,8 +33,9 @@ public:
      */
     void UpdateAnimation(float DeltaTime);
 
+protected:
     /* Unreal Style */
-    
+
     // - 게임 로직 기준 Update (Tick) 단계
     // - 파라미터 업데이트, Transition 조건에 필요한 변수 갱신
     virtual void NativeUpdateAnimation(float DeltaSeconds);
@@ -44,6 +43,9 @@ public:
     // - AnimGraph Evaluate 단계 수행
     // - 최종 Pose 계산
     virtual void EvaluateAnimation();
+
+public:
+    FPoseContext& GetCurrentPose() { return CurrentPose; };
 
 // ====================================
 // Transition Rule Management
@@ -82,15 +84,8 @@ public:
      */
     void InitializeAnimationStateMachine();
 
-    /**
-     * @brief Animation State Machine 접근자
-     */
-    UAnimationStateMachine* GetAnimationStateMachine() { return &ASM; }
-
 protected:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
-private:
-    UAnimationStateMachine ASM;
 
     // Transition Rule 관리
     TArray<UAnimNodeTransitionRule*> TransitionRules;
@@ -102,8 +97,6 @@ private:
 
 // FOR TEST!!!
 private:
-    float TestTime = 0;
     bool bIsInitialized = false;
-    FTransform TestBoneBasePose;
 };
 

@@ -650,6 +650,18 @@
     <ClCompile Include="Source\Runtime\Engine\Components\BoneAnchorComponent.cpp" />
     <ClCompile Include="Source\Slate\Windows\ContentBrowserWindow.cpp" />
     <ClCompile Include="Source\Slate\ThumbnailManager.cpp" />
+    <ClCompile Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimationAsset.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimBlend.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimDataModel.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimationSequence.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimInstance.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimationType.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNode.cpp">
+      <Filter>Source\Runtime\Engine\Animation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -1388,6 +1400,18 @@
     <ClInclude Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.h" />
     <ClInclude Include="Source\Slate\Windows\ContentBrowserWindow.h" />
     <ClInclude Include="Source\Slate\ThumbnailManager.h" />
+    <ClInclude Include="Source\Runtime\Core\ErrorHandle\ErrorHandle.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimationAsset.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimBlend.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimDataModel.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimationSequence.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\FloatComparisonRule.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNode.h">
+      <Filter>Source\Runtime\Engine\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimationType.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
@@ -1527,6 +1551,9 @@
     </Filter>
     <Filter Include="Generated">
       <UniqueIdentifier>{01b0aa4d-539f-4b06-821e-02d582bc9577}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Runtime\Engine\Animation">
+      <UniqueIdentifier>{c159fbfe-e4c4-4bc0-a419-38c1498cbc22}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
