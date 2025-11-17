@@ -113,17 +113,7 @@ function AnimationStateMachine:update(context)
                     TargetNode = transition.TargetState.AnimSequenceNodes[1]
                 end
 
-                -- Phase 동기화 (SourceNode의 진행률을 TargetNode에 적용)
-                if SourceNode and TargetNode and SourceNode.Sequence and TargetNode.Sequence then
-                    local SrcLen = SourceNode.Sequence:GetPlayLength()
-                    local DstLen = TargetNode.Sequence:GetPlayLength()
-
-                    if SrcLen > 0.0 and DstLen > 0.0 then
-                        local Phase = SourceNode.CurrentTime / SrcLen
-                        Phase = math.min(math.max(Phase, 0.0), 1.0)
-                        TargetNode.CurrentTime = Phase * DstLen
-                    end
-                end
+                -- Phase 동기화 비활성화 (부풀어오름 문제 디버깅용)
                 -- 서로 다른 애니메이션 간 Phase 동기화는 부자연스러울 수 있음
                 --if SourceNode and TargetNode and SourceNode.Sequence and TargetNode.Sequence then
                 --    local SrcLen = SourceNode.Sequence:GetPlayLength()
