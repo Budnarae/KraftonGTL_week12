@@ -124,6 +124,17 @@ function AnimationStateMachine:update(context)
                         TargetNode.CurrentTime = Phase * DstLen
                     end
                 end
+                -- 서로 다른 애니메이션 간 Phase 동기화는 부자연스러울 수 있음
+                --if SourceNode and TargetNode and SourceNode.Sequence and TargetNode.Sequence then
+                --    local SrcLen = SourceNode.Sequence:GetPlayLength()
+                --    local DstLen = TargetNode.Sequence:GetPlayLength()
+                --    if SrcLen > 0.0 and DstLen > 0.0 then
+                --        local Phase = SourceNode.CurrentTime / SrcLen
+                --        Phase = math.min(math.max(Phase, 0.0), 1.0)
+                --        TargetNode.CurrentTime = Phase * DstLen
+                --    end
+                --end
+
 
                 -- 블렌드 노드 구성
                 self.BlendFrom = SourceNode
@@ -159,16 +170,9 @@ function AnimationStateMachine:evaluate(output)
             return
         end
 
-        -- From, To 각각 평가
-        local PoseFrom = FPoseContext()
-        local PoseTo = FPoseContext()
-
-        if output.Skeleton then
-            PoseFrom.Skeleton = output.Skeleton
-            PoseTo.Skeleton = output.Skeleton
-            PoseFrom.EvaluatedPoses:SetNum(output.EvaluatedPoses:Num())
-            PoseTo.EvaluatedPoses:SetNum(output.EvaluatedPoses:Num())
-        end
+        -- From, To 각각 평가 (C++ 방식: 생성자에 Skeleton 전달)
+        local PoseFrom = FPoseContext(output.Skeleton)
+        local PoseTo = FPoseContext(output.Skeleton)
 
         if self.BlendFrom.Evaluate then
             self.BlendFrom:Evaluate(PoseFrom)

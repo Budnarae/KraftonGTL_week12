@@ -421,7 +421,7 @@ FLuaManager::FLuaManager()
         "EvaluatedPoses", &FPoseContext::EvaluatedPoses
     );
 
-    // FTransform usertype 등록
+    // FTransform usertype 등록 (SharedLib)
     SharedLib.new_usertype<FTransform>("FTransform",
         sol::constructors<FTransform(), FTransform(const FVector&, const FQuat&, const FVector&)>(),
         "Translation", &FTransform::Translation,
@@ -430,6 +430,11 @@ FLuaManager::FLuaManager()
         // Static Lerp 함수
         "Lerp", &FTransform::Lerp
     );
+
+    // FTransform을 전역에도 등록 (테이블 형태로)
+    sol::table FTransformTable = Lua->create_table();
+    FTransformTable["Lerp"] = &FTransform::Lerp;
+    Lua->set("FTransform", FTransformTable);
 
     // TArray<FTransform> usertype 등록 (Lua에서 배열처럼 접근 가능하도록)
     SharedLib.new_usertype<TArray<FTransform>>("TArrayFTransform",
