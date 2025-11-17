@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
@@ -10,15 +10,9 @@
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
 {
-    // TestSeqA, TestSeqB는 ResourceManager가 관리하므로 delete하지 않음
     // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
     // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
-
-    // nullptr로만 설정
-    TestSeqA = nullptr;
-    TestSeqB = nullptr;
-    OwnerSkeletalComp = nullptr;
-    CurrentAnimation = nullptr;
+    OwnerSkeletalComp = nullptr;    
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
@@ -54,7 +48,10 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
     // Anim Graph Update
     FAnimationUpdateContext Context;
     Context.DeltaTime = DeltaTime;
-    RootNode->Update(Context);
+    if (RootNode)
+    {
+        RootNode->Update(Context);
+    }
 
     // Anim Graph Evaluate
     EvaluateAnimation();
@@ -122,44 +119,6 @@ void UAnimInstance::EvaluateAnimation()
         LocalPose = Out.EvaluatedPoses;
         OwnerSkeletalComp->ForceRecomputePose();
     }
-}
-
-
-void UAnimInstance::SetAnimation(UAnimationAsset* NewAnimation)
-{
-    CurrentAnimation = NewAnimation;
-    CurrentAnimationTime = 0.0f;
-}
-
-void UAnimInstance::Play(bool bLooping)
-{
-    bIsPlaying = true;
-    bIsLooping = bLooping;
-    CurrentAnimationTime = 0.0f;
-}
-
-//Animation Helper
-void UAnimInstance::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
-{
-    if (!OwnerSkeletalComp || !NewAnimToPlay)
-    {
-        return;
-    }
-
-    OwnerSkeletalComp->SetAnimationMode(USkeletalMeshComponent::EAnimationMode::AnimationSingleNode);
-    SetAnimation(NewAnimToPlay);
-    Play(bLooping);
-}
-
-void UAnimInstance::StopAnimation()
-{
-    bIsPlaying = false;
-    CurrentAnimationTime = 0.0f;
-}
-
-FPoseContext& UAnimInstance::GetCurrentPose()
-{
-    return CurrentPose;
 }
 
 void UAnimInstance::AddTransitionRule(UAnimNodeTransitionRule* InRule)
@@ -320,45 +279,4 @@ void UAnimInstance::InitializeAnimationStateMachine()
 
     // 4) RootNode를 StateMachine으로 고정
     RootNode = &ASM;
-}
-
-void UAnimInstance::PlayBlendedAnimation(UAnimationSequence& InSeqA, UAnimationSequence& InSeqB)
-{
-    TestSeqA = &InSeqA;
-    TestSeqB = &InSeqB;
-    IsBlending = true;
-}
-
-void UAnimInstance::UpdateBlendedAnimation(float DeltaTime, float Alpha)
-{
-    if (!OwnerSkeletalComp || !TestSeqA || !TestSeqB || !IsBlending)
-    {
-        return;
-    }
-
-    USkeletalMesh* SkeletalMesh = OwnerSkeletalComp->GetSkeletalMesh();
-    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
-    {
-        return;
-    }
-
-    CurTime += DeltaTime;
-
-    // 2) 모든 본의 로컬 포즈 업데이트
-    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
-    const int32 NumBones = Skeleton.Bones.Num();
-
-    TArray<FTransform>& LocalPose = OwnerSkeletalComp->GetLocalSpacePose();
-    LocalPose.SetNum(NumBones);
-
-    FPoseContext TSeqA, TSeqB, Out;
-    TestSeqA->EvaluatePose(CurTime, Skeleton, TSeqA);
-    TestSeqB->EvaluatePose(CurTime, Skeleton, TSeqB);
-
-    FAnimBlend::Blend(TSeqA, TSeqB, Alpha, Out);
-
-    LocalPose = Out.EvaluatedPoses;
-
-    // 포즈 재계산 => 스키닝
-    OwnerSkeletalComp->ForceRecomputePose();
 }

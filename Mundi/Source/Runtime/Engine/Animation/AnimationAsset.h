@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "ResourceBase.h"
+#include "AnimationType.h"
 
 /**
  * @brief 모든 애니메이션 에셋의 추상 베이스 클래스
@@ -43,6 +44,10 @@ public:
      */
     virtual float GetFrameRate() const = 0;
 
+    // Anim Node에서 Update, Evaluate이 쓰이지만,
+    // AnimSinglenodeInstance같은 단일 Sequence만 재생하는 상황에 별도의 AnimNode를 만들지 않고 재생하는 설계의 유연성을 위해 남겨둠
+    // Anim Node의 Update, Evaluate에서도 이 Update, Evaluate를 부름
+    // 추후 Anim Node에 이 로직을 전부 흡수해도 됨. 판단은 알아서.
     virtual void Update(const FAnimationUpdateContext& Context) = 0;
     virtual void Evaluate(FPoseContext& Output) = 0;
 };

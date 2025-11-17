@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "AnimationType.h"
 #include "AnimationSequence.h"
 
@@ -12,6 +12,7 @@ struct FAnimNode_Sequence : FAnimNode_Base
 {
     UAnimationSequence* Sequence = nullptr;
     float CurrentTime = 0.0f;
+    float PlayRate = 1.0f;
     bool bLooping = true;
 
     void SetSequence(UAnimationSequence* InSeq, bool bInLoop = true)
@@ -21,47 +22,64 @@ struct FAnimNode_Sequence : FAnimNode_Base
         CurrentTime = 0.0f;
     }
 
+    void SetLooping(bool bInLooping) { bLooping = bInLooping; }
+
     virtual void Update(const FAnimationUpdateContext& Context) override
     {
         if (!Sequence)
             return;
 
-        CurrentTime += Context.DeltaTime;
-
-        float PlayLength = Sequence->GetDataModel()->GetPlayLength();
-        if (PlayLength <= 0.0f)
+        const float Length = Sequence->GetPlayLength();
+        if (Length <= 0.0f)
             return;
 
-        if (CurrentTime >= PlayLength)
+        CurrentTime += Context.DeltaTime * PlayRate;
+
+        if (bLooping)
         {
-            if (bLooping)
+            CurrentTime = std::fmod(CurrentTime, Length);
+            if (CurrentTime < 0.0f)
             {
-                CurrentTime = fmod(CurrentTime, PlayLength);
+                CurrentTime += Length;
             }
-            else
-            {
-                CurrentTime = PlayLength;
-            }
+        }
+        else
+        {
+            CurrentTime = FMath::Clamp(CurrentTime, 0.0f, Length);
         }
     }
 
     virtual void Evaluate(FPoseContext& Output) override
     {
-        if (!Sequence || !Output.Skeleton)
+        if (!Sequence)
             return;
 
-        const FSkeleton Skeleton = *Output.Skeleton;
-        const int32 NumBones = Skeleton.Bones.Num();
+        Sequence->EvaluatePose(CurrentTime, Output);
+    }
+};
 
-        Output.EvaluatedPoses.Empty();
-        Output.EvaluatedPoses.SetNum(NumBones);
+class UAnimationSequence;
 
-        for (int32 BoneIndex = 0; BoneIndex < NumBones; BoneIndex++)
+struct FAnimState
+{
+    FName Name{};
+    uint32 Index{};   // Animation State Machine에서의 Index
+    TArray<FAnimNode_Sequence> AnimSequenceNodes;
+
+    /**
+     * @brief AnimSequence를 이 State에 추가
+     */
+    FAnimNode_Sequence* AddAnimSequence(UAnimationSequence* AnimSequence, bool bLoop = true)
+    {
+        if (!AnimSequence)
         {
-            const FBone& Bone = Skeleton.Bones[BoneIndex];
-            const FName BoneName(Bone.Name);
-            Output.EvaluatedPoses[BoneIndex] = Sequence->GetBonePose(BoneName, CurrentTime);
+            return nullptr;
         }
+
+        AnimSequenceNodes.Emplace();
+        FAnimNode_Sequence& Node = AnimSequenceNodes.Last();
+        Node.SetSequence(AnimSequence, bLoop);
+        return &Node;
     }
 };
 

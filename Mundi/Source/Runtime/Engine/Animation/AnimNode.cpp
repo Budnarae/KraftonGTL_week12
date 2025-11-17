@@ -22,13 +22,12 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 
         // Transition 중에도 Target State 애니메이션 업데이트 (블렌딩 전까지 임시)
         if (CurrentTransition->TargetState &&
-            !CurrentTransition->TargetState->AnimSequences.empty())
+            !CurrentTransition->TargetState->AnimSequenceNodes.empty())
         {
-            UAnimationSequence* SequenceToUpdate = CurrentTransition->TargetState->AnimSequences.front();
+            FAnimNode_Sequence* SequenceToUpdate = &CurrentTransition->TargetState->AnimSequenceNodes.front();
             if (SequenceToUpdate)
             {
                 SequenceToUpdate->Update(Context);
-                // CurrentState->RootNode->Update(Context);
             }
         }
 
@@ -43,7 +42,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
     }
     else
     {
-        if (!CurrentState || CurrentState->AnimSequences.empty())
+        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
             return;
 
         // 조건을 충족한 Transition이 있으면 State를 변환한다.
@@ -62,7 +61,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
         }
 
         // 블렌드 구현 이전까지 State의 첫번째 Sequence를 우선하여 적용합니다.
-        UAnimationSequence* SequenceToUpdate = CurrentState->AnimSequences.front();
+        FAnimNode_Sequence* SequenceToUpdate = &CurrentState->AnimSequenceNodes.front();
         if (SequenceToUpdate)
         {
             SequenceToUpdate->Update(Context);
@@ -76,18 +75,18 @@ void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
     {
         // 블렌딩 구현 전까지 임시로 Target State를 평가
         if (CurrentTransition->TargetState &&
-            !CurrentTransition->TargetState->AnimSequences.empty())
+            !CurrentTransition->TargetState->AnimSequenceNodes.empty())
         {
-            UAnimationSequence* SequenceToEvaluate = CurrentTransition->TargetState->AnimSequences.front();
+            FAnimNode_Sequence* SequenceToEvaluate = &CurrentTransition->TargetState->AnimSequenceNodes.front();
             SequenceToEvaluate->Evaluate(Output);
         }
     }
     else
     {
-        if (!CurrentState || CurrentState->AnimSequences.empty())
+        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
             return;
 
-        UAnimationSequence* SequenceToEvaluate = CurrentState->AnimSequences.front();
+        FAnimNode_Sequence* SequenceToEvaluate = &CurrentState->AnimSequenceNodes.front();
         SequenceToEvaluate->Evaluate(Output);
     }
 }

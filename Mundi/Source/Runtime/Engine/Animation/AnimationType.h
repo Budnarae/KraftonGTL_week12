@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-
 struct FRawAnimSequenceTrack
 {
     TArray<FVector> PosKeys; // 위치 키프레임
@@ -224,25 +223,5 @@ struct FAnimStateTransition
     void SetBlendTime(float InBlendTime)
     {
         BlendTime = InBlendTime;
-    }
-};
-
-class UAnimationSequence;
-
-struct FAnimState
-{
-    FName Name{};
-    uint32 Index{};   // Animation State Machine에서의 Index
-    TArray<UAnimationSequence*> AnimSequences;
-
-    /**
-     * @brief AnimSequence를 이 State에 추가
-     */
-    void AddAnimSequence(UAnimationSequence* AnimSequence)
-    {
-        if (AnimSequence)
-        {
-            AnimSequences.Add(AnimSequence);
-        }
     }
 };
