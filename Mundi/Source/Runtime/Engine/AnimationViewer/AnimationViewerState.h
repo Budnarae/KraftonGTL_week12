@@ -1,6 +1,4 @@
 #pragma once
-#include "Windows/SViewerWindowBase.h"
-
 
 class UWorld;
 class FViewport;
@@ -10,9 +8,9 @@ class USkeletalMesh;
 class UAnimationSequence;
 
 /**
- * 애니메이션 뷰어의 탭별 상태
+ * 애니메이션 뷰어 상태
  */
-class AnimationViewerState : public ViewerTabStateBase
+class AnimationViewerState
 {
 public:
     AnimationViewerState() = default;

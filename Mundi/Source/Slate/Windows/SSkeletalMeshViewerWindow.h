@@ -34,27 +34,21 @@ public:
 
     void OnRenderViewport();
 
-    // Accessors (active tab)
+    // Accessors
     FViewport* GetViewport() const
     {
-        ViewerState* State = static_cast<ViewerState*>(ActiveState);
         return State ? State->Viewport : nullptr;
     }
     FViewportClient* GetViewportClient() const
     {
-        ViewerState* State = static_cast<ViewerState*>(ActiveState);
         return State ? State->Client : nullptr;
     }
 
-    // Load a skeletal mesh into the active tab
+    // Load a skeletal mesh
     void LoadSkeletalMesh(const FString& Path);
 
-protected:
-    // SViewerWindowBase overrides (탭 관리)
-    virtual ViewerTabStateBase* CreateTabState(const char* Name) override;
-    virtual void DestroyTabState(ViewerTabStateBase* State) override;
-
 private:
+    ViewerState* State = nullptr;
 
     // Layout state
     float LeftPanelRatio = 0.25f;   // 25% of width

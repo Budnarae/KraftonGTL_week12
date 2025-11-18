@@ -23,15 +23,11 @@ SAnimationViewerWindow::SAnimationViewerWindow()
 
 SAnimationViewerWindow::~SAnimationViewerWindow()
 {
-    // 모든 탭 정리
-    for (ViewerTabStateBase* Tab : Tabs)
+    if (State)
     {
-        if (Tab)
-        {
-            DestroyTabState(Tab);
-        }
+        AnimationViewerBootstrap::DestroyViewerState(State);
+        State = nullptr;
     }
-    Tabs.Empty();
 }
 
 bool SAnimationViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
@@ -48,11 +44,8 @@ bool SAnimationViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
 
     SetRect(StartX, StartY, StartX + DefaultWidth, StartY + DefaultHeight);
 
-    // 첫 번째 탭 생성
-    OpenNewTab("Animation Viewer 1");
-
-    // 뷰포트 크기 초기화
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
+    // Create viewer state
+    State = AnimationViewerBootstrap::CreateViewerState("Viewer", World, Device);
     if (State && State->Viewport)
     {
         State->Viewport->Resize((uint32)StartX, (uint32)StartY, (uint32)DefaultWidth, (uint32)DefaultHeight);
@@ -60,17 +53,6 @@ bool SAnimationViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
 
     bRequestFocus = true;
     return true;
-}
-
-ViewerTabStateBase* SAnimationViewerWindow::CreateTabState(const char* Name)
-{
-    return AnimationViewerBootstrap::CreateViewerState(Name, World, Device);
-}
-
-void SAnimationViewerWindow::DestroyTabState(ViewerTabStateBase* State)
-{
-    AnimationViewerState* AVState = static_cast<AnimationViewerState*>(State);
-    AnimationViewerBootstrap::DestroyViewerState(AVState);
 }
 
 void SAnimationViewerWindow::LoadAsset(const FString& AssetPath)
@@ -88,7 +70,6 @@ void SAnimationViewerWindow::LoadAsset(const FString& AssetPath)
 
 void SAnimationViewerWindow::LoadSkeletalMesh(const FString& Path)
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State || !State->PreviewActor)
         return;
 
@@ -151,7 +132,6 @@ void SAnimationViewerWindow::LoadSkeletalMesh(const FString& Path)
 
 void SAnimationViewerWindow::LoadAnimation(const FString& Path)
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State || Path.empty())
         return;
 
@@ -311,7 +291,6 @@ void SAnimationViewerWindow::LoadAnimation(const FString& Path)
 
 void SAnimationViewerWindow::OnRender()
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State)
         return;
 
@@ -325,9 +304,6 @@ void SAnimationViewerWindow::OnRender()
         CenterRect.UpdateMinMax();
         return;
     }
-
-    // 탭 바 렌더링
-    RenderTabBar();
 
     // 메인 패널 레이아웃
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
@@ -897,7 +873,6 @@ void SAnimationViewerWindow::OnRender()
 
 void SAnimationViewerWindow::OnUpdate(float DeltaSeconds)
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -955,7 +930,6 @@ void SAnimationViewerWindow::OnUpdate(float DeltaSeconds)
 
 void SAnimationViewerWindow::OnRenderViewport()
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
     {
         const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
@@ -985,7 +959,6 @@ void SAnimationViewerWindow::OnRenderViewport()
 
 void SAnimationViewerWindow::OnMouseMove(FVector2D MousePos)
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -998,7 +971,6 @@ void SAnimationViewerWindow::OnMouseMove(FVector2D MousePos)
 
 void SAnimationViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -1086,7 +1058,6 @@ void SAnimationViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
 void SAnimationViewerWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
-    AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
