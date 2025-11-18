@@ -140,8 +140,20 @@ function BeginPlay()
             NotifyA:SetVolume(1.0)
             NotifyA:SetPitch(1.0)
             NotifyA:SetOwner(OwnerActor)
-            NotifyA:SetAnimation(AnimA)
             AnimA:AddAnimNotify(NotifyA)
+        end
+    end
+
+    -- StateA: Rotating NotifyState 추가
+    if AnimA then
+        local RotatingNotify = NewRotatingAnimNotifyState()
+        if RotatingNotify then
+            RotatingNotify:SetOwner(OwnerActor)
+            RotatingNotify:SetRotationPerTick(Vector(0, 0, 0.1))  -- 매 틱마다 Yaw 10도 회전 (Roll, Pitch, Yaw)
+            RotatingNotify:SetRollbackOnEnd(true)  -- 종료 시 원래 회전으로 복원
+            RotatingNotify:SetStartTime(0.5)
+            RotatingNotify:SetDurationTime(1.0)
+            AnimA:AddAnimNotifyState(RotatingNotify)
         end
     end
 
@@ -162,6 +174,19 @@ function BeginPlay()
         end
     end
 
+    -- StateB: Scaling NotifyState 추가
+    if AnimB then
+        local ScalingNotify = NewScalingAnimNotifyState()
+        if ScalingNotify then
+            ScalingNotify:SetOwner(OwnerActor)
+            ScalingNotify:SetScalePerTick(Vector(0.001, 0.001, 0.001))  -- 매 틱마다 스케일 0.01 증가
+            ScalingNotify:SetRollbackOnEnd(true)  -- 종료 시 원래 스케일로 복원
+            ScalingNotify:SetStartTime(0.5)
+            ScalingNotify:SetDurationTime(1.5)
+            AnimB:AddAnimNotifyState(ScalingNotify)
+        end
+    end
+
     -- StateB: Sound Notify (주석 처리)
     -- if AnimB and SoundB then
     --     local NotifyB = NewSoundAnimNotify()
@@ -171,7 +196,6 @@ function BeginPlay()
     --         NotifyB:SetVolume(1.0)
     --         NotifyB:SetPitch(1.0)
     --         NotifyB:SetOwner(OwnerActor)
-    --         NotifyB:SetAnimation(AnimB)
     --         AnimB:AddAnimNotify(NotifyB)
     --     end
     -- end
@@ -185,7 +209,6 @@ function BeginPlay()
             NotifyC:SetVolume(1.0)
             NotifyC:SetPitch(1.0)
             NotifyC:SetOwner(OwnerActor)
-            NotifyC:SetAnimation(AnimC)
             AnimC:AddAnimNotify(NotifyC)
         end
     end

@@ -20,13 +20,3 @@ void UAnimNotify::SetTimeToNotify(float InTimeToNotify)
 {
     TimeToNotify = InTimeToNotify;
 }
-
-UAnimationSequence* UAnimNotify::GetAnimation()
-{
-    return Animation;
-}
-
-void UAnimNotify::SetAnimation(UAnimationSequence* InAnimation)
-{
-    Animation = InAnimation;
-}

@@ -4,6 +4,7 @@
 #include "LuaScriptComponent.h"
 #include "AnimNode.h"
 #include "AnimNotify/AnimNotify.h"
+#include "AnimNotify/AnimNotifyState.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
@@ -171,6 +172,76 @@ void UAnimInstance::PostUpdateAnimation()
             {
                 Notify->Notify();
             }
+        }
+    }
+
+    // 현재 애니메이션의 AnimNotifyState 목록 가져오기
+    const TArray<UAnimNotifyState*>& AnimNotifyStates = CurrentAnimation->GetAnimNotifyStates();
+    float CurrentAnimationPlayLength = CurrentAnimation->GetPlayLength();
+
+    // LastAnimationTime과 CurrentAnimationTime 사이에 있는 AnimNotify 실행
+    for (UAnimNotifyState* NotifyState : AnimNotifyStates)
+    {
+        if (!NotifyState)
+            continue;
+
+        float StartTime = NotifyState->GetStartTime();
+        float DurationTime = NotifyState->GetDurationTime();
+
+        // 시간 범위 체크: LastAnimationTime < NotifyTime <= CurrentAnimationTime
+        // 루프 애니메이션 고려
+        bool bBeginTrigger = false;
+        bool bTickTrigger = false;
+        bool bEndTrigger = false;
+        bool bEndAlreadyCalled = NotifyState->GetEndAlreadtCalled();
+
+        if (LastAnimationTime <= CurrentAnimationTime)
+        {
+            // 일반 경우: 시간이 순방향으로 진행
+            if (StartTime > LastAnimationTime && StartTime <= CurrentAnimationTime)
+            {
+                bBeginTrigger = true;
+            }
+            if (StartTime + DurationTime > CurrentAnimationTime &&
+                StartTime < CurrentAnimationTime)
+            {
+                bTickTrigger = true;
+            }
+            if (StartTime + DurationTime <= CurrentAnimationTime && !bEndAlreadyCalled)
+            {
+                bEndTrigger = true;
+            }
+        }
+        else
+        {
+            if (StartTime > LastAnimationTime || StartTime <= CurrentAnimationTime)
+            {
+                bBeginTrigger = true;
+            }
+            if ((StartTime > LastAnimationTime || StartTime <= CurrentAnimationTime) &&
+            fmod(StartTime + DurationTime, CurrentAnimationPlayLength) > CurrentAnimationTime)
+            {
+                bTickTrigger = true;
+            }
+            if (fmod(StartTime + DurationTime, CurrentAnimationPlayLength) <= CurrentAnimationTime &&
+                 !bEndAlreadyCalled)
+            {
+                bEndTrigger = true;
+            }
+        }
+
+        // Notify 실행 (조건이 맞으면 실행)
+        if (bBeginTrigger)
+        {
+            NotifyState->NotifyBegin();
+        }
+        if (bTickTrigger)
+        {
+            NotifyState->NotifyTick();
+        }
+        if (bEndTrigger)
+        {
+            NotifyState->NotifyEnd();
         }
     }
 }
