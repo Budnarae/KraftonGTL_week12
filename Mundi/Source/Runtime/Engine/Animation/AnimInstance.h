@@ -68,7 +68,6 @@ public:
 
 protected:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
-    UAnimationSequence* CurrentAnimation = nullptr;  // 현재 재생 중인 애니메이션
 
     // C++ ASM 관련 변수 (주석 처리 - Lua ASM 사용)
     // TArray<UAnimNodeTransitionRule*> TransitionRules;
