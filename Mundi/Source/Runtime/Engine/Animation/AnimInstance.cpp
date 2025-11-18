@@ -209,7 +209,7 @@ void UAnimInstance::PostUpdateAnimation()
             {
                 bTickTrigger = true;
             }
-            if (StartTime + DurationTime < CurrentAnimationTime && !bEndAlreadyCalled)
+            if (StartTime + DurationTime <= CurrentAnimationTime && !bEndAlreadyCalled)
             {
                 bEndTrigger = true;
             }
@@ -225,7 +225,7 @@ void UAnimInstance::PostUpdateAnimation()
             {
                 bTickTrigger = true;
             }
-            if (fmod(StartTime + DurationTime, CurrentAnimationPlayLength) < CurrentAnimationTime &&
+            if (fmod(StartTime + DurationTime, CurrentAnimationPlayLength) <= CurrentAnimationTime &&
                  !bEndAlreadyCalled)
             {
                 bEndTrigger = true;

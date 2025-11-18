@@ -12,8 +12,11 @@
 #include "../Animation/AnimationSequence.h"
 #include "../Animation/AnimInstance.h"
 #include "../Animation/AnimNotify/AnimNotify.h"
+#include "../Animation/AnimNotify/AnimNotifyState.h"
 #include "../Animation/AnimNotify/SoundAnimNotify.h"
 #include "../Animation/AnimNotify/CameraShakeAnimNotify.h"
+#include "../Animation/AnimNotify/RotatingAnimNotifyState.h"
+#include "../Animation/AnimNotify/ScalingAnimNotifyState.h"
 #include "../Audio/Sound.h"
 #include "../Components/SkeletalMeshComponent.h"
 #include "../../AssetManagement/ResourceManager.h"
@@ -631,6 +634,49 @@ FLuaManager::FLuaManager()
         "SetMixRatio", &UCameraShakeAnimNotify::SetMixRatio
     );
 
+    // UAnimNotifyState usertype 등록
+    SharedLib.new_usertype<UAnimNotifyState>("UAnimNotifyState",
+        sol::no_constructor,
+        "GetNotifyName", &UAnimNotifyState::GetNotifyName,
+        "SetNotifyName", &UAnimNotifyState::SetNotifyName,
+        "GetStartTime", &UAnimNotifyState::GetStartTime,
+        "SetStartTime", &UAnimNotifyState::SetStartTime,
+        "GetDurationTime", &UAnimNotifyState::GetDurationTime,
+        "SetDurationTime", &UAnimNotifyState::SetDurationTime
+    );
+
+    // URotatingAnimNotifyState usertype 등록
+    SharedLib.new_usertype<URotatingAnimNotifyState>("URotatingAnimNotifyState",
+        sol::constructors<URotatingAnimNotifyState()>(),
+        sol::base_classes, sol::bases<UAnimNotifyState, UObject>(),  // 상속 관계 명시
+        "GetOwner", &URotatingAnimNotifyState::GetOwner,
+        "SetOwner", &URotatingAnimNotifyState::SetOwner,
+        "GetRotationPerTick", &URotatingAnimNotifyState::GetRotationPerTick,
+        "SetRotationPerTick", &URotatingAnimNotifyState::SetRotationPerTick,
+        "GetRollbackOnEnd", &URotatingAnimNotifyState::GetRollbackOnEnd,
+        "SetRollbackOnEnd", &URotatingAnimNotifyState::SetRollbackOnEnd,
+        "GetStartTime", &URotatingAnimNotifyState::GetStartTime,
+        "SetStartTime", &URotatingAnimNotifyState::SetStartTime,
+        "GetDurationTime", &URotatingAnimNotifyState::GetDurationTime,
+        "SetDurationTime", &URotatingAnimNotifyState::SetDurationTime
+    );
+
+    // UScalingAnimNotifyState usertype 등록
+    SharedLib.new_usertype<UScalingAnimNotifyState>("UScalingAnimNotifyState",
+        sol::constructors<UScalingAnimNotifyState()>(),
+        sol::base_classes, sol::bases<UAnimNotifyState, UObject>(),  // 상속 관계 명시
+        "GetOwner", &UScalingAnimNotifyState::GetOwner,
+        "SetOwner", &UScalingAnimNotifyState::SetOwner,
+        "GetScalePerTick", &UScalingAnimNotifyState::GetScalePerTick,
+        "SetScalePerTick", &UScalingAnimNotifyState::SetScalePerTick,
+        "GetRollbackOnEnd", &UScalingAnimNotifyState::GetRollbackOnEnd,
+        "SetRollbackOnEnd", &UScalingAnimNotifyState::SetRollbackOnEnd,
+        "GetStartTime", &UScalingAnimNotifyState::GetStartTime,
+        "SetStartTime", &UScalingAnimNotifyState::SetStartTime,
+        "GetDurationTime", &UScalingAnimNotifyState::GetDurationTime,
+        "SetDurationTime", &UScalingAnimNotifyState::SetDurationTime
+    );
+
     // UAnimationSequence usertype 등록
     SharedLib.new_usertype<UAnimationSequence>("UAnimationSequence",
         sol::no_constructor,
@@ -638,6 +684,10 @@ FLuaManager::FLuaManager()
         "RemoveAnimNotify", &UAnimationSequence::RemoveAnimNotify,
         "GetAnimNotifies", &UAnimationSequence::GetAnimNotifies,
         "GetAnimNotifyCount", &UAnimationSequence::GetAnimNotifyCount,
+        "AddAnimNotifyState", &UAnimationSequence::AddAnimNotifyState,
+        "RemoveAnimNotifyState", &UAnimationSequence::RemoveAnimNotifyState,
+        "GetAnimNotifyStates", &UAnimationSequence::GetAnimNotifyStates,
+        "GetAnimNotifyStateCount", &UAnimationSequence::GetAnimNotifyStateCount,
         "GetPlayLength", &UAnimationSequence::GetPlayLength
     );
 
@@ -664,6 +714,20 @@ FLuaManager::FLuaManager()
         []() -> UCameraShakeAnimNotify*
         {
             return NewObject<UCameraShakeAnimNotify>();
+        }
+    );
+
+    SharedLib.set_function("NewRotatingAnimNotifyState",
+        []() -> URotatingAnimNotifyState*
+        {
+            return NewObject<URotatingAnimNotifyState>();
+        }
+    );
+
+    SharedLib.set_function("NewScalingAnimNotifyState",
+        []() -> UScalingAnimNotifyState*
+        {
+            return NewObject<UScalingAnimNotifyState>();
         }
     );
 
