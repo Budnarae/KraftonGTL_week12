@@ -16,7 +16,10 @@ AGameModeBase::AGameModeBase()
     PlayerControllerClass = APlayerController::StaticClass();
 }
 
-AGameModeBase::~AGameModeBase() = default;
+AGameModeBase::~AGameModeBase()
+{
+    UE_LOG("[GameMode] Destructor called");
+}
 
 void AGameModeBase::BeginPlay()
 {

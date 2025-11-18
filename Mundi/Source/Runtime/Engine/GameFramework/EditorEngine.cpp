@@ -405,11 +405,11 @@ void UEditorEngine::StartPIE()
     if (!GameMode && GWorld->DefaultGameModeClass)
     {
         // DefaultGameModeClass가 설정되어 있으면 자동으로 스폰
+        // SpawnActor()가 bPie일 때 자동으로 BeginPlay() 호출하므로 수동 호출 불필요
         GameMode = Cast<AGameModeBase>(GWorld->SpawnActor(GWorld->DefaultGameModeClass, FTransform()));
         if (GameMode)
         {
             UE_LOG("[PIE] GameMode spawned from DefaultGameModeClass: %s", GWorld->DefaultGameModeClass->Name);
-            GameMode->BeginPlay();  // 수동으로 BeginPlay 호출 (이미 모든 액터 BeginPlay 완료 후)
         }
     }
 

@@ -24,7 +24,7 @@ ACharacter::ACharacter()
     MeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -100.0f));
 
     // TEMP CODE
-    MeshComponent->SetSkeletalMesh("James");
+    MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
 }
 
 ACharacter::~ACharacter() = default;

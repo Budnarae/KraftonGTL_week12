@@ -69,5 +69,5 @@ protected:
 
     // 이동 속도
     UPROPERTY(EditAnywhere, Category="Character|Movement")
-    float MovementSpeed = 300.0f;
+    float MovementSpeed = 10.0f;
 };

@@ -467,10 +467,11 @@ void UWorld::CreateLevel()
 	ObjectTypeCounts.clear();
 }
 
-//어느 레벨이든 기본적으로 존재하는 엑터(디렉셔널 라이트) 생성
+//어느 레벨이든 기본적으로 존재하는 엑터(디렉셔널 라이트, 앰비언트 라이트) 생성
 void UWorld::SpawnDefaultActors()
 {
 	SpawnActor<ADirectionalLightActor>();
+	SpawnActor<AAmbientLightActor>();
 }
 
 void UWorld::SetLevel(std::unique_ptr<ULevel> InLevel)
