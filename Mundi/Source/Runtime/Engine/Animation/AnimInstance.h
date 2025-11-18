@@ -84,6 +84,9 @@ protected:
     // 현재 포즈를 저장할 변수
     // FPoseContext CurrentPose;
 private:
+    void ClearPreviousAnimNotifyState();
+private:
     bool bIsInitialized = false;
-    FAnimState* CurrentAnimState;
+    FAnimState* CurrentAnimState{};
+    FAnimState* PreviousAnimState{};
 };

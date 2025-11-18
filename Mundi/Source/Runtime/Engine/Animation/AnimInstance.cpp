@@ -123,9 +123,28 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
     }
 }
 
+void UAnimInstance::ClearPreviousAnimNotifyState()
+{
+    if (!PreviousAnimState) return;
+    
+    for (FAnimNode_Base* AnimNode : PreviousAnimState->OwnedNodes)
+    {
+        FAnimNode_Sequence* AnimNode_Sequence = dynamic_cast<FAnimNode_Sequence*>(AnimNode);
+        if (!AnimNode_Sequence) continue;
+
+        const TArray<UAnimNotifyState*>& AnimNotifyStates =
+            AnimNode_Sequence->Sequence->GetAnimNotifyStates();
+
+        for (UAnimNotifyState* AnimNotifyState : AnimNotifyStates)
+            AnimNotifyState->NotifyEnd();
+    }
+}
+
 void UAnimInstance::PostUpdateAnimation()
 {
     if (!CurrentAnimState) return;
+    if (PreviousAnimState && PreviousAnimState != CurrentAnimState)
+        ClearPreviousAnimNotifyState();
     
     for (FAnimNode_Base* AnimNode : CurrentAnimState->OwnedNodes)
     {
@@ -204,28 +223,35 @@ void UAnimInstance::PostUpdateAnimation()
                     bBeginTrigger = true;
                 }
                 if (StartTime + DurationTime > CurrentTime &&
-                    StartTime < CurrentTime)
+                    StartTime <= CurrentTime)
                 {
                     bTickTrigger = true;
                 }
-                if (StartTime + DurationTime <= CurrentTime && !bEndAlreadyCalled)
+                if (StartTime + DurationTime > LastTime &&
+                    StartTime + DurationTime <= CurrentTime &&
+                    !bEndAlreadyCalled)
                 {
                     bEndTrigger = true;
                 }
             }
             else
             {
+                // 루프 경우: LastTime > CurrentTime (애니메이션이 끝에서 처음으로 돌아감)
                 if (StartTime > LastTime || StartTime <= CurrentTime)
                 {
                     bBeginTrigger = true;
                 }
-                if ((StartTime > LastTime || StartTime <= CurrentTime) &&
-                fmod(StartTime + DurationTime, CurrentAnimationPlayLength) > CurrentTime)
+
+                float EndTime = fmod(StartTime + DurationTime, CurrentAnimationPlayLength);
+
+                if (StartTime <= CurrentTime && EndTime > CurrentTime)
                 {
                     bTickTrigger = true;
                 }
-                if (fmod(StartTime + DurationTime, CurrentAnimationPlayLength) <= CurrentTime &&
-                     !bEndAlreadyCalled)
+
+                // EndTime이 [LastTime, CurrentTime] 구간을 통과했는지 체크
+                // 루프 시: LastTime > CurrentTime이므로, EndTime이 LastTime보다 작거나 CurrentTime 이하
+                if ((EndTime <= LastTime || EndTime <= CurrentTime) && !bEndAlreadyCalled)
                 {
                     bEndTrigger = true;
                 }
@@ -246,6 +272,8 @@ void UAnimInstance::PostUpdateAnimation()
             }
         }
     }
+
+    PreviousAnimState = CurrentAnimState;
 }
 
 void UAnimInstance::EvaluateAnimation()
