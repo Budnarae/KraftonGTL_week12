@@ -17,6 +17,21 @@
 #include "Source/Runtime/AssetManagement/StaticMesh.h"
 #include "Source/Runtime/Engine/Animation/AnimNotify/AnimNotify.h"
 
+// 파일명에서 사용할 수 없는 문자를 '_'로 대체
+static FString SanitizeFileName(const FString& InName)
+{
+	FString SanitizedName = InName;
+	for (char& ch : SanitizedName)
+	{
+		if (ch == '|' || ch == ':' || ch == '*' || ch == '?' ||
+			ch == '"' || ch == '<' || ch == '>' || ch == '/' || ch == '\\')
+		{
+			ch = '_';
+		}
+	}
+	return SanitizedName;
+}
+
 IMPLEMENT_CLASS(UFbxLoader)
 
 UFbxLoader::UFbxLoader()
@@ -1126,7 +1141,8 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 		}
 
 		// 개별 애니메이션 파일로 저장: BaseName_AnimName.uanim
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".uanim")).string();
+		FString SanitizedAnimName = SanitizeFileName(AnimName);
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).string();
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
