@@ -30,6 +30,9 @@ GENERATED_HEADER_TEMPLATE = """// Auto-generated file - DO NOT EDIT!
 
 // Macro expansion for GENERATED_REFLECTION_BODY()
 // This file must be included BEFORE the class definition
+#ifdef CURRENT_CLASS_GENERATED_BODY
+#undef CURRENT_CLASS_GENERATED_BODY
+#endif
 #define CURRENT_CLASS_GENERATED_BODY \\
 public: \\
     using Super = {parent_class}; \\
@@ -206,6 +209,9 @@ def main():
         return
 
     print(f"\n Found {len(classes)} reflection class(es)\n")
+
+    # PropertyGenerator에 모든 클래스 정보 전달 (상속 체인 추적용)
+    prop_gen.set_all_classes(classes)
 
     # 각 클래스에 대해 .generated.h와 .generated.cpp 생성
     generated_files = []

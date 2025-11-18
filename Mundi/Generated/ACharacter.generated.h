@@ -10,19 +10,19 @@
 #endif
 #define CURRENT_CLASS_GENERATED_BODY \
 public: \
-    using Super = ULightComponent; \
-    using ThisClass_t = ULocalLightComponent; \
+    using Super = APawn; \
+    using ThisClass_t = ACharacter; \
     static UClass* StaticClass() \
     { \
-        static UClass Cls{ "ULocalLightComponent", ULightComponent::StaticClass(), sizeof(ULocalLightComponent) }; \
+        static UClass Cls{ "ACharacter", APawn::StaticClass(), sizeof(ACharacter) }; \
         static bool bRegistered = (UClass::SignUpClass(&Cls), true); \
         return &Cls; \
     } \
-    virtual UClass* GetClass() const override { return ULocalLightComponent::StaticClass(); } \
-    ULocalLightComponent(const ULocalLightComponent&) = default; \
-    ULocalLightComponent* Duplicate() const override \
+    virtual UClass* GetClass() const override { return ACharacter::StaticClass(); } \
+    ACharacter(const ACharacter&) = default; \
+    ACharacter* Duplicate() const override \
     { \
-        ULocalLightComponent* NewObject = ObjectFactory::DuplicateObject<ULocalLightComponent>(this); \
+        ACharacter* NewObject = ObjectFactory::DuplicateObject<ACharacter>(this); \
         NewObject->DuplicateSubObjects(); \
         NewObject->PostDuplicate(); \
         return NewObject; \
