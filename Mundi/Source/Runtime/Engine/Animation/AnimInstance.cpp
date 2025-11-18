@@ -2,6 +2,7 @@
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "LuaScriptComponent.h"
+#include "AnimNode.h"
 #include "AnimNotify/AnimNotify.h"
 
 IMPLEMENT_CLASS(UAnimInstance)

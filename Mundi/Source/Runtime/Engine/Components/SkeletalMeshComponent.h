@@ -36,10 +36,10 @@ public:
     UPROPERTY(EditAnywhere, Category = "Animation")
     EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;
 
-    void SetAnimInstanceClass(UAnimInstance* NewAnimInstanceClass);
+    void SetAnimInstance(UAnimInstance* NewAnimInstanceClass);
 
     UFUNCTION(LuaBind, DisplayName="GetAnimInstance")
-    UAnimInstance* GetAnimInstanceClass() const {return AnimInstance;};
+    UAnimInstance* GetAnimInstance() const {return AnimInstance;};
 
     void SetAnimationMode(EAnimationMode InAnimationMode) { AnimationMode = InAnimationMode; }
 

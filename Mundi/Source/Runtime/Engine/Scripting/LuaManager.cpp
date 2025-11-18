@@ -604,7 +604,7 @@ FLuaManager::FLuaManager()
     // USkeletalMeshComponent usertype 등록 (AnimInstance 접근용)
     SharedLib.new_usertype<USkeletalMeshComponent>("USkeletalMeshComponent",
         sol::no_constructor,
-        "GetAnimInstance", &USkeletalMeshComponent::GetAnimInstanceClass
+        "GetAnimInstance", &USkeletalMeshComponent::GetAnimInstance
     );
 
     // NewObject 헬퍼 함수

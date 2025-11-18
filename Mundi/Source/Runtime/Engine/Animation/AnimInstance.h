@@ -80,15 +80,15 @@ protected:
     // float TransitionTimer = 0.0f;
     // const float TransitionInterval = 10.0f;
     // FAnimState* PreviousState = nullptr;
-
-    FAnimNode_Sequence* IdleSequenceNode = nullptr;
-    FAnimNode_Sequence* WalkSequenceNode = nullptr;
-    FAnimNode_Sequence* RunSequenceNode = nullptr;
-
-    FAnimNode_BlendSpace1D* MoveBlendSpaceNode = nullptr;
+    //
+    // FAnimNode_Sequence* IdleSequenceNode = nullptr;
+    // FAnimNode_Sequence* WalkSequenceNode = nullptr;
+    // FAnimNode_Sequence* RunSequenceNode = nullptr;
+    //
+    // FAnimNode_BlendSpace1D* MoveBlendSpaceNode = nullptr;
 
     // 현재 포즈를 저장할 변수
-    FPoseContext CurrentPose;
+    // FPoseContext CurrentPose;
 
     float CurrentAnimationTime = 0.0;
     float LastAnimationTime = 0.0;

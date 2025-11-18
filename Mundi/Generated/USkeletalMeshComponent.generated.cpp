@@ -46,7 +46,7 @@ extern "C" void LuaBind_Anchor_USkeletalMeshComponent() {}
 LUA_BIND_BEGIN(USkeletalMeshComponent)
 {
     AddMethodR<UAnimInstance*, USkeletalMeshComponent>(
-        T, "GetAnimInstance", &USkeletalMeshComponent::GetAnimInstanceClass);
+        T, "GetAnimInstance", &USkeletalMeshComponent::GetAnimInstance);
     AddAlias<USkeletalMeshComponent, int>(
         T, "SetAnimationModeInt", &USkeletalMeshComponent::SetAnimationModeInt);
     AddAlias<USkeletalMeshComponent>(

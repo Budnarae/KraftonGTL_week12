@@ -58,7 +58,7 @@ void ACharacter::SetAnimInstance(UAnimInstance* InAnimInstance)
 {
     if (MeshComponent)
     {
-        MeshComponent->SetAnimInstanceClass(InAnimInstance);
+        MeshComponent->SetAnimInstance(InAnimInstance);
     }
 }
 
@@ -66,7 +66,7 @@ UAnimInstance* ACharacter::GetAnimInstance() const
 {
     if (MeshComponent)
     {
-        return MeshComponent->GetAnimInstanceClass();
+        return MeshComponent->GetAnimInstance();
     }
     return nullptr;
 }
