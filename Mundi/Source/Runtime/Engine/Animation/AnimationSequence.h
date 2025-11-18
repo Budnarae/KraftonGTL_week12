@@ -49,11 +49,22 @@ public:
     int32 GetNumberOfFrames() const;
     int32 GetNumberOfKeys() const;
 
+    // ====================================
+    // AnimNotify 관리
+    // ====================================
+
+    void AddAnimNotify(class UAnimNotify* InNotify);
+    void RemoveAnimNotify(class UAnimNotify* InNotify);
+    const TArray<class UAnimNotify*>& GetAnimNotifies() const { return AnimNotifies; }
+
 private:
     UAnimDataModel* DataModel = nullptr;
     FSkeleton Skeleton{};
     float CurrentAnimationTime = 0.0f;
     bool bIsLooping = true;
+
+    // AnimNotify 목록 (이 Sequence에 속한 Notify들)
+    TArray<class UAnimNotify*> AnimNotifies;
 };
 
 

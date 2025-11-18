@@ -106,9 +106,11 @@ function BeginPlay()
     end
 
     -- Sound AnimNotify 생성 및 설정
+    -- AnimNotify는 이제 UAnimationSequence에서 관리됩니다
     local OwnerActor = Obj:GetOwner()
 
-    if AnimInstance and SoundA then
+    -- StateA: Sound Notify 추가
+    if AnimA and SoundA then
         local NotifyA = NewSoundAnimNotify()
         if NotifyA then
             NotifyA:SetSound(SoundA)
@@ -117,12 +119,12 @@ function BeginPlay()
             NotifyA:SetPitch(1.0)
             NotifyA:SetOwner(OwnerActor)
             NotifyA:SetAnimation(AnimA)
-            AnimInstance:AddAnimNotify(NotifyA)
+            AnimA:AddAnimNotify(NotifyA)
         end
     end
 
-    -- StateB: CameraShake Notify 사용
-    if AnimInstance then
+    -- StateB: CameraShake Notify 추가
+    if AnimB then
         local NotifyB = NewCameraShakeAnimNotify()
         if NotifyB then
             NotifyB:SetDuration(1)
@@ -132,12 +134,12 @@ function BeginPlay()
             NotifyB:SetPriority(0)
             NotifyB:SetTimeToNotify(1.0)
             NotifyB:SetAnimation(AnimB)
-            AnimInstance:AddAnimNotify(NotifyB)
+            AnimB:AddAnimNotify(NotifyB)
         end
     end
 
     -- StateB: Sound Notify (주석 처리)
-    -- if AnimInstance and SoundB then
+    -- if AnimB and SoundB then
     --     local NotifyB = NewSoundAnimNotify()
     --     if NotifyB then
     --         NotifyB:SetSound(SoundB)
@@ -146,11 +148,12 @@ function BeginPlay()
     --         NotifyB:SetPitch(1.0)
     --         NotifyB:SetOwner(OwnerActor)
     --         NotifyB:SetAnimation(AnimB)
-    --         AnimInstance:AddAnimNotify(NotifyB)
+    --         AnimB:AddAnimNotify(NotifyB)
     --     end
     -- end
 
-    if AnimInstance and SoundC then
+    -- StateC: Sound Notify 추가
+    if AnimC and SoundC then
         local NotifyC = NewSoundAnimNotify()
         if NotifyC then
             NotifyC:SetSound(SoundC)
@@ -159,7 +162,7 @@ function BeginPlay()
             NotifyC:SetPitch(1.0)
             NotifyC:SetOwner(OwnerActor)
             NotifyC:SetAnimation(AnimC)
-            AnimInstance:AddAnimNotify(NotifyC)
+            AnimC:AddAnimNotify(NotifyC)
         end
     end
 

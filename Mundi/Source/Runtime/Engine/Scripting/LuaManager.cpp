@@ -563,12 +563,17 @@ FLuaManager::FLuaManager()
         "SetAnimation", &UCameraShakeAnimNotify::SetAnimation
     );
 
+    // UAnimationSequence usertype 등록
+    SharedLib.new_usertype<UAnimationSequence>("UAnimationSequence",
+        sol::no_constructor,
+        "AddAnimNotify", &UAnimationSequence::AddAnimNotify,
+        "RemoveAnimNotify", &UAnimationSequence::RemoveAnimNotify,
+        "GetAnimNotifies", &UAnimationSequence::GetAnimNotifies
+    );
+
     // UAnimInstance usertype 등록
     SharedLib.new_usertype<UAnimInstance>("UAnimInstance",
-        sol::no_constructor,
-        "AddAnimNotify", &UAnimInstance::AddAnimNotify,
-        "RemoveAnimNotify", &UAnimInstance::RemoveAnimNotify,
-        "GetAnimNotifies", &UAnimInstance::GetAnimNotifies
+        sol::no_constructor
     );
 
     // USkeletalMeshComponent usertype 등록 (AnimInstance 접근용)
