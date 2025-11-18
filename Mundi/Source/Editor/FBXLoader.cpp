@@ -17,6 +17,21 @@
 #include "Source/Runtime/AssetManagement/StaticMesh.h"
 #include "Source/Runtime/Engine/Animation/AnimNotify/AnimNotify.h"
 
+// 파일명에서 사용할 수 없는 문자를 '_'로 대체
+static FString SanitizeFileName(const FString& InName)
+{
+	FString SanitizedName = InName;
+	for (char& ch : SanitizedName)
+	{
+		if (ch == '|' || ch == ':' || ch == '*' || ch == '?' ||
+			ch == '"' || ch == '<' || ch == '>' || ch == '/' || ch == '\\')
+		{
+			ch = '_';
+		}
+	}
+	return SanitizedName;
+}
+
 IMPLEMENT_CLASS(UFbxLoader)
 
 UFbxLoader::UFbxLoader()
@@ -1047,6 +1062,46 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 		std::filesystem::create_directories(CacheDirPath);
 	}
 
+	// Armature Transform 추출 (Blender FBX의 경우 Armature 노드에 Transform이 적용되어 있음)
+	FbxNode* RootNode = InScene->GetRootNode();
+	FbxAMatrix ArmatureTransform;
+	ArmatureTransform.SetIdentity();  // 기본값: 항등 행렬
+
+	// RootNode의 자식 중 첫 번째 Skeleton의 부모 노드(Armature) 찾기
+	auto FindArmatureTransform = [&]() -> FbxAMatrix {
+		FbxAMatrix Result;
+		Result.SetIdentity();
+		if (!RootNode) return Result;
+
+		for (int i = 0; i < RootNode->GetChildCount(); i++)
+		{
+			FbxNode* ChildNode = RootNode->GetChild(i);
+
+			// ChildNode 자체가 Skeleton이면 Armature가 아님
+			if (ChildNode->GetNodeAttribute() &&
+				ChildNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+			{
+				continue;
+			}
+
+			for (int j = 0; j < ChildNode->GetChildCount(); j++)
+			{
+				FbxNode* GrandChild = ChildNode->GetChild(j);
+				if (GrandChild->GetNodeAttribute() &&
+					GrandChild->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+				{
+					Result = ChildNode->EvaluateLocalTransform();
+					FbxVector4 ArmatureScale = Result.GetS();
+					UE_LOG("Found Armature '%s' with Scale: (%.2f, %.2f, %.2f)",
+						ChildNode->GetName(), ArmatureScale[0], ArmatureScale[1], ArmatureScale[2]);
+					return Result;
+				}
+			}
+		}
+		return Result;
+	};
+	ArmatureTransform = FindArmatureTransform();
+
 	for (int AnimStackIndex = 0; AnimStackIndex < AnimStackCount; AnimStackIndex++)
 	{
 		FbxAnimStack* AnimStack = InScene->GetSrcObject<FbxAnimStack>(AnimStackIndex);
@@ -1091,15 +1146,36 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 			FBoneAnimationTrack Track;
 			Track.Name = FName(Skeleton.Bones[BoneIndex].Name);
 
-			// [샘플링 방식] 일정한 프레임 간격으로 EvaluateLocalTransform 호출
+			// [샘플링 방식] 일정한 프레임 간격으로 Global Transform에서 Local 계산
+			// EvaluateLocalTransform()은 ConvertScene() 단위 변환이 적용되지 않을 수 있음
 			// 처음부터 끝까지 모든 프레임을 샘플링
+			FbxNode* ParentNode = BoneNode->GetParent();
+
 			for (FbxLongLong Frame = 0; Frame <= FrameCount; Frame++)
 			{
 				FbxTime CurrentTime;
 				CurrentTime.SetFrame(StartTime.GetFrameCount(TimeMode) + Frame, TimeMode);
 
-				// [핵심] SDK가 알아서 보간/오일러→쿼터니언 변환/피벗 계산을 다 해줌
-				FbxAMatrix LocalTransform = BoneNode->EvaluateLocalTransform(CurrentTime);
+				// Global Transform에서 Local Transform 계산 (ConvertScene 적용된 값 사용)
+				FbxAMatrix GlobalTransform = BoneNode->EvaluateGlobalTransform(CurrentTime);
+				FbxAMatrix LocalTransform;
+
+				if (ParentNode)
+				{
+					FbxAMatrix ParentGlobalTransform = ParentNode->EvaluateGlobalTransform(CurrentTime);
+					LocalTransform = ParentGlobalTransform.Inverse() * GlobalTransform;
+				}
+				else
+				{
+					LocalTransform = GlobalTransform;
+				}
+
+				// 루트 본에 Armature Transform 적용 (Blender FBX 지원)
+				// Armature가 없으면 항등 행렬이므로 영향 없음
+				if (Skeleton.Bones[BoneIndex].ParentIndex == -1)
+				{
+					LocalTransform = ArmatureTransform * LocalTransform;
+				}
 
 				// 행렬에서 T, R, S 추출
 				FbxVector4 Translation = LocalTransform.GetT();
@@ -1126,7 +1202,8 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 		}
 
 		// 개별 애니메이션 파일로 저장: BaseName_AnimName.uanim
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".uanim")).string();
+		FString SanitizedAnimName = SanitizeFileName(AnimName);
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).string();
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
@@ -1709,6 +1786,42 @@ void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*,
 		std::filesystem::create_directories(CacheDirPath);
 	}
 
+	// Armature Transform 추출 (Blender FBX의 경우 Armature 노드에 Transform이 적용되어 있음)
+	FbxNode* RootNode = InScene->GetRootNode();
+	FbxAMatrix ArmatureTransform;
+	ArmatureTransform.SetIdentity();  // 기본값: 항등 행렬
+
+	// RootNode의 자식 중 첫 번째 Skeleton의 부모 노드(Armature) 찾기
+	auto FindArmatureTransform = [&]() -> FbxAMatrix {
+		FbxAMatrix Result;
+		Result.SetIdentity();
+		if (!RootNode) return Result;
+
+		for (int i = 0; i < RootNode->GetChildCount(); i++)
+		{
+			FbxNode* ChildNode = RootNode->GetChild(i);
+
+			// ChildNode 자체가 Skeleton이면 Armature가 아님
+			if (ChildNode->GetNodeAttribute() &&
+				ChildNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+			{
+				continue;
+			}
+
+			for (int j = 0; j < ChildNode->GetChildCount(); j++)
+			{
+				FbxNode* GrandChild = ChildNode->GetChild(j);
+				if (GrandChild->GetNodeAttribute() &&
+					GrandChild->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+				{
+					return ChildNode->EvaluateLocalTransform();
+				}
+			}
+		}
+		return Result;
+	};
+	ArmatureTransform = FindArmatureTransform();
+
 	for (int AnimStackIndex = 0; AnimStackIndex < AnimStackCount; AnimStackIndex++)
 	{
 		FbxAnimStack* AnimStack = InScene->GetSrcObject<FbxAnimStack>(AnimStackIndex);
@@ -1761,6 +1874,13 @@ void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*,
 				// SDK가 알아서 보간/오일러→쿼터니언 변환/피벗 계산을 다 해줌
 				FbxAMatrix LocalTransform = BoneNode->EvaluateLocalTransform(CurrentTime);
 
+				// 루트 본에 Armature Transform 적용 (Blender FBX 지원)
+				// Armature가 없으면 항등 행렬이므로 영향 없음
+				if (Skeleton.Bones[BoneIndex].ParentIndex == -1)
+				{
+					LocalTransform = ArmatureTransform * LocalTransform;
+				}
+
 				// 행렬에서 T, R, S 추출
 				FbxVector4 Translation = LocalTransform.GetT();
 				FbxQuaternion Rotation = LocalTransform.GetQ();  // 쿼터니언으로 안전하게 받음
@@ -1786,7 +1906,8 @@ void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*,
 		}
 
 		// 개별 애니메이션 파일로 저장 (메모리에 UObject 생성하지 않음!)
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + AnimName + ".uanim")).string();
+		FString SanitizedAnimName = SanitizeFileName(AnimName);
+		FString AnimFileName = (CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).string();
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
