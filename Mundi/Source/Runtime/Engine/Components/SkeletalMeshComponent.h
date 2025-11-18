@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "SkinnedMeshComponent.h"
 #include "../Animation/AnimInstance.h"
 #include "USkeletalMeshComponent.generated.h"

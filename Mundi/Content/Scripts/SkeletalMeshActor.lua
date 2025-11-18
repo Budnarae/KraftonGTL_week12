@@ -40,6 +40,11 @@ function BeginPlay()
 
     -- Lua AnimationStateMachine 생성
     ASM = AnimationStateMachine:new()
+    if not ASM then
+        print("[SkeletalMeshActor] Error: Failed to construct AnimationStateMachine")
+        return
+    end
+
     ASM:initialize()
 
     -- 애니메이션 로드
@@ -60,19 +65,27 @@ function BeginPlay()
     -- State 생성 및 애니메이션 추가
     StateA = ASM:add_state(FName("StateA"))
     if StateA then
-        StateA:AddAnimSequence(AnimA, true)
+        local SeqNode = StateA:CreateSequenceNode(AnimA, true)
+        StateA:SetEntryNode(SeqNode)
+    else
+        print("[SkeletalMeshActor] ERROR: Failed to create StateA")
     end
 
     StateB = ASM:add_state(FName("StateB"))
     if StateB then
-        StateB:AddAnimSequence(AnimB, true)
+        local SeqNode = StateB:CreateSequenceNode(AnimB, true)
+        StateB:SetEntryNode(SeqNode)
+    else
+        print("[SkeletalMeshActor] ERROR: Failed to create StateB")
     end
 
     StateC = ASM:add_state(FName("StateC"))
     if StateC then
-        StateC:AddAnimSequence(AnimC, true)
+        local SeqNode = StateC:CreateSequenceNode(AnimC, true)
+        StateC:SetEntryNode(SeqNode)
+    else
+        print("[SkeletalMeshActor] ERROR: Failed to create StateC")
     end
-
     -- Transition 생성 및 조건 함수 설정
     local TransitionAtoB = ASM:add_transition(FName("StateA"), FName("StateB"))
     if TransitionAtoB then
@@ -90,6 +103,10 @@ function BeginPlay()
     if TransitionCtoA then
         TransitionCtoA:SetBlendTime(0.3)
         TransitionCtoA:SetTransitionCondition(ShouldTransitionCtoA)
+    end
+
+    if ASM.reset_transition_flags then
+        ASM:reset_transition_flags()
     end
 
     -- AnimationMode 설정 및 AnimInstance 생성
@@ -174,11 +191,8 @@ function AnimUpdate(DeltaTime)
         PreviousState = CurrentState
 
         -- 모든 Transition의 CanEnterTransition 리셋
-        for i = 1, #ASM.transitions do
-            local Transition = ASM.transitions[i]
-            if Transition then
-                Transition.CanEnterTransition = false
-            end
+        if ASM.reset_transition_flags then
+            ASM:reset_transition_flags()
         end
     end
 

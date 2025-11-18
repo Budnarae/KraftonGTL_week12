@@ -16,6 +16,7 @@
 #undef max
 #endif
 constexpr float KINDA_SMALL_NUMBER = 1e-6f;
+constexpr int	INDEX_NONE = 0;
 
 // ─────────────────────────────
 // Constants & Helpers

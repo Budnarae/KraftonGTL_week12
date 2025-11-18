@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimNode.h"
 
 // ====================================
@@ -46,17 +46,24 @@ FAnimState* FAnimNode_StateMachine::FindStateByName(const FName& StateName) cons
 
 FAnimNode_StateMachine::~FAnimNode_StateMachine()
 {
-    while (!States.empty())
+    for (FAnimStateTransition* Transition : Transitions)
     {
-        DeleteState(States.back()->Name);
+        if (Transition)
+        {
+            delete Transition;
+        }
     }
+    Transitions.Empty();
 
-    while (!Transitions.empty())
+    for (FAnimState* State : States)
     {
-        FAnimStateTransition* Transition = Transitions.back();
-        delete Transition;
-        Transitions.pop_back();
+        if (State)
+        {
+            State->ResetNodes();
+            delete State;
+        }
     }
+    States.Empty();
 
     CurrentState = nullptr;
     CurrentTransition = nullptr;
@@ -66,111 +73,114 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
     if (bIsInTransition)
     {
-        if (!CurrentTransition) return;
-
-        TransitionBlendNode.Update(Context);
-
-        TransitionElapsed += Context.DeltaTime;
-        float Alpha = (TransitionDuration > 0.f)
-            ? FMath::Clamp(TransitionElapsed / TransitionDuration, 0.f, 1.f)
-            : 1.f;
-
-        TransitionBlendNode.Alpha = Alpha;
-
-        if (Alpha >= 1.f)
+        if (!CurrentTransition || !TransitionBlendNode.From || !TransitionBlendNode.To)
         {
-            // 전이 완료 → TargetState 정착
-            if (CurrentTransition && CurrentTransition->TargetState)
-            {
-                CurrentState = CurrentTransition->TargetState;
-            }
-
             bIsInTransition = false;
             CurrentTransition = nullptr;
-            TransitionElapsed = 0.f;
-            TransitionDuration = 0.f;
+            TransitionBlendNode.bIsBlending = false;
         }
-    }
-    else
-    {
-        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
-            return;
-
-        // 조건을 충족한 Transition이 있으면 State를 변환한다.
-        for (FAnimStateTransition* Transition : Transitions)
+        else
         {
-            if (!Transition) continue;
+            // 만약 Transition 중이라면 Cross Fade
+            TransitionBlendNode.Update(Context);
 
-            if (Transition->CanEnterTransition &&
-                Transition->SourceState == CurrentState)
+            TransitionElapsed += Context.DeltaTime;
+            float Alpha = (TransitionDuration > 0.f)
+                ? FMath::Clamp(TransitionElapsed / TransitionDuration, 0.f, 1.f)
+                : 1.f;
+
+            TransitionBlendNode.Alpha = Alpha;
+
+            if (Alpha >= 1.f)
             {
-                // --- 전이 시작 설정 ---
-                CurrentTransition = Transition;
-                bIsInTransition = true;
-                TransitionElapsed = 0.f;
-                TransitionDuration = Transition->BlendTime;
-
-                // Source/Target의 entry 시퀀스 노드
-                FAnimNode_Sequence* SourceNode = nullptr;
-                FAnimNode_Sequence* TargetNode = nullptr;
-
-                if (CurrentState->AnimSequenceNodes.Num() > 0)
-                    SourceNode = &CurrentState->AnimSequenceNodes[0];
-
-                if (Transition->TargetState &&
-                    Transition->TargetState->AnimSequenceNodes.Num() > 0)
-                    TargetNode = &Transition->TargetState->AnimSequenceNodes[0];
-
-                // 간단한 페이즈 맞추기
-                if (SourceNode && TargetNode &&
-                    SourceNode->Sequence && TargetNode->Sequence)
+                if (CurrentTransition && CurrentTransition->TargetState)
                 {
-                    const float SrcLen = SourceNode->Sequence->GetPlayLength();
-                    const float DstLen = TargetNode->Sequence->GetPlayLength();
-
-                    if (SrcLen > 0.f && DstLen > 0.f)
-                    {
-                        float Phase = SourceNode->CurrentTime / SrcLen;
-                        Phase = FMath::Clamp(Phase, 0.f, 1.f);
-                        TargetNode->CurrentTime = Phase * DstLen;
-                    }
+                    CurrentState = CurrentTransition->TargetState;
                 }
 
-                // 블렌드 노드 구성
-                TransitionBlendNode.From = SourceNode;
-                TransitionBlendNode.To = TargetNode;
-                TransitionBlendNode.Alpha = 0.f;
-                TransitionBlendNode.BlendTime = Transition->BlendTime;
-                TransitionBlendNode.bIsBlending = true;
-
-                return; // 이번 프레임은 전이 세팅까지만
+                bIsInTransition = false;
+                CurrentTransition = nullptr;
+                TransitionElapsed = 0.f;
+                TransitionDuration = 0.f;
             }
 
-            // TODO: BUG - 이 코드가 for 루프 안에 있어서 transition 개수만큼 반복 호출됨!
-            // 전이 없다 -> 현재 상태의 그래프만 Update
-            // 이 부분은 for 루프 밖으로 빼야 함 (Lua 구현 참고)
-            FAnimNode_Sequence& SeqNode = CurrentState->AnimSequenceNodes[0];
-            SeqNode.Update(Context);
+            return;
         }
     }
+
+    if (!CurrentState || !CurrentState->EntryNode)
+        return;
+
+    for (FAnimStateTransition* Transition : Transitions)
+    {
+        if (!Transition)
+            continue;
+
+        // Transition Start!
+        if (Transition->CanEnterTransition &&
+            Transition->SourceState == CurrentState)
+        {
+            FAnimNode_Base* SourceEntry = CurrentState->EntryNode;
+            FAnimNode_Base* TargetEntry = (Transition->TargetState) ? Transition->TargetState->EntryNode : nullptr;
+
+            if (!SourceEntry || !TargetEntry)
+            {
+                continue;
+            }
+
+            CurrentTransition = Transition;
+            bIsInTransition = true;
+            TransitionElapsed = 0.f;
+            TransitionDuration = Transition->BlendTime;
+
+            if (auto* SourceSeq = dynamic_cast<FAnimNode_Sequence*>(SourceEntry))
+            {
+                if (auto* TargetSeq = dynamic_cast<FAnimNode_Sequence*>(TargetEntry))
+                {
+                    if (SourceSeq->Sequence && TargetSeq->Sequence)
+                    {
+                        const float SrcLen = SourceSeq->Sequence->GetPlayLength();
+                        const float DstLen = TargetSeq->Sequence->GetPlayLength();
+                        if (SrcLen > 0.f && DstLen > 0.f)
+                        {
+                            float Phase = SourceSeq->CurrentTime / SrcLen;
+                            Phase = FMath::Clamp(Phase, 0.f, 1.f);
+                            TargetSeq->CurrentTime = Phase * DstLen;
+                        }
+                    }
+                }
+            }
+
+            TransitionBlendNode.From = SourceEntry;
+            TransitionBlendNode.To = TargetEntry;
+            TransitionBlendNode.Alpha = 0.f;
+            TransitionBlendNode.BlendTime = Transition->BlendTime;
+            TransitionBlendNode.BlendTimeElapsed = 0.0f;
+            TransitionBlendNode.bIsBlending = true;
+            bUseTransitionBlend = (SourceEntry && TargetEntry);
+
+            return;
+        }
+    }
+
+    CurrentState->EntryNode->Update(Context);
 }
-    
 void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
 {
-    if (bIsInTransition && CurrentTransition)
+    if (bIsInTransition)
     {
-        TransitionBlendNode.Evaluate(Output);
-    }
-    else
-    {
-        if (!CurrentState || CurrentState->AnimSequenceNodes.empty())
+        if (TransitionBlendNode.From && TransitionBlendNode.To)
+        {
+            TransitionBlendNode.Evaluate(Output);
             return;
-
-        FAnimNode_Sequence* SequenceToEvaluate = &CurrentState->AnimSequenceNodes.front();
-        SequenceToEvaluate->Evaluate(Output);
+        }
     }
-}
 
+    if (!CurrentState || !CurrentState->EntryNode)
+        return;
+
+    CurrentState->EntryNode->Evaluate(Output);
+}
 FAnimState* FAnimNode_StateMachine::AddState(const FName& StateName)
 {
     // 같은 이름을 가진 State가 있으면 거부
@@ -226,7 +236,8 @@ void FAnimNode_StateMachine::DeleteState(const FName& TargetName)
     {
         if (*It == TargetState)
         {
-            delete* It;
+            (*It)->ResetNodes();
+            delete *It;
             States.erase(It);
             break;
         }
@@ -300,4 +311,172 @@ void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FNa
         }
     }
     UE_LOG("[FAnimNode_StateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
+}
+
+void FAnimNode_StateMachine::ResetTransitionFlags()
+{
+    for (FAnimStateTransition* Transition : Transitions)
+    {
+        if (Transition)
+        {
+            Transition->CanEnterTransition = false;
+        }
+    }
+}
+
+void FAnimNode_BlendSpace1D::Update(const FAnimationUpdateContext& Context)
+{
+    if (Samples.Num() == 0) { return; }
+
+    // 1) 가중치 계산
+    CalculateSampleWeights();
+
+    // 2) 시간 동기화
+    SynchronizeSampleTimes();
+
+    // 3) 가중치가 0이 아닌 시퀀스들만 Update
+    for (FBlendSample1D& Sample : Samples)
+    {
+        if (Sample.Weight > KINDA_SMALL_NUMBER && Sample.SequenceNode)
+        {
+            Sample.SequenceNode->Update(Context);
+        }
+    }
+}
+
+void FAnimNode_BlendSpace1D::Evaluate(FPoseContext& Output)
+{
+    if (!Output.Skeleton)
+    {
+        // AnimInstance 쪽에서 미리 Skeleton을 세팅해줘야 한다.
+        return;
+    }
+
+    if (Samples.Num() == 0) { Output.ResetToRefPose(); return; }
+
+    FPoseContext SamplePose(Output); // 임시 포즈 버퍼 (Skeleton만 공유)
+
+    const int32 NumBones = Output.EvaluatedPoses.Num();
+
+    bool  bHasAnyPose = false;
+    float TotalWeight = 0.0f;
+
+    for (FBlendSample1D& Sample : Samples)
+    {
+        if (Sample.Weight <= KINDA_SMALL_NUMBER || Sample.SequenceNode == nullptr) { continue; }
+
+        SamplePose.ResetToRefPose();
+        Sample.SequenceNode->Evaluate(SamplePose);
+
+        if (!bHasAnyPose)
+        {
+            // 첫 샘플이면 그대로 복사
+            Output.EvaluatedPoses = SamplePose.EvaluatedPoses;
+            TotalWeight = Sample.Weight;
+            bHasAnyPose = true;
+        }
+        else
+        {
+            const float NewTotalWeight = TotalWeight + Sample.Weight;
+            const float Alpha = Sample.Weight / NewTotalWeight;
+
+            // 본별로 Lerp
+            for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
+            {
+                Output.EvaluatedPoses[BoneIndex] =
+                    FTransform::Lerp(
+                        Output.EvaluatedPoses[BoneIndex],           // 지금까지 누적된 포즈
+                        SamplePose.EvaluatedPoses[BoneIndex],       // 새 샘플 포즈
+                        Alpha                                       // 새 샘플 비율
+                    );
+            }
+
+            TotalWeight = NewTotalWeight;
+        }
+    }
+
+    if (!bHasAnyPose)
+    {
+        // 모든 샘플 Weight가 0이면 기본 포즈
+        Output.ResetToRefPose();
+    }
+}
+
+void FAnimNode_BlendSpace1D::CalculateSampleWeights()
+{
+    if (Samples.Num() == 0) { return; }
+
+    float ClampedInput = std::clamp(BlendInput, MinimumPosition, MaximumPosition);
+
+    for (FBlendSample1D& Sample : Samples)
+    {
+        Sample.Weight = 0.0f;
+    }
+
+    if (Samples.Num() == 1) { Samples[0].Weight = 1.0f; return; }
+
+    // 입력이 제일 왼쪽 이하일 때
+    if (ClampedInput <= Samples[0].Position) { Samples[0].Weight = 1.0f; return; }
+
+    // 입력이 제일 오른쪽 이상일 때
+    if (ClampedInput >= Samples.Last().Position) { Samples.Last().Weight = 1.0f; return; }
+
+    for (int32 Index = 0; Index < Samples.Num() - 1; ++Index)
+    {
+        const FBlendSample1D& LeftSample = Samples[Index];
+        const FBlendSample1D& RightSample = Samples[Index + 1];
+
+        // 두 시퀀스의 시간에 따른 비율로 Weight를 설정
+        if (ClampedInput >= LeftSample.Position && ClampedInput <= RightSample.Position)
+        {
+            float Range = RightSample.Position - LeftSample.Position;
+            float T = (Range > KINDA_SMALL_NUMBER)
+                ? (ClampedInput - LeftSample.Position) / Range
+                : 0.0f;
+
+            Samples[Index].Weight = 1.0f - T;
+            Samples[Index + 1].Weight = T;
+            break;
+        }
+    }
+}
+
+void FAnimNode_BlendSpace1D::SynchronizeSampleTimes()
+{
+    if (!IsTimeSynchronized) { return; }
+
+    // 가장 Weight가 큰 샘플을 마스터로 선택
+    int32 MasterIndex = INDEX_NONE;
+    float MaximumWeight = 0.0f;
+
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
+    {
+        if (Samples[Index].Weight > MaximumWeight)
+        {
+            MaximumWeight = Samples[Index].Weight;
+            MasterIndex = Index;
+        }
+    }
+
+    if (MasterIndex == INDEX_NONE) { return; }
+
+    FBlendSample1D& MasterSample = Samples[MasterIndex];
+    if (MasterSample.SequenceNode == nullptr) { return; }
+
+    float MasterNormalizedTime = MasterSample.SequenceNode->GetNormalizedTime();
+
+    // 나머지 시퀀스들 시간 맞춰주기
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
+    {
+        if (Index == MasterIndex)
+        {
+            continue;
+        }
+
+        FBlendSample1D& Sample = Samples[Index];
+        if (Sample.SequenceNode && Sample.Weight > KINDA_SMALL_NUMBER)
+        {
+            Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);
+        }
+    }
 }

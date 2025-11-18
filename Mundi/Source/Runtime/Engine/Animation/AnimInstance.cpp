@@ -1,11 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
-#include "AnimationAsset.h"
-#include "AnimationSequence.h"
-#include "AnimNode.h"
-#include "ResourceManager.h"
-#include "FloatComparisonRule.h"
 #include "LuaScriptComponent.h"
 #include "AnimNotify/AnimNotify.h"
 
@@ -15,12 +10,6 @@ UAnimInstance::~UAnimInstance()
     // OwnerSkeletalComp는 이 클래스가 소유한 것이 아니라 참조만 하므로 delete하지 않음
     // (SkeletalMeshComponent가 AnimInstance를 소유하고 있음)
     OwnerSkeletalComp = nullptr;
-
-    // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
-    // if (RootNode)
-    // {
-    //     RootNode = nullptr;
-    // }
 }
 
 void UAnimInstance::SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent)
@@ -51,7 +40,7 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
         return;
 
     // 변수 업데이트
-    NativeUpdateAnimation(DeltaTime);
+    NativeUpdateAnimation(DeltaTime * GlobalSpeed);
 
     // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
     // FAnimationUpdateContext Context;
@@ -100,16 +89,21 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
     //     }
     // }
 
-    // Lua ASM 사용: AnimUpdate() 호출하여 현재 재생 중인 AnimSequence 가져오기
-    // OwnerSkeletalComp의 Owner Actor의 Lua 스크립트에서 AnimUpdate() 함수 호출
+    //CurrentMoveSpeed += DeltaSeconds * 20.0f;
+    //if (CurrentMoveSpeed > 600.0f) { CurrentMoveSpeed = 0.0f; }
 
-    // LastAnimationTime 갱신 (현재 시간을 저장)
-    LastAnimationTime = CurrentAnimationTime;
-
-    if (OwnerSkeletalComp)
+    //if (MoveBlendSpaceNode)
+    //{
+    //    MoveBlendSpaceNode->SetBlendInput(CurrentMoveSpeed);
+    //}
+    
+    AActor* OwnerActor = OwnerSkeletalComp ? OwnerSkeletalComp->GetOwner() : nullptr;
+    if (OwnerActor)
     {
-        AActor* OwnerActor = OwnerSkeletalComp->GetOwner();
-        if (OwnerActor)
+        ULuaScriptComponent* ScriptComp = static_cast<ULuaScriptComponent*>(
+            OwnerActor->GetComponent(ULuaScriptComponent::StaticClass())
+        );
+        if (ScriptComp)
         {
             ULuaScriptComponent* ScriptComp = static_cast<ULuaScriptComponent*>(
                 OwnerActor->GetComponent(ULuaScriptComponent::StaticClass())
@@ -306,15 +300,15 @@ UAnimNodeTransitionRule* UAnimInstance::FindTransitionRuleByName(const FName& Ru
 void UAnimInstance::InitializeAnimationStateMachine()
 {
     // 애니메이션 로드
-    UAnimationSequence* AnimA = UResourceManager::GetInstance().Load<UAnimationSequence>("Standard Run_mixamo.com");
-    UAnimationSequence* AnimB = UResourceManager::GetInstance().Load<UAnimationSequence>("Standard Walk_mixamo.com");
-    UAnimationSequence* AnimC = UResourceManager::GetInstance().Load<UAnimationSequence>("James_mixamo.com");
+    UAnimationSequence* RunAnimation = UResourceManager::GetInstance().Load<UAnimationSequence>("Standard Run_mixamo.com");
+    UAnimationSequence* WalkAnimation = UResourceManager::GetInstance().Load<UAnimationSequence>("Standard Walk_mixamo.com");
+    UAnimationSequence* IdleAnimation = UResourceManager::GetInstance().Load<UAnimationSequence>("James_mixamo.com");
 
     // 로드 검증
-    if (!AnimA || !AnimB || !AnimC)
+    if (!RunAnimation || !WalkAnimation || !IdleAnimation)
         return;
 
-    if (!AnimA->GetDataModel() || !AnimB->GetDataModel() || !AnimC->GetDataModel())
+    if (!RunAnimation->GetDataModel() || !WalkAnimation->GetDataModel() || !IdleAnimation->GetDataModel())
         return;
 
     // Skeleton 정보 설정 (SkeletalMeshComponent로부터)
@@ -326,14 +320,14 @@ void UAnimInstance::InitializeAnimationStateMachine()
             const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
 
             // 각 애니메이션에 Skeleton 설정 및 루핑 활성화
-            AnimA->SetSkeleton(Skeleton);
-            AnimA->SetLooping(true);
+            RunAnimation->SetSkeleton(Skeleton);
+            RunAnimation->SetLooping(true);
 
-            AnimB->SetSkeleton(Skeleton);
-            AnimB->SetLooping(true);
+            WalkAnimation->SetSkeleton(Skeleton);
+            WalkAnimation->SetLooping(true);
 
-            AnimC->SetSkeleton(Skeleton);
-            AnimC->SetLooping(true);
+            IdleAnimation->SetSkeleton(Skeleton);
+            IdleAnimation->SetLooping(true);
         }
         else
         {
@@ -345,75 +339,116 @@ void UAnimInstance::InitializeAnimationStateMachine()
         return;
     }
 
-    // State 생성 및 애니메이션 추가 (새로운 API 사용)
-    // AddState가 내부에서 동적 할당하여 State 포인터를 반환
-    FAnimState* StateA = ASM.AddState("StateA");
-    if (StateA)
+    IdleSequenceNode = NewNode<FAnimNode_Sequence>();
+    IdleSequenceNode->SetSequence(IdleAnimation, true);
+
+    WalkSequenceNode = NewNode<FAnimNode_Sequence>();
+    WalkSequenceNode->SetSequence(WalkAnimation, true);
+
+    RunSequenceNode = NewNode<FAnimNode_Sequence>();
+    RunSequenceNode->SetSequence(RunAnimation, true);
+
+    MoveBlendSpaceNode = NewNode<FAnimNode_BlendSpace1D>();
+    MoveBlendSpaceNode->MinimumPosition = 0.0f;
+    MoveBlendSpaceNode->MaximumPosition = 600.0f; // 예: 이동 속도 최댓값
+
+    MoveBlendSpaceNode->AddSample(IdleSequenceNode, 0.0f);
+    MoveBlendSpaceNode->AddSample(WalkSequenceNode, 200.0f);
+    MoveBlendSpaceNode->AddSample(RunSequenceNode, 500.0f);
+
+    MoveBlendSpaceNode->IsTimeSynchronized = true;
+    MoveBlendSpaceNode->SetBlendInput(CurrentMoveSpeed);
+
+    FAnimState* LocomotionState = ASM.AddState("Locomotion");
+    if (LocomotionState)
     {
-        StateA->AddAnimSequence(AnimA);
+        LocomotionState->SetEntryNode(MoveBlendSpaceNode);
     }
 
-    FAnimState* StateB = ASM.AddState("StateB");
-    if (StateB)
-    {
-        StateB->AddAnimSequence(AnimB);
-    }
+    RootNode = &ASM;
 
-    FAnimState* StateC = ASM.AddState("StateC");
-    if (StateC)
-    {
-        StateC->AddAnimSequence(AnimC);
-    }
-
-    // AnimationMode를 AnimationBlueprint로 설정
     if (OwnerSkeletalComp)
     {
         OwnerSkeletalComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
     }
+    //// State 생성 및 애니메이션 추가 (새로운 API 사용)
+    //// AddState가 내부에서 동적 할당하여 State 포인터를 반환
+    //FAnimState* StateA = ASM.AddState("StateA");
+    //if (StateA)
+    //{
+    //    FAnimNode_Sequence* SequenceNode = StateA->CreateNode<FAnimNode_Sequence>();
+    //    SequenceNode->SetSequence(AnimA);
+    //    SequenceNode->SetLooping(true);
+    //    StateA->SetEntryNode(SequenceNode);
+    //}
 
-    // Transition Rule 생성 및 추가 (10초마다 전환)
-    UFloatComparisonRule* RuleAtoB = NewObject<UFloatComparisonRule>();
-    RuleAtoB->SetRuleName("RuleAtoB");
-    RuleAtoB->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
-    RuleAtoB->SetBaseValue(3.0f);  // 10초 기준
-    RuleAtoB->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
-    AddTransitionRule(RuleAtoB);
+    //FAnimState* StateB = ASM.AddState("StateB");
+    //if (StateB)
+    //{
+    //    FAnimNode_Sequence* SequenceNode = StateB->CreateNode<FAnimNode_Sequence>();
+    //    SequenceNode->SetSequence(AnimB);
+    //    SequenceNode->SetLooping(true);
+    //    StateB->SetEntryNode(SequenceNode);
+    //}
 
-    UFloatComparisonRule* RuleBtoC = NewObject<UFloatComparisonRule>();
-    RuleBtoC->SetRuleName("RuleBtoC");
-    RuleBtoC->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
-    RuleBtoC->SetBaseValue(3.0f);  // 10초 기준
-    RuleBtoC->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
-    AddTransitionRule(RuleBtoC);
+    //FAnimState* StateC = ASM.AddState("StateC");
+    //if (StateC)
+    //{
+    //    FAnimNode_Sequence* SequenceNode = StateC->CreateNode<FAnimNode_Sequence>();
+    //    SequenceNode->SetSequence(AnimC);
+    //    SequenceNode->SetLooping(true);
+    //    StateC->SetEntryNode(SequenceNode);
+    //}
 
-    UFloatComparisonRule* RuleCtoA = NewObject<UFloatComparisonRule>();
-    RuleCtoA->SetRuleName("RuleCtoA");
-    RuleCtoA->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
-    RuleCtoA->SetBaseValue(3.0f);  // 10초 기준
-    RuleCtoA->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
-    AddTransitionRule(RuleCtoA);
+    //// AnimationMode를 AnimationBlueprint로 설정
+    //if (OwnerSkeletalComp)
+    //{
+    //    OwnerSkeletalComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+    //}
 
-    // Transition 생성 및 연결 (새로운 API 사용)
-    // AddTransition이 내부에서 동적 할당, Rule 연결, Delegate 바인딩을 모두 처리
-    FAnimStateTransition* TransitionAtoB = ASM.AddTransition("StateA", "StateB", RuleAtoB);
-    if (TransitionAtoB)
-    {
-        TransitionAtoB->SetBlendTime(0.3f);
-    }
+    //// Transition Rule 생성 및 추가 (10초마다 전환)
+    //UFloatComparisonRule* RuleAtoB = NewObject<UFloatComparisonRule>();
+    //RuleAtoB->SetRuleName("RuleAtoB");
+    //RuleAtoB->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
+    //RuleAtoB->SetBaseValue(3.0f);  // 10초 기준
+    //RuleAtoB->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
+    //AddTransitionRule(RuleAtoB);
 
-    FAnimStateTransition* TransitionBtoC = ASM.AddTransition("StateB", "StateC", RuleBtoC);
-    if (TransitionBtoC)
-    {
-        TransitionBtoC->SetBlendTime(0.3f);
-    }
+    //UFloatComparisonRule* RuleBtoC = NewObject<UFloatComparisonRule>();
+    //RuleBtoC->SetRuleName("RuleBtoC");
+    //RuleBtoC->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
+    //RuleBtoC->SetBaseValue(3.0f);  // 10초 기준
+    //RuleBtoC->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
+    //AddTransitionRule(RuleBtoC);
 
-    FAnimStateTransition* TransitionCtoA = ASM.AddTransition("StateC", "StateA", RuleCtoA);
-    if (TransitionCtoA)
-    {
-        TransitionCtoA->SetBlendTime(0.3f);
-    }
+    //UFloatComparisonRule* RuleCtoA = NewObject<UFloatComparisonRule>();
+    //RuleCtoA->SetRuleName("RuleCtoA");
+    //RuleCtoA->SetComparisonOperator(UAnimNodeTransitionRule::ComparisonOperator::GreaterThanOrEqualTo);
+    //RuleCtoA->SetBaseValue(3.0f);  // 10초 기준
+    //RuleCtoA->SetComparisonValue(0.0f);  // 매 프레임 업데이트됨
+    //AddTransitionRule(RuleCtoA);
 
-    // 4) RootNode를 StateMachine으로 고정
-    RootNode = &ASM;
+    //// Transition 생성 및 연결 (새로운 API 사용)
+    //// AddTransition이 내부에서 동적 할당, Rule 연결, Delegate 바인딩을 모두 처리
+    //FAnimStateTransition* TransitionAtoB = ASM.AddTransition("StateA", "StateB", RuleAtoB);
+    //if (TransitionAtoB)
+    //{
+    //    TransitionAtoB->SetBlendTime(0.3f);
+    //}
+
+    //FAnimStateTransition* TransitionBtoC = ASM.AddTransition("StateB", "StateC", RuleBtoC);
+    //if (TransitionBtoC)
+    //{
+    //    TransitionBtoC->SetBlendTime(0.3f);
+    //}
+
+    //FAnimStateTransition* TransitionCtoA = ASM.AddTransition("StateC", "StateA", RuleCtoA);
+    //if (TransitionCtoA)
+    //{
+    //    TransitionCtoA->SetBlendTime(0.3f);
+    //}
+
+    //// 4) RootNode를 StateMachine으로 고정
+    //RootNode = &ASM;
 }
 */

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 class USkeletalMeshComponent;
 class UAnimationSequence;
@@ -11,12 +11,17 @@ public:
     
     virtual ~UAnimInstance();
 
+public:
     void SetSkeletalComponent(USkeletalMeshComponent* InSkeletalMeshComponent);
     USkeletalMeshComponent* GetSkeletalComponent() const { return OwnerSkeletalComp; }
 
     // C++ AnimationStateMachine 사용 (현재 주석 처리 - Lua ASM 사용)
     // FAnimNode_StateMachine ASM;
     // FAnimNode_Base* RootNode = nullptr;
+
+    // 현재 포즈를 저장할 변수
+    FPoseContext CurrentPose;
+    float GlobalSpeed = 1.0f;
 
     /**
      * @brief AnimInstance 초기화 (최초 1회 호출)
@@ -75,6 +80,12 @@ protected:
     // float TransitionTimer = 0.0f;
     // const float TransitionInterval = 10.0f;
     // FAnimState* PreviousState = nullptr;
+
+    FAnimNode_Sequence* IdleSequenceNode = nullptr;
+    FAnimNode_Sequence* WalkSequenceNode = nullptr;
+    FAnimNode_Sequence* RunSequenceNode = nullptr;
+
+    FAnimNode_BlendSpace1D* MoveBlendSpaceNode = nullptr;
 
     // 현재 포즈를 저장할 변수
     FPoseContext CurrentPose;

@@ -1,10 +1,11 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "LuaManager.h"
 #include "LuaComponentProxy.h"
 #include "GameObject.h"
 #include "ObjectIterator.h"
 #include "CameraActor.h"
 #include "CameraComponent.h"
+#include "SkeletalMeshComponent.h"
 #include "PlayerCameraManager.h"
 #include "../Animation/AnimNode.h"
 #include "../Animation/AnimationType.h"
@@ -392,20 +393,22 @@ FLuaManager::FLuaManager()
     auto fanimstate_constructor = []() { return FAnimState(); };
     SharedLib.set_function("FAnimState", fanimstate_constructor);
     Lua->set_function("FAnimState", fanimstate_constructor);
-
-    // FAnimState usertype 등록
+ 
+    SharedLib.new_usertype<FAnimNode_Base>("FAnimNode_Base",
+        sol::no_constructor
+    );
+ 
     SharedLib.new_usertype<FAnimState>("FAnimStateType",
         sol::no_constructor,
         "Name", &FAnimState::Name,
         "Index", &FAnimState::Index,
-        "AnimSequenceNodes", &FAnimState::AnimSequenceNodes,
-        // AddAnimSequence: UAnimationSequence*, bool bLoop = true 매개변수 지원
-        "AddAnimSequence", sol::overload(
-            [](FAnimState& self, UAnimationSequence* seq) { return self.AddAnimSequence(seq); },
-            [](FAnimState& self, UAnimationSequence* seq, bool bLoop) { return self.AddAnimSequence(seq, bLoop); }
+        "SetEntryNode", &FAnimState::SetEntryNode,
+        "GetEntryNode", &FAnimState::GetEntryNode,
+        "CreateSequenceNode", sol::overload(
+            [](FAnimState& self, UAnimationSequence* seq) { return self.CreateSequenceNode(seq, true); },
+            [](FAnimState& self, UAnimationSequence* seq, bool bLoop) { return self.CreateSequenceNode(seq, bLoop); }
         ),
-        "Update", &FAnimState::Update,
-        "Evaluate", &FAnimState::Evaluate
+        "CreateBlendSpace1DNode", &FAnimState::CreateBlendSpace1DNode
     );
 
     // FAnimationUpdateContext 생성자 함수 등록 (전역과 SharedLib 모두)
@@ -433,6 +436,19 @@ FLuaManager::FLuaManager()
         sol::no_constructor,
         "Skeleton", &FPoseContext::Skeleton,
         "EvaluatedPoses", &FPoseContext::EvaluatedPoses
+    );
+
+    SharedLib.new_usertype<UAnimInstance>("AnimInstance",
+        sol::no_constructor,
+        "GlobalSpeed", sol::property(&UAnimInstance::GlobalSpeed)
+    );
+
+    SharedLib.new_usertype<USkeletalMeshComponent>("SkeletalMeshComponent",
+        sol::no_constructor,
+        "GetAnimInstance", [](USkeletalMeshComponent* Comp) -> UAnimInstance* {
+            if (!Comp) return nullptr;
+            return Comp->GetAnimInstance();
+        }
     );
 
     // FTransform usertype 등록 (SharedLib)
@@ -500,15 +516,48 @@ FLuaManager::FLuaManager()
     // FAnimNode_Sequence usertype 등록
     SharedLib.new_usertype<FAnimNode_Sequence>("FAnimNode_Sequence",
         sol::constructors<FAnimNode_Sequence()>(),
+        sol::base_classes, sol::bases<FAnimNode_Base>(),
         "Sequence", &FAnimNode_Sequence::Sequence,
         "CurrentTime", &FAnimNode_Sequence::CurrentTime,
         "PlayRate", &FAnimNode_Sequence::PlayRate,
         "bLooping", &FAnimNode_Sequence::bLooping,
         "SetSequence", &FAnimNode_Sequence::SetSequence,
         "SetLooping", &FAnimNode_Sequence::SetLooping,
+        "GetNormalizedTime", &FAnimNode_Sequence::GetNormalizedTime,
+        "SetNormalizedTime", &FAnimNode_Sequence::SetNormalizedTime,
         "Update", &FAnimNode_Sequence::Update,
         "Evaluate", &FAnimNode_Sequence::Evaluate
     );
+ 
+    // FAnimNode_BlendSpace1D usertype 등록
+    SharedLib.new_usertype<FAnimNode_BlendSpace1D>("FAnimNode_BlendSpace1D",
+        sol::constructors<FAnimNode_BlendSpace1D()>(),
+        sol::base_classes, sol::bases<FAnimNode_Base>(),
+        "SetBlendInput", &FAnimNode_BlendSpace1D::SetBlendInput,
+        "AddSample", [](FAnimNode_BlendSpace1D& self, FAnimNode_Sequence* Node, float Position)
+        {
+            self.AddSample(Node, Position);
+        },
+        "MinimumPosition", sol::property(
+            [](const FAnimNode_BlendSpace1D& Self) { return Self.MinimumPosition; },
+            [](FAnimNode_BlendSpace1D& Self, float Value) { Self.MinimumPosition = Value; }
+        ),
+        "MaximumPosition", sol::property(
+            [](const FAnimNode_BlendSpace1D& Self) { return Self.MaximumPosition; },
+            [](FAnimNode_BlendSpace1D& Self, float Value) { Self.MaximumPosition = Value; }
+        ),
+        "IsTimeSynchronized", sol::property(
+            [](const FAnimNode_BlendSpace1D& Self) { return Self.IsTimeSynchronized; },
+            [](FAnimNode_BlendSpace1D& Self, bool bValue) { Self.IsTimeSynchronized = bValue; }
+        ),
+        "Update", &FAnimNode_BlendSpace1D::Update,
+        "Evaluate", &FAnimNode_BlendSpace1D::Evaluate
+    );
+ 
+    // FAnimNode_StateMachine 생성자 함수 등록 (전역과 SharedLib 모두)
+    auto fanimsm_constructor = []() { return FAnimNode_StateMachine(); };
+    SharedLib.set_function("CreateAnimNodeStateMachine", fanimsm_constructor);
+    Lua->set_function("CreateAnimNodeStateMachine", fanimsm_constructor);
 
     // FAnimNode_StateMachine usertype 등록
     SharedLib.new_usertype<FAnimNode_StateMachine>("FAnimNode_StateMachine",
@@ -523,7 +572,8 @@ FLuaManager::FLuaManager()
         "AddTransition", &FAnimNode_StateMachine::AddTransition,
         "DeleteTransition", &FAnimNode_StateMachine::DeleteTransition,
         "GetCurrentState", &FAnimNode_StateMachine::GetCurrentState,
-        "GetTransitions", &FAnimNode_StateMachine::GetTransitions
+        "GetTransitions", &FAnimNode_StateMachine::GetTransitions,
+        "ResetTransitionFlags", &FAnimNode_StateMachine::ResetTransitionFlags
     );
 
     // USoundAnimNotify usertype 등록

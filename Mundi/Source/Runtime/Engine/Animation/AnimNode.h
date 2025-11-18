@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "AnimationSequence.h"
 #include "Delegates.h"
 #include "AnimNodeTransitionRule.h"
@@ -25,6 +25,23 @@ struct FAnimNode_Sequence : FAnimNode_Base
 
     void SetLooping(bool bInLooping) { bLooping = bInLooping; }
 
+    float GetLength() const { return Sequence ? Sequence->GetPlayLength() : 0.f; }
+    float GetCurrentTime() const { return CurrentTime; }
+
+    float GetNormalizedTime() const
+    {
+        float Len = GetLength();
+        return (Len > 0.f) ? (CurrentTime / Len) : 0.f;
+    }
+    void SetNormalizedTime(float Normalized)
+    {
+        float Len = GetLength();
+        if (Len > 0.f)
+            CurrentTime = FMath::Clamp(Normalized, 0.f, 1.f) * Len;
+        else
+            CurrentTime = 0.f;
+    }
+
     virtual void Update(const FAnimationUpdateContext& Context) override
     {
         if (!Sequence)
@@ -49,7 +66,6 @@ struct FAnimNode_Sequence : FAnimNode_Base
             CurrentTime = FMath::Clamp(CurrentTime, 0.0f, Length);
         }
     }
-
     virtual void Evaluate(FPoseContext& Output) override
     {
         if (!Sequence)
@@ -111,48 +127,93 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
         }
     }
 };
+
+struct FBlendSample1D
+{
+    float Position = 0.0f; // 이 샘플이 놓인 위치 (ex: 속도 0, 200, 500)
+    FAnimNode_Sequence* SequenceNode = nullptr; // 재생할 노드
+    float Weight = 0.0f;
+};
+
+struct FAnimNode_BlendSpace1D : public FAnimNode_Base
+{
+    float BlendInput = 0.0f; // 외부 세팅 값 (ex: 이동 속도)
+    float MinimumPosition = 0.0f; // BlendSpace 시작값
+    float MaximumPosition = 1.0f; // BlendSpace 끝값
+    bool IsTimeSynchronized = true; // 샘플 시퀀스들끼리 시간 동기화 여부
+
+    TArray <FBlendSample1D> Samples;
+
+    void AddSample(FAnimNode_Sequence* SequenceNode, float Position)
+    {
+        FBlendSample1D Sample;
+        Sample.Position = Position;
+        Sample.SequenceNode = SequenceNode;
+        Sample.Weight = 0.0f;
+        Samples.Add(Sample);
+
+        Samples.Sort([](const FBlendSample1D& A, const FBlendSample1D& B)
+        {
+            return A.Position < B.Position;
+        });
+    }
+
+    void SetBlendInput(float InValue) { BlendInput = InValue; }
+
+    virtual void Update(const FAnimationUpdateContext& Context) override;
+    virtual void Evaluate(FPoseContext& Output) override;
+
+private:
+    void CalculateSampleWeights();
+    void SynchronizeSampleTimes();
+};
+
 struct FAnimState
 {
     FName Name{};
-    uint32 Index{};   // Animation State Machine에서의 Index
-    TArray<FAnimNode_Sequence> AnimSequenceNodes;
+    uint32 Index{};
+    FAnimNode_Base* EntryNode = nullptr;
+    TArray<FAnimNode_Base*> OwnedNodes;
 
-    /**
-     * @brief AnimSequence를 이 State에 추가
-     */
-    FAnimNode_Sequence* AddAnimSequence(UAnimationSequence* AnimSequence, bool bLoop = true)
+    template<typename TNode, typename... Args>
+    TNode* CreateNode(Args&&... args)
     {
-        if (!AnimSequence)
-        {
-            return nullptr;
-        }
-
-        AnimSequenceNodes.Emplace();
-        FAnimNode_Sequence& Node = AnimSequenceNodes.Last();
-        Node.SetSequence(AnimSequence, bLoop);
-        return &Node;
+        TNode* Node = new TNode(std::forward<Args>(args)...);
+        OwnedNodes.Add(Node);
+        return Node;
     }
 
-    /**
-     * @brief 첫 번째 AnimSequence 노드를 업데이트
-     */
-    void Update(const FAnimationUpdateContext& Context)
+    FAnimNode_Base* GetEntryNode() const { return EntryNode; }
+
+    void SetEntryNode(FAnimNode_Base* Node)
     {
-        if (!AnimSequenceNodes.empty())
-        {
-            AnimSequenceNodes.front().Update(Context);
-        }
+        EntryNode = Node;
     }
 
-    /**
-     * @brief 첫 번째 AnimSequence 노드를 평가하여 Output에 Pose 데이터 채우기
-     */
-    void Evaluate(FPoseContext& Output)
+    void ResetNodes()
     {
-        if (!AnimSequenceNodes.empty())
+        for (FAnimNode_Base* Node : OwnedNodes)
         {
-            AnimSequenceNodes.front().Evaluate(Output);
+            delete Node;
         }
+        OwnedNodes.Empty();
+        EntryNode = nullptr;
+    }
+
+    FAnimNode_Sequence* CreateSequenceNode(UAnimationSequence* Sequence, bool bLoop = true)
+    {
+        FAnimNode_Sequence* Node = CreateNode<FAnimNode_Sequence>();
+        if (Node)
+        {
+            Node->SetSequence(Sequence, bLoop);
+            Node->SetLooping(bLoop);
+        }
+        return Node;
+    }
+
+    FAnimNode_BlendSpace1D* CreateBlendSpace1DNode()
+    {
+        return CreateNode<FAnimNode_BlendSpace1D>();
     }
 };
 
@@ -221,15 +282,15 @@ struct FAnimStateTransition
     }
 };
 
-struct FAnimNode_StateMachine : FAnimNode_Base 
+struct FAnimNode_StateMachine : FAnimNode_Base
 {
     TArray<FAnimState*> States;
     TArray<FAnimStateTransition*> Transitions;
 
     FAnimState* CurrentState = nullptr;
 
-    // Transition 중인지 여부
-    bool bIsInTransition = false;
+    bool bUseTransitionBlend = true;  // Transition 중 Blend 할지
+    bool bIsInTransition = false; // Transition 중인지 여부
     FAnimStateTransition* CurrentTransition = nullptr;
 
     float TransitionElapsed = 0.f;
@@ -238,18 +299,8 @@ struct FAnimNode_StateMachine : FAnimNode_Base
 
     virtual ~FAnimNode_StateMachine();
 
-    /**
-    * @brief 내부 상태 업데이트 (StateMachine 전이, 시퀀스 재생 시간 증가 등)
-    * @return 없음
-    */
     virtual void Update(const FAnimationUpdateContext& Context) override;
-
-    /**
-     * @brief 이 노드가 생성하는 최종 Pose 계산(모든 애니메이션 노드는 반드시 이 함수를 통해 Pose를 출력)
-     * @return 인자로 받는 Output을 갱신
-     */
     virtual void Evaluate(FPoseContext& Output) override;
-
 
     // --------- 상태 API ----------
     /**
@@ -258,11 +309,6 @@ struct FAnimNode_StateMachine : FAnimNode_Base
      * @return 추가된 State의 포인터
      */
     FAnimState* AddState(const FName& StateName);
-
-    /**
-     * @brief 이름으로 State 제거
-     * @return 없음
-     */
     void DeleteState(const FName& TargetName);
 
     // --------- 트랜지션 API ----------
@@ -295,6 +341,10 @@ struct FAnimNode_StateMachine : FAnimNode_Base
      */
     TArray<FAnimStateTransition*>& GetTransitions() { return Transitions; }
 
+    /**
+     * @brief Reset CanEnterTransition for all transitions
+     */
+    void ResetTransitionFlags();
 
 private:
     /**
@@ -311,3 +361,6 @@ private:
     // // State 체류 시간
     // float StateElapsedTime;
 };
+
+
+
