@@ -2,6 +2,7 @@
 #include "CameraShakeAnimNotify.h"
 #include "World.h"
 #include "PlayerCameraManager.h"
+#include "../GameFramework/Camera/CamMod_Shake.h"
 
 IMPLEMENT_CLASS(UCameraShakeAnimNotify)
 
@@ -12,7 +13,13 @@ void UCameraShakeAnimNotify::Notify()
 	APlayerCameraManager* CameraManager = GWorld->GetPlayerCameraManager();
 	if (!CameraManager) return;
 
-	CameraManager->StartCameraShake(Duration, AmplitudeLocation, AmplitudeRotationDeg, Frequency, Priority);
+	// UCamMod_Shake를 직접 생성하고 설정 (기존 프레임워크 방식)
+	UCamMod_Shake* ShakeModifier = new UCamMod_Shake();
+	ShakeModifier->Priority = Priority;
+	ShakeModifier->NoiseMode = NoiseMode;
+	ShakeModifier->MixRatio = MixRatio;
+	ShakeModifier->Initialize(Duration, AmplitudeLocation, AmplitudeRotationDeg, Frequency);
+	CameraManager->ActiveModifiers.Add(ShakeModifier);
 }
 
 float UCameraShakeAnimNotify::GetDuration()
@@ -63,4 +70,24 @@ int32 UCameraShakeAnimNotify::GetPriority()
 void UCameraShakeAnimNotify::SetPriority(const int32 InPriority)
 {
 	Priority = InPriority;
+}
+
+EShakeNoise UCameraShakeAnimNotify::GetNoiseMode()
+{
+	return NoiseMode;
+}
+
+void UCameraShakeAnimNotify::SetNoiseMode(const EShakeNoise InNoiseMode)
+{
+	NoiseMode = InNoiseMode;
+}
+
+float UCameraShakeAnimNotify::GetMixRatio()
+{
+	return MixRatio;
+}
+
+void UCameraShakeAnimNotify::SetMixRatio(const float InMixRatio)
+{
+	MixRatio = InMixRatio;
 }

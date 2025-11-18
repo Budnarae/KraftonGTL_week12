@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AnimationSequence.h"
 #include "WindowsBinWriter.h"
+#include "AnimNotify/AnimNotify.h"
 #include <filesystem>
 
 IMPLEMENT_CLASS(UAnimationSequence)
@@ -10,6 +11,16 @@ UAnimationSequence::UAnimationSequence(const FSkeleton& InSkeleton) : Skeleton(I
 
 UAnimationSequence::~UAnimationSequence()
 {
+    // AnimNotify 정리
+    for (UAnimNotify* Notify : AnimNotifies)
+    {
+        if (Notify)
+        {
+            DeleteObject(Notify);
+        }
+    }
+    AnimNotifies.Empty();
+
     if (DataModel)
     {
         DeleteObject(DataModel);
@@ -276,6 +287,29 @@ int32 UAnimationSequence::GetNumberOfFrames() const
 int32 UAnimationSequence::GetNumberOfKeys() const
 {
     return DataModel ? DataModel->GetNumberOfKeys() : 0;
+}
+
+void UAnimationSequence::AddAnimNotify(UAnimNotify* InNotify)
+{
+    if (!InNotify)
+        return;
+
+    // 중복 체크
+    for (UAnimNotify* Notify : AnimNotifies)
+    {
+        if (Notify == InNotify)
+            return;
+    }
+
+    AnimNotifies.Add(InNotify);
+}
+
+void UAnimationSequence::RemoveAnimNotify(UAnimNotify* InNotify)
+{
+    if (!InNotify)
+        return;
+
+    AnimNotifies.Remove(InNotify);
 }
 
 

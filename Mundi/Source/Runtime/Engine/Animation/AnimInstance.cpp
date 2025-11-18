@@ -129,6 +129,13 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UAnimInstance::PostUpdateAnimation()
 {
+    // 현재 재생 중인 애니메이션이 없으면 조기 반환
+    if (!CurrentAnimation)
+        return;
+
+    // 현재 애니메이션의 AnimNotify 목록 가져오기
+    const TArray<UAnimNotify*>& AnimNotifies = CurrentAnimation->GetAnimNotifies();
+
     // LastAnimationTime과 CurrentAnimationTime 사이에 있는 AnimNotify 실행
     for (UAnimNotify* Notify : AnimNotifies)
     {
@@ -159,20 +166,9 @@ void UAnimInstance::PostUpdateAnimation()
             }
         }
 
-        // Notify 실행
+        // Notify 실행 (조건이 맞으면 실행)
         if (bShouldTrigger)
         {
-            // 현재 재생 중인 애니메이션과 Notify의 대상 애니메이션이 일치하는지 체크
-            UAnimationSequence* TargetAnim = Notify->GetAnimation();
-            if (TargetAnim)
-            {
-                // Animation이 설정되어 있으면 현재 애니메이션과 일치할 때만 실행
-                if (CurrentAnimation != TargetAnim)
-                {
-                    continue;
-                }
-            }
-
             Notify->Notify();
         }
     }
@@ -226,29 +222,6 @@ void UAnimInstance::EvaluateAnimation()
             }
         }
     }
-}
-
-void UAnimInstance::AddAnimNotify(UAnimNotify* InNotify)
-{
-    if (!InNotify)
-        return;
-
-    // 중복 체크
-    for (UAnimNotify* Notify : AnimNotifies)
-    {
-        if (Notify == InNotify)
-            return;
-    }
-
-    AnimNotifies.Add(InNotify);
-}
-
-void UAnimInstance::RemoveAnimNotify(UAnimNotify* InNotify)
-{
-    if (!InNotify)
-        return;
-
-    AnimNotifies.Remove(InNotify);
 }
 
 // C++ ASM 관련 함수 (주석 처리 - Lua ASM 사용)

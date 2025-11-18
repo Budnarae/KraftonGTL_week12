@@ -55,11 +55,6 @@ protected:
 public:
     FPoseContext& GetCurrentPose() { return CurrentPose; };
 
-    // AnimNotify 관리 헬퍼 함수
-    void AddAnimNotify(UAnimNotify* InNotify);
-    void RemoveAnimNotify(UAnimNotify* InNotify);
-    const TArray<UAnimNotify*>& GetAnimNotifies() const { return AnimNotifies; }
-
 // ====================================
 // C++ ASM 관련 코드 (주석 처리 - Lua ASM 사용)
 // ====================================
@@ -72,7 +67,6 @@ public:
 
 protected:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
-    TArray<UAnimNotify*> AnimNotifies;
     UAnimationSequence* CurrentAnimation = nullptr;  // 현재 재생 중인 애니메이션
 
     // C++ ASM 관련 변수 (주석 처리 - Lua ASM 사용)

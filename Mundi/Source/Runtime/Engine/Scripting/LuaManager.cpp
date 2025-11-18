@@ -606,6 +606,13 @@ FLuaManager::FLuaManager()
         "SetAnimation", &USoundAnimNotify::SetAnimation
     );
 
+    // EShakeNoise enum 등록
+    sol::table EShakeNoiseTable = Lua->create_table();
+    EShakeNoiseTable["Sine"] = EShakeNoise::Sine;
+    EShakeNoiseTable["Perlin"] = EShakeNoise::Perlin;
+    EShakeNoiseTable["Mixed"] = EShakeNoise::Mixed;
+    SharedLib["EShakeNoise"] = EShakeNoiseTable;
+
     // UCameraShakeAnimNotify usertype 등록
     SharedLib.new_usertype<UCameraShakeAnimNotify>("UCameraShakeAnimNotify",
         sol::constructors<UCameraShakeAnimNotify()>(),
@@ -622,15 +629,24 @@ FLuaManager::FLuaManager()
         "GetTimeToNotify", &UCameraShakeAnimNotify::GetTimeToNotify,
         "SetTimeToNotify", &UCameraShakeAnimNotify::SetTimeToNotify,
         "GetAnimation", &UCameraShakeAnimNotify::GetAnimation,
-        "SetAnimation", &UCameraShakeAnimNotify::SetAnimation
+        "SetAnimation", &UCameraShakeAnimNotify::SetAnimation,
+        "GetNoiseMode", &UCameraShakeAnimNotify::GetNoiseMode,
+        "SetNoiseMode", &UCameraShakeAnimNotify::SetNoiseMode,
+        "GetMixRatio", &UCameraShakeAnimNotify::GetMixRatio,
+        "SetMixRatio", &UCameraShakeAnimNotify::SetMixRatio
+    );
+
+    // UAnimationSequence usertype 등록
+    SharedLib.new_usertype<UAnimationSequence>("UAnimationSequence",
+        sol::no_constructor,
+        "AddAnimNotify", &UAnimationSequence::AddAnimNotify,
+        "RemoveAnimNotify", &UAnimationSequence::RemoveAnimNotify,
+        "GetAnimNotifies", &UAnimationSequence::GetAnimNotifies
     );
 
     // UAnimInstance usertype 등록
     SharedLib.new_usertype<UAnimInstance>("UAnimInstance",
-        sol::no_constructor,
-        "AddAnimNotify", &UAnimInstance::AddAnimNotify,
-        "RemoveAnimNotify", &UAnimInstance::RemoveAnimNotify,
-        "GetAnimNotifies", &UAnimInstance::GetAnimNotifies
+        sol::no_constructor
     );
 
     // USkeletalMeshComponent usertype 등록 (AnimInstance 접근용)
