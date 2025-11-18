@@ -397,6 +397,7 @@
     <ClCompile Include="Source\Runtime\Renderer\PostProcessing\PostProcessing.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\PostProcessing\VignettePass.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\SceneView.cpp" />
+    <ClCompile Include="Source\Runtime\Renderer\StatManagement\SkinningStatManager.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\TileLightCuller.cpp" />
     <ClCompile Include="Source\Slate\Widgets\AssetBrowserWidget.cpp" />
     <ClCompile Include="Source\Slate\Widgets\BoneHierarchyWidget.cpp" />
@@ -808,6 +809,8 @@
     <ClInclude Include="Source\Runtime\Renderer\PostProcessing\PostProcessing.h" />
     <ClInclude Include="Source\Runtime\Renderer\PostProcessing\VignettePass.h" />
     <ClInclude Include="Source\Runtime\Renderer\SceneView.h" />
+    <ClInclude Include="Source\Runtime\Renderer\StatManagement\DecalStatManager.h" />
+    <ClInclude Include="Source\Runtime\Renderer\StatManagement\SkinningStatManager.h" />
     <ClInclude Include="Source\Runtime\Renderer\TileCullingStats.h" />
     <ClInclude Include="Source\Runtime\Renderer\TileLightCuller.h" />
     <ClInclude Include="Source\Runtime\RHI\SwapGuard.h" />
@@ -923,7 +926,6 @@
     <ClInclude Include="Source\Runtime\Engine\Spatial\Octree.h" />
     <ClInclude Include="Source\Runtime\Engine\Spatial\WorldPartitionManager.h" />
     <ClInclude Include="Source\Runtime\InputCore\InputManager.h" />
-    <ClInclude Include="Source\Runtime\Renderer\DecalStatManager.h" />
     <ClInclude Include="Source\Runtime\Renderer\SceneRenderer.h" />
     <ClInclude Include="Source\Runtime\Renderer\FViewport.h" />
     <ClInclude Include="Source\Runtime\Renderer\FViewportClient.h" />

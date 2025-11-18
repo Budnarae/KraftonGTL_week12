@@ -28,7 +28,7 @@
 #include "RenderSettings.h"
 #include "EditorEngine.h"
 #include "DecalComponent.h"
-#include "DecalStatManager.h"
+#include "StatManagement/DecalStatManager.h"
 #include "SceneRenderer.h"
 #include "SceneView.h"
 

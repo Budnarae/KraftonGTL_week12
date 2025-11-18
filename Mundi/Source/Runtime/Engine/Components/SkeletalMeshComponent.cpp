@@ -136,8 +136,9 @@ void USkeletalMeshComponent::SetAnimInstance(UAnimInstance* NewAnimInstanceClass
 
 void USkeletalMeshComponent::ForceRecomputePose()
 {
-    if (!SkeletalMesh) { return; } 
+    if (!SkeletalMesh) { return; }
 
+    
     // LocalSpace -> ComponentSpace 계산
     UpdateComponentSpaceTransforms();
     // ComponentSpace -> Final Skinning Matrices 계산

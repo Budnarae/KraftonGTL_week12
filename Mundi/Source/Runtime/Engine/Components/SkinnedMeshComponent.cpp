@@ -4,6 +4,7 @@
 #include "SceneView.h"
 #include "Actor.h"
 #include "Level.h"
+#include "../../Renderer/StatManagement/SkinningStatManager.h"
 
 bool USkinnedMeshComponent::bGlobalGpuSkinningEnabled = true;
 
@@ -361,21 +362,25 @@ void USkinnedMeshComponent::PerformSkinning()
     if (IsGpuSkinning) { return; }
     if (!SkeletalMesh || FinalSkinningMatrices.IsEmpty()) { return; }
     if (!bSkinningMatricesDirty) { return; }
-    
+
+    FSkinningStatManager::GetInstance().RecordCPUStart();
+
     const TArray<FSkinnedVertex>& SrcVertices = SkeletalMesh->GetSkeletalMeshData()->Vertices;
     const int32 NumVertices = SrcVertices.Num();
     SkinnedVertices.SetNum(NumVertices);
-    
+
     for (int32 Idx = 0; Idx < NumVertices; ++Idx)
     {
        const FSkinnedVertex& SrcVert = SrcVertices[Idx];
        FNormalVertex& DstVert = SkinnedVertices[Idx];
-    
-       DstVert.pos = SkinVertexPosition(SrcVert); 
+
+       DstVert.pos = SkinVertexPosition(SrcVert);
        DstVert.normal = SkinVertexNormal(SrcVert);
        DstVert.Tangent = SkinVertexTangent(SrcVert);
        DstVert.tex = SrcVert.UV;
     }
+
+    FSkinningStatManager::GetInstance().RecordCPUEnd();
 }
 
 void USkinnedMeshComponent::UpdateSkinningMatrices(const TArray<FMatrix>& InSkinningMatrices, const TArray<FMatrix>& InSkinningNormalMatrices)

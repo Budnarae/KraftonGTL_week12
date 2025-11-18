@@ -20,7 +20,7 @@
 #include "BVHierarchy.h"
 #include "SelectionManager.h"
 #include "StaticMeshComponent.h"
-#include "DecalStatManager.h"
+#include "StatManagement/DecalStatManager.h"
 #include "BillboardComponent.h"
 #include "TextRenderComponent.h"
 #include "OBB.h"
@@ -48,6 +48,7 @@
 #include "PostProcessing/VignettePass.h"
 #include "FbxLoader.h"
 #include "SkinnedMeshComponent.h"
+#include "StatManagement/SkinningStatManager.h"
 
 FSceneRenderer::FSceneRenderer(UWorld* InWorld, FSceneView* InView, URenderer* InOwnerRenderer)
 	: World(InWorld)
@@ -114,7 +115,9 @@ void FSceneRenderer::Render()
 	}
 	else if (View->RenderSettings->GetViewMode() == EViewMode::VMI_Wireframe)
 	{
+		FSkinningStatManager::GetInstance().RecordStart();
 		RenderWireframePath();
+		FSkinningStatManager::GetInstance().RecordEnd();
 	}
 	else if (View->RenderSettings->GetViewMode() == EViewMode::VMI_SceneDepth)
 	{
@@ -165,7 +168,10 @@ void FSceneRenderer::RenderLitPath()
     }
 
 	// Base Pass
+
+	FSkinningStatManager::GetInstance().RecordStart();
 	RenderOpaquePass(View->RenderSettings->GetViewMode());
+	FSkinningStatManager::GetInstance().RecordEnd();
 	RenderDecalPass();
 }
 
