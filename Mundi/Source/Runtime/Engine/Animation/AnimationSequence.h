@@ -56,6 +56,7 @@ public:
     void AddAnimNotify(class UAnimNotify* InNotify);
     void RemoveAnimNotify(class UAnimNotify* InNotify);
     const TArray<class UAnimNotify*>& GetAnimNotifies() const { return AnimNotifies; }
+    int32 GetAnimNotifyCount() const { return AnimNotifies.Num(); }
 
 private:
     UAnimDataModel* DataModel = nullptr;

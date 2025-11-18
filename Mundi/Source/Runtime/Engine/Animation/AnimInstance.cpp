@@ -61,6 +61,9 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
 
 void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
+    // LastAnimationTime 갱신 (현재 시간을 저장)
+    LastAnimationTime = CurrentAnimationTime;
+
     // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
     // TransitionTimer += DeltaSeconds;
     // for (UAnimNodeTransitionRule* Rule : TransitionRules)
