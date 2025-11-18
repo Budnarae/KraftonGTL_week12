@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "SkinnedMeshComponent.h"
+#include "../Animation/AnimInstance.h"
 #include "USkeletalMeshComponent.generated.h"
 
 enum class EAnimationMode : uint8
@@ -36,6 +37,8 @@ public:
     EAnimationMode AnimationMode = EAnimationMode::AnimationSingleNode;
 
     void SetAnimInstanceClass(UAnimInstance* NewAnimInstanceClass);
+
+    UFUNCTION(LuaBind, DisplayName="GetAnimInstance")
     UAnimInstance* GetAnimInstanceClass() const {return AnimInstance;};
 
     void SetAnimationMode(EAnimationMode InAnimationMode) { AnimationMode = InAnimationMode; }

@@ -7,7 +7,6 @@ UCLASS(DisplayName="박스 컴포넌트", Description="박스 모양 충돌 컴�
 class UBoxComponent : public UShapeComponent
 {
 public:
-
 	GENERATED_REFLECTION_BODY();
 
 	UBoxComponent(); 

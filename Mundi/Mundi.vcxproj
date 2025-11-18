@@ -270,6 +270,8 @@
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNode.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.cpp" />
@@ -542,7 +544,13 @@
     <ClCompile Include="Source\Slate\Windows\SWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\UIWindow.cpp" />
     <ClCompile Include="Generated\UMeshComponent.generated.cpp" />
-  <ClCompile Include="Generated\APawn.generated.cpp" /><ClCompile Include="Generated\APlayerController.generated.cpp" /><ClCompile Include="Generated\ACharacter.generated.cpp" /><ClCompile Include="Generated\AGameModeBase.generated.cpp" /><ClCompile Include="Generated\ATempCharacter.generated.cpp" /></ItemGroup>
+    <ClCompile Include="Generated\APawn.generated.cpp" />
+    <ClCompile Include="Generated\APlayerController.generated.cpp" />
+    <ClCompile Include="Generated\ACharacter.generated.cpp" />
+    <ClCompile Include="Generated\AGameModeBase.generated.cpp" />
+    <ClCompile Include="Generated\ATempCharacter.generated.cpp" />
+    <ClCompile Include="Generated\USoundAnimNotify.generated.cpp" />
+  </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -723,6 +731,8 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNode.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\FloatComparisonRule.h" />
     <ClInclude Include="Source\Runtime\Engine\Audio\Sound.h" />
@@ -952,7 +962,13 @@
     <ClInclude Include="Generated\UMeshComponent.generated.h" />
     <ClInclude Include="Generated\ASkinnedMeshActor.generated.h" />
     <ClInclude Include="Generated\ASkeletalMeshActor.generated.h" />
-  <ClInclude Include="Generated\APawn.generated.h" /><ClInclude Include="Generated\APlayerController.generated.h" /><ClInclude Include="Generated\ACharacter.generated.h" /><ClInclude Include="Generated\AGameModeBase.generated.h" /><ClInclude Include="Generated\ATempCharacter.generated.h" /></ItemGroup>
+  <ClInclude Include="Generated\APawn.generated.h" />
+      <ClInclude Include="Generated\APlayerController.generated.h" />
+      <ClInclude Include="Generated\ACharacter.generated.h" />
+      <ClInclude Include="Generated\AGameModeBase.generated.h" />
+      <ClInclude Include="Generated\ATempCharacter.generated.h" />
+  <ClInclude Include="Generated\USoundAnimNotify.generated.h" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />

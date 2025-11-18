@@ -132,10 +132,15 @@ const bool {class_name}::bPropertiesRegistered = []() {{
 """
 
 
-def generate_cpp_file(class_info, prop_gen, lua_gen):
+def generate_cpp_file(class_info, prop_gen, lua_gen, source_dir):
     """.generated.cpp 파일 생성"""
-    # 헤더 파일 상대 경로 계산
-    header_include = class_info.header_file.name
+    # 헤더 파일 상대 경로 계산 (프로젝트 루트 기준)
+    try:
+        # source_dir.parent.parent = 프로젝트 루트 (Mundi 폴더)
+        header_include = str(class_info.header_file.relative_to(source_dir.parent.parent)).replace('\\', '/')
+    except ValueError:
+        # relative_to 실패 시 절대 경로 사용
+        header_include = str(class_info.header_file).replace('\\', '/')
 
     # IMPLEMENT_CLASS 코드 생성
     implement_class_code = generate_implement_class(class_info)
@@ -229,7 +234,7 @@ def main():
 
         # .generated.cpp 파일 생성
         cpp_output = args.output_dir / f"{class_info.name}.generated.cpp"
-        cpp_code = generate_cpp_file(class_info, prop_gen, lua_gen)
+        cpp_code = generate_cpp_file(class_info, prop_gen, lua_gen, args.source_dir)
         cpp_updated = write_file_if_different(cpp_output, cpp_code)
         if cpp_updated:
             updated_count += 1

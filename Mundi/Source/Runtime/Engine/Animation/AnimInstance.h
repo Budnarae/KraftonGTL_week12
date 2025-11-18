@@ -1,9 +1,9 @@
 ﻿#pragma once
-#include "AnimNodeTransitionRule.h"
-#include "AnimNode.h"
 
 class USkeletalMeshComponent;
 class UAnimationSequence;
+class UAnimNotify;
+
 class UAnimInstance : public UObject
 {
 public:
@@ -17,11 +17,6 @@ public:
     // C++ AnimationStateMachine 사용 (현재 주석 처리 - Lua ASM 사용)
     // FAnimNode_StateMachine ASM;
     // FAnimNode_Base* RootNode = nullptr;
-
-    // 현재 포즈를 저장할 변수
-    FPoseContext CurrentPose;
-
-    float CurTime = 0.0;
 
     /**
      * @brief AnimInstance 초기화 (최초 1회 호출)
@@ -41,12 +36,24 @@ protected:
     // - 파라미터 업데이트, Transition 조건에 필요한 변수 갱신
     virtual void NativeUpdateAnimation(float DeltaSeconds);
 
+    /**
+     * Called after NativeUpdateAnimation/UpdateAnimation is run. 
+     * This is the last point in the animation evaluation to be called.
+     * Use this to process any events that happened during the frame (like AnimNotifies).
+     */
+    virtual void PostUpdateAnimation();
+
     // - AnimGraph Evaluate 단계 수행
     // - 최종 Pose 계산
     virtual void EvaluateAnimation();
 
 public:
     FPoseContext& GetCurrentPose() { return CurrentPose; };
+
+    // AnimNotify 관리 헬퍼 함수
+    void AddAnimNotify(UAnimNotify* InNotify);
+    void RemoveAnimNotify(UAnimNotify* InNotify);
+    const TArray<UAnimNotify*>& GetAnimNotifies() const { return AnimNotifies; }
 
 // ====================================
 // C++ ASM 관련 코드 (주석 처리 - Lua ASM 사용)
@@ -60,6 +67,8 @@ public:
 
 protected:
     USkeletalMeshComponent* OwnerSkeletalComp = nullptr;
+    TArray<UAnimNotify*> AnimNotifies;
+    UAnimationSequence* CurrentAnimation = nullptr;  // 현재 재생 중인 애니메이션
 
     // C++ ASM 관련 변수 (주석 처리 - Lua ASM 사용)
     // TArray<UAnimNodeTransitionRule*> TransitionRules;
@@ -67,6 +76,11 @@ protected:
     // const float TransitionInterval = 10.0f;
     // FAnimState* PreviousState = nullptr;
 
+    // 현재 포즈를 저장할 변수
+    FPoseContext CurrentPose;
+
+    float CurrentAnimationTime = 0.0;
+    float LastAnimationTime = 0.0;
 private:
     bool bIsInitialized = false;
 };
