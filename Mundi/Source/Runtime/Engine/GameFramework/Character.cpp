@@ -1,9 +1,6 @@
 #include "pch.h"
 #include "Character.h"
 #include "World.h"
-#include "PlayerController.h"
-#include "PlayerCameraManager.h"
-#include "InputManager.h"
 #include "Source/Runtime/Engine/Animation/AnimInstance.h"
 
 ACharacter::ACharacter()
@@ -22,9 +19,6 @@ ACharacter::ACharacter()
     // Offset mesh so feet are at capsule bottom
     // Usually mesh origin is at feet, so offset up by half height (default 100.0f)
     MeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -100.0f));
-
-    // TEMP CODE
-    MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
 }
 
 ACharacter::~ACharacter() = default;
@@ -37,60 +31,6 @@ void ACharacter::BeginPlay()
 void ACharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-
-    // Temp Input Sys
-    if (Controller)
-    {
-        UInputManager& Input = UInputManager::GetInstance();
-        FVector MoveDirection(0.0f, 0.0f, 0.0f);
-
-        // Get camera direction from player controller
-        APlayerController* PC = Cast<APlayerController>(Controller);
-        if (PC && PC->GetPlayerCameraManager())
-        {
-            APlayerCameraManager* CameraManager = PC->GetPlayerCameraManager();
-
-            // Get camera forward and right vectors (flattened to ground plane)
-            FVector Forward = CameraManager->GetActorForward();
-            FVector Right = CameraManager->GetActorRight();
-            Forward.Z = 0.0f;
-            Right.Z = 0.0f;
-            Forward.Normalize();
-            Right.Normalize();
-
-            // WASD input
-            if (Input.IsKeyDown('W'))
-            {
-                MoveDirection += Forward;
-            }
-            if (Input.IsKeyDown('S'))
-            {
-                MoveDirection -= Forward;
-            }
-            if (Input.IsKeyDown('D'))
-            {
-                MoveDirection += Right;
-            }
-            if (Input.IsKeyDown('A'))
-            {
-                MoveDirection -= Right;
-            }
-
-            // Add movement input
-            if (MoveDirection.SizeSquared() > 0.0f)
-            {
-                AddMovementInput(MoveDirection.GetNormalized(), 1.0f);
-            }
-        }
-
-        // Apply movement (temporary implementation until CharacterMovementComponent is added)
-        FVector InputVector = ConsumeMovementInputVector();
-        if (InputVector.SizeSquared() > 0.0f)
-        {
-            FVector NewLocation = GetActorLocation() + InputVector * MovementSpeed * DeltaSeconds;
-            SetActorLocation(NewLocation);
-        }
-    }
 }
 
 void ACharacter::EndPlay()

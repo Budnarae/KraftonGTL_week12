@@ -2,9 +2,9 @@
 #include "GameModeBase.h"
 #include "World.h"
 #include "Pawn.h"
-#include "Character.h"
 #include "PlayerController.h"
 #include "PlayerCameraManager.h"
+#include "Source/Runtime/Game/TempCharacter.h"
 
 AGameModeBase::AGameModeBase()
 {
@@ -12,7 +12,7 @@ AGameModeBase::AGameModeBase()
     bCanEverTick = false;
 
     // 기본 클래스 설정 (생성자에서 기본값 지정)
-    DefaultPawnClass = ACharacter::StaticClass();
+    DefaultPawnClass = ATempCharacter::StaticClass();
     PlayerControllerClass = APlayerController::StaticClass();
 }
 
