@@ -6,6 +6,8 @@
 #include "Source/Runtime/AssetManagement/SkeletalMesh.h"
 #include "Source/Runtime/Engine/Animation/AnimationSequence.h"
 #include "Source/Runtime/Engine/Animation/AnimSingleNodeInstance.h"
+#include "Source/Runtime/Engine/Animation/AnimNotify/SoundAnimNotify.h"
+#include "Source/Runtime/Engine/Animation/AnimNotify/CameraShakeAnimNotify.h"
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
 #include "FViewport.h"
 #include "FViewportClient.h"
@@ -19,6 +21,15 @@ SAnimationViewerWindow::SAnimationViewerWindow()
     : SViewerWindowBase()
 {
     CenterRect = FRect(0, 0, 0, 0);
+
+    // Setup NotifyPropertyEditor delete callback
+    NotifyPropertyEditor.SetOnDeleteCallback([this](UAnimNotify* Notify) {
+        if (State && State->CurrentAnimation && Notify)
+        {
+            State->CurrentAnimation->RemoveAnimNotify(Notify);
+            DeleteObject(Notify);
+        }
+    });
 }
 
 SAnimationViewerWindow::~SAnimationViewerWindow()
@@ -621,6 +632,31 @@ void SAnimationViewerWindow::OnRender()
 
     ImGui::Unindent(8.0f);
 
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // === Notify Properties ===
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.25f, 0.35f, 0.50f, 0.8f));
+    ImGui::Text("Notify Properties");
+    ImGui::PopStyleColor();
+
+    ImGui::Spacing();
+
+    ImGui::Indent(8.0f);
+
+    // Use NotifyPropertyEditor widget
+    float maxTime = State->CurrentAnimation ? State->CurrentAnimation->GetPlayLength() : 10.0f;
+    FNotifyPropertyEditResult NotifyEditResult = NotifyPropertyEditor.Render(SelectedNotify, maxTime);
+
+    // Handle delete
+    if (NotifyEditResult.bDeleted && State->CurrentAnimation)
+    {
+        // SelectedNotify는 이미 nullptr로 설정됨 (NotifyPropertyEditor에서 처리)
+    }
+
+    ImGui::Unindent(8.0f);
+
     ImGui::EndChild();
 
     ImGui::PopStyleVar();
@@ -771,21 +807,45 @@ void SAnimationViewerWindow::OnRender()
         }
 
         // Draw notify markers
-        for (const auto& notify : NotifyMarkers)
+        if (State->CurrentAnimation)
         {
-            float notifyX = trackPos.x + (notify.Time * pixelsPerSecond);
+            const TArray<UAnimNotify*>& AnimNotifies = State->CurrentAnimation->GetAnimNotifies();
+            for (UAnimNotify* Notify : AnimNotifies)
+            {
+                if (!Notify) continue;
 
-            // Draw notify diamond
-            ImVec2 top(notifyX, trackPos.y + 35);
-            ImVec2 left(notifyX - 8, trackPos.y + 45);
-            ImVec2 bottom(notifyX, trackPos.y + 55);
-            ImVec2 right(notifyX + 8, trackPos.y + 45);
+                float notifyX = trackPos.x + (Notify->GetTimeToNotify() * pixelsPerSecond);
 
-            drawList->AddQuadFilled(top, right, bottom, left, IM_COL32(255, 180, 0, 255));
-            drawList->AddQuad(top, right, bottom, left, IM_COL32(255, 220, 100, 255), 2.0f);
+                // Draw notify diamond
+                ImVec2 top(notifyX, trackPos.y + 35);
+                ImVec2 left(notifyX - 8, trackPos.y + 45);
+                ImVec2 bottom(notifyX, trackPos.y + 55);
+                ImVec2 right(notifyX + 8, trackPos.y + 45);
 
-            // Draw notify name
-            drawList->AddText(ImVec2(notifyX + 10, trackPos.y + 38), IM_COL32(255, 255, 255, 255), notify.Name.c_str());
+                // 선택 여부에 따라 색상 변경
+                bool isSelected = (SelectedNotify == Notify);
+                ImU32 fillColor = isSelected ? IM_COL32(255, 100, 0, 255) : IM_COL32(255, 180, 0, 255);
+                ImU32 borderColor = isSelected ? IM_COL32(255, 150, 50, 255) : IM_COL32(255, 220, 100, 255);
+
+                drawList->AddQuadFilled(top, right, bottom, left, fillColor);
+                drawList->AddQuad(top, right, bottom, left, borderColor, 2.0f);
+
+                // Draw notify name
+                FString NotifyName = Notify->GetNotifyName().ToString();
+                drawList->AddText(ImVec2(notifyX + 10, trackPos.y + 38), IM_COL32(255, 255, 255, 255), NotifyName.c_str());
+
+                // 클릭 감지
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                {
+                    ImVec2 mousePos = ImGui::GetMousePos();
+                    // 다이아몬드 영역 클릭 체크 (간단한 사각형 범위)
+                    if (mousePos.x >= left.x && mousePos.x <= right.x &&
+                        mousePos.y >= top.y && mousePos.y <= bottom.y)
+                    {
+                        SelectedNotify = Notify;
+                    }
+                }
+            }
         }
 
         // Draw current time indicator (vertical line)
@@ -822,28 +882,33 @@ void SAnimationViewerWindow::OnRender()
             ImGui::Text("Add Notify:");
             ImGui::Separator();
 
-            // 노티파이 타입 목록 (stub - 추후 확장 가능)
-            const char* notifyTypes[] = {
-                "PlaySound",
-                "PlayParticleEffect",
-                "FootStep",
-                "CameraShake",
-                "Custom"
-            };
-
-            for (int i = 0; i < IM_ARRAYSIZE(notifyTypes); i++)
+            // 노티파이 타입 목록
+            if (ImGui::Selectable("Sound Notify"))
             {
-                if (ImGui::Selectable(notifyTypes[i]))
+                if (State->CurrentAnimation)
                 {
-                    FNotifyMarker newNotify;
-                    newNotify.Time = PendingNotifyTime;
-                    newNotify.Type = notifyTypes[i];
-                    newNotify.Name = FString(notifyTypes[i]) + "_" + std::to_string(NotifyMarkers.Num());
-                    NotifyMarkers.push_back(newNotify);
+                    USoundAnimNotify* NewNotify = NewObject<USoundAnimNotify>();
+                    NewNotify->SetNotifyName(FName("Sound_" + std::to_string(State->CurrentAnimation->GetAnimNotifies().Num())));
+                    NewNotify->SetTimeToNotify(PendingNotifyTime);
+                    State->CurrentAnimation->AddAnimNotify(NewNotify);
 
-                    UE_LOG("Added notify '%s' at time %.2f", notifyTypes[i], PendingNotifyTime);
-                    ImGui::CloseCurrentPopup();
+                    UE_LOG("Added SoundAnimNotify at time %.2f", PendingNotifyTime);
                 }
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (ImGui::Selectable("Camera Shake Notify"))
+            {
+                if (State->CurrentAnimation)
+                {
+                    UCameraShakeAnimNotify* NewNotify = NewObject<UCameraShakeAnimNotify>();
+                    NewNotify->SetNotifyName(FName("CameraShake_" + std::to_string(State->CurrentAnimation->GetAnimNotifies().Num())));
+                    NewNotify->SetTimeToNotify(PendingNotifyTime);
+                    State->CurrentAnimation->AddAnimNotify(NewNotify);
+
+                    UE_LOG("Added CameraShakeAnimNotify at time %.2f", PendingNotifyTime);
+                }
+                ImGui::CloseCurrentPopup();
             }
 
             ImGui::EndPopup();
