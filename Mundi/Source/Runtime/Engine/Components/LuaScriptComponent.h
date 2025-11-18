@@ -56,6 +56,33 @@ public:
 		return true;
 	}
 
+	// 반환값을 받을 수 있는 템플릿 버전
+	template<typename ReturnType, typename... Args>
+	bool CallFunctionWithReturn(const char* FuncName, ReturnType& OutReturn, Args&&... args)
+	{
+		if (!Env.valid())
+		{
+			return false;
+		}
+
+		sol::protected_function Func = Env[FuncName];
+		if (!Func.valid())
+		{
+			return false;
+		}
+
+		auto Result = Func(std::forward<Args>(args)...);
+		if (!Result.valid())
+		{
+			sol::error Err = Result;
+			return false;
+		}
+
+		// 반환값 추출
+		OutReturn = Result;
+		return true;
+	}
+
 	void CleanupLuaResources();
 protected:
 	// 이 컴포넌트가 실행할 .lua 스크립트 파일의 경로 (에디터에서 설정)

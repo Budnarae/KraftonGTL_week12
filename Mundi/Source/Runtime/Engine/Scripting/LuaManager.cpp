@@ -9,6 +9,11 @@
 #include "../Animation/AnimNode.h"
 #include "../Animation/AnimationType.h"
 #include "../Animation/AnimationSequence.h"
+#include "../Animation/AnimInstance.h"
+#include "../Animation/AnimNotify/AnimNotify.h"
+#include "../Animation/AnimNotify/SoundAnimNotify.h"
+#include "../Audio/Sound.h"
+#include "../Components/SkeletalMeshComponent.h"
 #include "../../AssetManagement/ResourceManager.h"
 #include <tuple>
 
@@ -48,12 +53,13 @@ FLuaManager::FLuaManager()
         "UUID", &FGameObject::UUID,
         "Tag", sol::property(&FGameObject::GetTag, &FGameObject::SetTag),
         "Location", sol::property(&FGameObject::GetLocation, &FGameObject::SetLocation),
-        "Rotation", sol::property(&FGameObject::GetRotation, &FGameObject::SetRotation), 
+        "Rotation", sol::property(&FGameObject::GetRotation, &FGameObject::SetRotation),
         "Scale", sol::property(&FGameObject::GetScale, &FGameObject::SetScale),
         "bIsActive", sol::property(&FGameObject::GetIsActive, &FGameObject::SetIsActive),
         "Velocity", &FGameObject::Velocity,
         "PrintLocation", &FGameObject::PrintLocation,
-        "GetForward", &FGameObject::GetForward
+        "GetForward", &FGameObject::GetForward,
+        "GetOwner", &FGameObject::GetOwner
     );
     
     Lua->new_usertype<UCameraComponent>("CameraComponent",
@@ -300,6 +306,14 @@ FLuaManager::FLuaManager()
         }
     );
 
+    // LoadSound 함수 바인딩
+    SharedLib.set_function("LoadSound",
+        [](const FString& SoundName) -> USound*
+        {
+            return UResourceManager::GetInstance().Load<USound>(SoundName);
+        }
+    );
+
     //@TODO(Timing)
     SharedLib.set_function("SetSlomo", [](float Duration , float Dilation) { GWorld->RequestSlomo(Duration, Dilation); });
 
@@ -510,6 +524,45 @@ FLuaManager::FLuaManager()
         "DeleteTransition", &FAnimNode_StateMachine::DeleteTransition,
         "GetCurrentState", &FAnimNode_StateMachine::GetCurrentState,
         "GetTransitions", &FAnimNode_StateMachine::GetTransitions
+    );
+
+    // USoundAnimNotify usertype 등록
+    SharedLib.new_usertype<USoundAnimNotify>("USoundAnimNotify",
+        sol::constructors<USoundAnimNotify()>(),
+        "GetOwner", &USoundAnimNotify::GetOwner,
+        "SetOwner", &USoundAnimNotify::SetOwner,
+        "GetSound", &USoundAnimNotify::GetSound,
+        "SetSound", &USoundAnimNotify::SetSound,
+        "GetVolume", &USoundAnimNotify::GetVolume,
+        "SetVolume", &USoundAnimNotify::SetVolume,
+        "GetPitch", &USoundAnimNotify::GetPitch,
+        "SetPitch", &USoundAnimNotify::SetPitch,
+        "GetTimeToNotify", &USoundAnimNotify::GetTimeToNotify,
+        "SetTimeToNotify", &USoundAnimNotify::SetTimeToNotify,
+        "GetAnimation", &USoundAnimNotify::GetAnimation,
+        "SetAnimation", &USoundAnimNotify::SetAnimation
+    );
+
+    // UAnimInstance usertype 등록
+    SharedLib.new_usertype<UAnimInstance>("UAnimInstance",
+        sol::no_constructor,
+        "AddAnimNotify", &UAnimInstance::AddAnimNotify,
+        "RemoveAnimNotify", &UAnimInstance::RemoveAnimNotify,
+        "GetAnimNotifies", &UAnimInstance::GetAnimNotifies
+    );
+
+    // USkeletalMeshComponent usertype 등록 (AnimInstance 접근용)
+    SharedLib.new_usertype<USkeletalMeshComponent>("USkeletalMeshComponent",
+        sol::no_constructor,
+        "GetAnimInstance", &USkeletalMeshComponent::GetAnimInstanceClass
+    );
+
+    // NewObject 헬퍼 함수
+    SharedLib.set_function("NewSoundAnimNotify",
+        []() -> USoundAnimNotify*
+        {
+            return NewObject<USoundAnimNotify>();
+        }
     );
 
     RegisterComponentProxy(*Lua);

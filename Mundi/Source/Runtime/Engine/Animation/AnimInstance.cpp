@@ -3,9 +3,11 @@
 #include "SkeletalMeshComponent.h"
 #include "AnimationAsset.h"
 #include "AnimationSequence.h"
+#include "AnimNode.h"
 #include "ResourceManager.h"
 #include "FloatComparisonRule.h"
 #include "LuaScriptComponent.h"
+#include "AnimNotify/AnimNotify.h"
 
 IMPLEMENT_CLASS(UAnimInstance)
 UAnimInstance::~UAnimInstance()
@@ -61,6 +63,9 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
 
     // Anim Graph Evaluate
     EvaluateAnimation();
+
+    // AnimNotify 처리
+    PostUpdateAnimation();
 }
 
 
@@ -95,8 +100,12 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
     //     }
     // }
 
-    // Lua ASM 사용: AnimUpdate() 호출
+    // Lua ASM 사용: AnimUpdate() 호출하여 현재 재생 중인 AnimSequence 가져오기
     // OwnerSkeletalComp의 Owner Actor의 Lua 스크립트에서 AnimUpdate() 함수 호출
+
+    // LastAnimationTime 갱신 (현재 시간을 저장)
+    LastAnimationTime = CurrentAnimationTime;
+
     if (OwnerSkeletalComp)
     {
         AActor* OwnerActor = OwnerSkeletalComp->GetOwner();
@@ -107,8 +116,69 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
             );
             if (ScriptComp)
             {
-                ScriptComp->CallFunction("AnimUpdate", DeltaSeconds);
+                // AnimUpdate를 호출하고 현재 재생 중인 AnimNode_Sequence를 반환받음
+                FAnimNode_Sequence* CurrentNode = nullptr;
+                if (ScriptComp->CallFunctionWithReturn("AnimUpdate", CurrentNode, DeltaSeconds))
+                {
+                    if (CurrentNode)
+                    {
+                        // Node에서 현재 시간과 Sequence 가져옴
+                        CurrentAnimationTime = CurrentNode->CurrentTime;
+                        CurrentAnimation = CurrentNode->Sequence;
+                    }
+                }
             }
+        }
+    }
+}
+
+void UAnimInstance::PostUpdateAnimation()
+{
+    // LastAnimationTime과 CurrentAnimationTime 사이에 있는 AnimNotify 실행
+    for (UAnimNotify* Notify : AnimNotifies)
+    {
+        if (!Notify)
+            continue;
+
+        float NotifyTime = Notify->GetTimeToNotify();
+
+        // 시간 범위 체크: LastAnimationTime < NotifyTime <= CurrentAnimationTime
+        // 루프 애니메이션 고려
+        bool bShouldTrigger = false;
+
+        if (LastAnimationTime <= CurrentAnimationTime)
+        {
+            // 일반 경우: 시간이 순방향으로 진행
+            if (NotifyTime > LastAnimationTime && NotifyTime <= CurrentAnimationTime)
+            {
+                bShouldTrigger = true;
+            }
+        }
+        else
+        {
+            // 루프 경우: 애니메이션이 끝에서 처음으로 돌아감
+            // LastTime이 CurrentTime보다 크다는 것은 루프가 발생했다는 의미
+            if (NotifyTime > LastAnimationTime || NotifyTime <= CurrentAnimationTime)
+            {
+                bShouldTrigger = true;
+            }
+        }
+
+        // Notify 실행
+        if (bShouldTrigger)
+        {
+            // 현재 재생 중인 애니메이션과 Notify의 대상 애니메이션이 일치하는지 체크
+            UAnimationSequence* TargetAnim = Notify->GetAnimation();
+            if (TargetAnim)
+            {
+                // Animation이 설정되어 있으면 현재 애니메이션과 일치할 때만 실행
+                if (CurrentAnimation != TargetAnim)
+                {
+                    continue;
+                }
+            }
+
+            Notify->Notify();
         }
     }
 }
@@ -161,6 +231,29 @@ void UAnimInstance::EvaluateAnimation()
             }
         }
     }
+}
+
+void UAnimInstance::AddAnimNotify(UAnimNotify* InNotify)
+{
+    if (!InNotify)
+        return;
+
+    // 중복 체크
+    for (UAnimNotify* Notify : AnimNotifies)
+    {
+        if (Notify == InNotify)
+            return;
+    }
+
+    AnimNotifies.Add(InNotify);
+}
+
+void UAnimInstance::RemoveAnimNotify(UAnimNotify* InNotify)
+{
+    if (!InNotify)
+        return;
+
+    AnimNotifies.Remove(InNotify);
 }
 
 // C++ ASM 관련 함수 (주석 처리 - Lua ASM 사용)

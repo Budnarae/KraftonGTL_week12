@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug_StandAlone|x64">
@@ -270,6 +270,8 @@
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNode.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.cpp" />
@@ -536,7 +538,7 @@
     <ClCompile Include="Source\Slate\Windows\SWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\UIWindow.cpp" />
     <ClCompile Include="Generated\UMeshComponent.generated.cpp" />
-  </ItemGroup>
+  <ClCompile Include="Generated\USoundAnimNotify.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -717,6 +719,8 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimInstance.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNode.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNodeTransitionRule.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\FloatComparisonRule.h" />
     <ClInclude Include="Source\Runtime\Engine\Audio\Sound.h" />
@@ -940,7 +944,7 @@
     <ClInclude Include="Generated\UMeshComponent.generated.h" />
     <ClInclude Include="Generated\ASkinnedMeshActor.generated.h" />
     <ClInclude Include="Generated\ASkeletalMeshActor.generated.h" />
-  </ItemGroup>
+  <ClInclude Include="Generated\USoundAnimNotify.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />

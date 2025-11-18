@@ -52,26 +52,25 @@ function BeginPlay()
         return
     end
 
+    -- Sound 로드 (애니메이션별로 다른 사운드 사용)
+    local SoundA = LoadSound("Data/Audio/Shot.wav")
+    local SoundB = LoadSound("Data/Audio/HitFireball.wav")
+    local SoundC = LoadSound("Data/Audio/Shot.wav")
+
     -- State 생성 및 애니메이션 추가
     StateA = ASM:add_state(FName("StateA"))
     if StateA then
         StateA:AddAnimSequence(AnimA, true)
-    else
-        print("[SkeletalMeshActor] ERROR: Failed to create StateA")
     end
 
     StateB = ASM:add_state(FName("StateB"))
     if StateB then
         StateB:AddAnimSequence(AnimB, true)
-    else
-        print("[SkeletalMeshActor] ERROR: Failed to create StateB")
     end
 
     StateC = ASM:add_state(FName("StateC"))
     if StateC then
         StateC:AddAnimSequence(AnimC, true)
-    else
-        print("[SkeletalMeshActor] ERROR: Failed to create StateC")
     end
 
     -- Transition 생성 및 조건 함수 설정
@@ -99,18 +98,64 @@ function BeginPlay()
     -- AnimInstance 수동 생성 (OnRegister가 이미 끝났으므로)
     SkeletalComp:InitAnimInstance()
 
+    -- AnimInstance 가져오기 (InitAnimInstance 호출 후)
+    local AnimInstance = SkeletalComp:GetAnimInstance()
+    if not AnimInstance then
+        print("[SkeletalMeshActor] Error: No AnimInstance found")
+        return
+    end
+
+    -- Sound AnimNotify 생성 및 설정
+    local OwnerActor = Obj:GetOwner()
+
+    if AnimInstance and SoundA then
+        local NotifyA = NewSoundAnimNotify()
+        if NotifyA then
+            NotifyA:SetSound(SoundA)
+            NotifyA:SetTimeToNotify(0.1)
+            NotifyA:SetVolume(1.0)
+            NotifyA:SetPitch(1.0)
+            NotifyA:SetOwner(OwnerActor)
+            NotifyA:SetAnimation(AnimA)
+            AnimInstance:AddAnimNotify(NotifyA)
+        end
+    end
+
+    if AnimInstance and SoundB then
+        local NotifyB = NewSoundAnimNotify()
+        if NotifyB then
+            NotifyB:SetSound(SoundB)
+            NotifyB:SetTimeToNotify(0.1)
+            NotifyB:SetVolume(1.0)
+            NotifyB:SetPitch(1.0)
+            NotifyB:SetOwner(OwnerActor)
+            NotifyB:SetAnimation(AnimB)
+            AnimInstance:AddAnimNotify(NotifyB)
+        end
+    end
+
+    if AnimInstance and SoundC then
+        local NotifyC = NewSoundAnimNotify()
+        if NotifyC then
+            NotifyC:SetSound(SoundC)
+            NotifyC:SetTimeToNotify(0.1)
+            NotifyC:SetVolume(1.0)
+            NotifyC:SetPitch(1.0)
+            NotifyC:SetOwner(OwnerActor)
+            NotifyC:SetAnimation(AnimC)
+            AnimInstance:AddAnimNotify(NotifyC)
+        end
+    end
+
     -- 초기 State 저장
     PreviousState = ASM.current_state
-
-    if not ASM.current_state then
-        print("[SkeletalMeshActor] ERROR: No initial state!")
-    end
 end
 
 -- AnimUpdate: UAnimInstance::NativeUpdateAnimation에서 호출
+-- 반환값: 현재 재생 중인 AnimSequence (UAnimationSequence*)
 function AnimUpdate(DeltaTime)
     if not ASM or not ASM.current_state then
-        return
+        return nil
     end
 
     -- 타이머 업데이트
@@ -135,12 +180,20 @@ function AnimUpdate(DeltaTime)
                 Transition.CanEnterTransition = false
             end
         end
-
-        -- State 변경 로그
-        if CurrentState then
-            print("[SkeletalMeshActor] State changed to: " .. CurrentState.Name:ToString())
-        end
     end
+
+    -- 현재 재생 중인 AnimNode_Sequence 반환
+    local CurrentNode = nil
+
+    if ASM.bIsInTransition and ASM.BlendTo then
+        -- Transition 중이면 BlendTo (목표 State의 Node) 반환
+        CurrentNode = ASM.BlendTo
+    elseif ASM.current_state and #ASM.current_state.AnimSequenceNodes > 0 then
+        -- 일반 상태면 현재 State의 첫 번째 AnimNode_Sequence 반환
+        CurrentNode = ASM.current_state.AnimSequenceNodes[1]
+    end
+
+    return CurrentNode
 end
 
 -- AnimEvaluate: UAnimInstance::EvaluateAnimation에서 호출
@@ -159,8 +212,6 @@ function Tick(DeltaTime)
 end
 
 function EndPlay()
-    print("[SkeletalMeshActor] EndPlay")
-
     if ASM then
         ASM:shutdown()
     end
