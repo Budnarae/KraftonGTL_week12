@@ -341,6 +341,10 @@ struct FAnimNode_StateMachine : FAnimNode_Base
      */
     TArray<FAnimStateTransition*>& GetTransitions() { return Transitions; }
 
+    /**
+     * @brief Reset CanEnterTransition for all transitions
+     */
+    void ResetTransitionFlags();
 
 private:
     /**

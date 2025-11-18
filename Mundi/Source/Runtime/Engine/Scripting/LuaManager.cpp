@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "LuaManager.h"
 #include "LuaComponentProxy.h"
 #include "GameObject.h"
@@ -541,6 +541,11 @@ FLuaManager::FLuaManager()
         "Evaluate", &FAnimNode_BlendSpace1D::Evaluate
     );
  
+    // FAnimNode_StateMachine 생성자 함수 등록 (전역과 SharedLib 모두)
+    auto fanimsm_constructor = []() { return FAnimNode_StateMachine(); };
+    SharedLib.set_function("CreateAnimNodeStateMachine", fanimsm_constructor);
+    Lua->set_function("CreateAnimNodeStateMachine", fanimsm_constructor);
+
     // FAnimNode_StateMachine usertype 등록
     SharedLib.new_usertype<FAnimNode_StateMachine>("FAnimNode_StateMachine",
         sol::constructors<FAnimNode_StateMachine()>(),
@@ -554,7 +559,8 @@ FLuaManager::FLuaManager()
         "AddTransition", &FAnimNode_StateMachine::AddTransition,
         "DeleteTransition", &FAnimNode_StateMachine::DeleteTransition,
         "GetCurrentState", &FAnimNode_StateMachine::GetCurrentState,
-        "GetTransitions", &FAnimNode_StateMachine::GetTransitions
+        "GetTransitions", &FAnimNode_StateMachine::GetTransitions,
+        "ResetTransitionFlags", &FAnimNode_StateMachine::ResetTransitionFlags
     );
 
     RegisterComponentProxy(*Lua);

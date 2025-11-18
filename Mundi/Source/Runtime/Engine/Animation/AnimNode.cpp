@@ -313,6 +313,17 @@ void FAnimNode_StateMachine::DeleteTransition(const FName& SourceName, const FNa
     UE_LOG("[FAnimNode_StateMachine::DeleteTransition] Warning : The transition you are trying to delete does not exist in the state machine.");
 }
 
+void FAnimNode_StateMachine::ResetTransitionFlags()
+{
+    for (FAnimStateTransition* Transition : Transitions)
+    {
+        if (Transition)
+        {
+            Transition->CanEnterTransition = false;
+        }
+    }
+}
+
 void FAnimNode_BlendSpace1D::Update(const FAnimationUpdateContext& Context)
 {
     if (Samples.Num() == 0) { return; }

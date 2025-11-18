@@ -40,6 +40,11 @@ function BeginPlay()
 
     -- Lua AnimationStateMachine 생성
     ASM = AnimationStateMachine:new()
+    if not ASM then
+        print("[SkeletalMeshActor] Error: Failed to construct AnimationStateMachine")
+        return
+    end
+
     ASM:initialize()
 
     -- 애니메이션 로드
@@ -95,6 +100,10 @@ function BeginPlay()
         TransitionCtoA:SetTransitionCondition(ShouldTransitionCtoA)
     end
 
+    if ASM.reset_transition_flags then
+        ASM:reset_transition_flags()
+    end
+
     -- AnimationMode 설정 및 AnimInstance 생성
     SkeletalComp:SetAnimationModeInt(1)  -- AnimationBlueprint = 1
 
@@ -131,11 +140,8 @@ function AnimUpdate(DeltaTime)
         PreviousState = CurrentState
 
         -- 모든 Transition의 CanEnterTransition 리셋
-        for i = 1, #ASM.transitions do
-            local Transition = ASM.transitions[i]
-            if Transition then
-                Transition.CanEnterTransition = false
-            end
+        if ASM.reset_transition_flags then
+            ASM:reset_transition_flags()
         end
 
         -- State 변경 로그
