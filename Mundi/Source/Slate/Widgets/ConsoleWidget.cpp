@@ -310,7 +310,7 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 	}
 	else if (Stricmp(command_line, "CauseCrash") == 0)
 	{
-		ErrorHandle::CauseCrash();
+		CauseCrash();
 	}
 	else if (Stricmp(command_line, "STAT") == 0)
 	{

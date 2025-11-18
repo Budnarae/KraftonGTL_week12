@@ -2,9 +2,30 @@
 #include "ObjectFactory.h"
 // 전역 오브젝트 배열 정의 (한 번만!)
 TArray<UObject*> GUObjectArray;
+float bCrash = false;
 
 namespace ObjectFactory
 {
+    void CauseCrash()
+    {
+        bCrash = true;
+        srand(static_cast<unsigned int>(time(NULL)));
+    }
+    
+    void TriggerRandomMemoryFaultWhenFlagIsOn()
+    {
+        if (!bCrash) return;
+
+        int32 DeAllocNum = rand() % GUObjectArray.Num();
+
+        for (int32 i = 0; i < DeAllocNum; i++)
+        {
+            int32 DeAllocIndex = rand() % GUObjectArray.Num();
+            DeleteObject(GUObjectArray[DeAllocIndex]);
+            GUObjectArray.RemoveAt(DeAllocIndex);
+        }
+    }
+    
     TMap<UClass*, ConstructFunc>& GetRegistry()
     {
         static TMap<UClass*, ConstructFunc> Registry;

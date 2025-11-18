@@ -19,6 +19,4 @@ namespace ErrorHandle
     void PrintStackInfo(EXCEPTION_POINTERS* pExcpetionPointers);
     // UnHandled Exception Filter
     LONG WINAPI UnhandledExceptionFilter(EXCEPTION_POINTERS* pExceptionInfo);
-    // Crash 의도적으로 발생
-    void CauseCrash();
 };

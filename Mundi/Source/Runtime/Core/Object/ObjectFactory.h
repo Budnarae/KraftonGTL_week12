@@ -6,10 +6,15 @@
 class UObject;
 struct UClass;
 extern TArray<UObject*> GUObjectArray;
+extern float bCrash;
 
 // ── ObjectFactory 네임스페이스 ─────────────────────────────
 namespace ObjectFactory
 {
+    void CauseCrash();
+    
+    void TriggerRandomMemoryFaultWhenFlagIsOn();
+    
     using ConstructFunc = std::function<UObject* ()>;
 
     // Registry 접근자
