@@ -121,18 +121,34 @@ function BeginPlay()
         end
     end
 
-    if AnimInstance and SoundB then
-        local NotifyB = NewSoundAnimNotify()
+    -- StateB: CameraShake Notify 사용
+    if AnimInstance then
+        local NotifyB = NewCameraShakeAnimNotify()
         if NotifyB then
-            NotifyB:SetSound(SoundB)
-            NotifyB:SetTimeToNotify(0.1)
-            NotifyB:SetVolume(1.0)
-            NotifyB:SetPitch(1.0)
-            NotifyB:SetOwner(OwnerActor)
+            NotifyB:SetDuration(1)
+            NotifyB:SetAmplitudeLocation(1.0)
+            NotifyB:SetAmplitudeRotationDeg(1.0)
+            NotifyB:SetFrequency(3.0)
+            NotifyB:SetPriority(0)
+            NotifyB:SetTimeToNotify(1.0)
             NotifyB:SetAnimation(AnimB)
             AnimInstance:AddAnimNotify(NotifyB)
         end
     end
+
+    -- StateB: Sound Notify (주석 처리)
+    -- if AnimInstance and SoundB then
+    --     local NotifyB = NewSoundAnimNotify()
+    --     if NotifyB then
+    --         NotifyB:SetSound(SoundB)
+    --         NotifyB:SetTimeToNotify(0.1)
+    --         NotifyB:SetVolume(1.0)
+    --         NotifyB:SetPitch(1.0)
+    --         NotifyB:SetOwner(OwnerActor)
+    --         NotifyB:SetAnimation(AnimB)
+    --         AnimInstance:AddAnimNotify(NotifyB)
+    --     end
+    -- end
 
     if AnimInstance and SoundC then
         local NotifyC = NewSoundAnimNotify()
