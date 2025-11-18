@@ -13,11 +13,23 @@ ATempCharacter::ATempCharacter()
     {
         MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
     }
+
+    // CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
+    // CameraComp->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
+    // CameraComp->SetRelativeLocation({-10, 0, 5});
 }
 
 void ATempCharacter::BeginPlay()
 {
     Super::BeginPlay();
+    
+    if (CameraComp)
+    {
+        if (APlayerCameraManager* CM = GetWorld()->GetPlayerCameraManager())
+        {
+            CM->SetViewCamera(CameraComp);
+        }
+    }
 }
 
 void ATempCharacter::Tick(float DeltaSeconds)

@@ -231,3 +231,15 @@ void UStaticMesh::ReleaseResources()
         IndexBuffer = nullptr;
     }
 }
+
+FString UStaticMesh::GetAssetPathFileName() const
+{
+    if (CacheFilePath.empty())
+    {
+        return FilePath;
+    }
+
+    // 확장자 제거해서 반환 (ResourceManager 키와 일치시키기 위함)
+    std::filesystem::path Path(CacheFilePath);
+    return (Path.parent_path() / Path.stem()).string();
+}
