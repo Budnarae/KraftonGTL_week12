@@ -1435,7 +1435,8 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 		}
 
 		// 스켈레탈 메시 GPU 타이밍: 타입 전환 감지
-		bool bIsSkeletalMesh = (Batch.BoneMatrixSRV != nullptr);
+		// (CPU/GPU 모드 모두 Batch.bIsSkeletalMesh == true)
+		bool bIsSkeletalMesh = Batch.bIsSkeletalMesh;
 
 		// 스켈레탈 → 논스켈레탈 전환 시 RecordEnd
 		if (!bIsSkeletalMesh && bGPUQueryStarted)

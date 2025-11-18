@@ -262,6 +262,9 @@ void USkinnedMeshComponent::CollectMeshBatches(TArray<FMeshBatchElement>& OutMes
           BatchElement.BoneNormalMatrixSRV = BoneNormalMatrixSRV;
       }
 
+      // 스켈레탈 메시 플래그 설정 (CPU/GPU 모드 모두)
+      BatchElement.bIsSkeletalMesh = true;
+
        OutMeshBatchElements.Add(BatchElement);
     }
 }
