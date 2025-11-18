@@ -173,6 +173,9 @@ void UAnimInstance::PostUpdateAnimation()
             }
         }
     }
+
+    // LastAnimationTime 업데이트
+    LastAnimationTime = CurrentAnimationTime;
 }
 
 void UAnimInstance::EvaluateAnimation()

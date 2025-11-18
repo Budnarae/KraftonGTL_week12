@@ -13,6 +13,7 @@ public:
 	~UCameraShakeAnimNotify() override = default;
 
 	void Notify() override;
+	void SerializeBinary(FArchive& Ar) override;
 
 	float GetDuration();
 	void SetDuration(const float InDuration);

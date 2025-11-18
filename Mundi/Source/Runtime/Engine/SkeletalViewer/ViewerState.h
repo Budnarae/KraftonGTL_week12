@@ -1,9 +1,8 @@
 #pragma once
-#include "Source/Slate/Windows/SViewerWindowBase.h"
 
 class UWorld; class FViewport; class FViewportClient; class ASkeletalMeshActor; class USkeletalMesh;
 
-class ViewerState : public ViewerTabStateBase
+class ViewerState
 {
 public:
     UWorld* World = nullptr;

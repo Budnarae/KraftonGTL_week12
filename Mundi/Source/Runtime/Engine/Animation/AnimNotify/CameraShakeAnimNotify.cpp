@@ -3,6 +3,7 @@
 #include "World.h"
 #include "PlayerCameraManager.h"
 #include "../GameFramework/Camera/CamMod_Shake.h"
+#include "Archive.h"
 
 IMPLEMENT_CLASS(UCameraShakeAnimNotify)
 
@@ -90,4 +91,37 @@ float UCameraShakeAnimNotify::GetMixRatio()
 void UCameraShakeAnimNotify::SetMixRatio(const float InMixRatio)
 {
 	MixRatio = InMixRatio;
+}
+
+void UCameraShakeAnimNotify::SerializeBinary(FArchive& Ar)
+{
+	Super::SerializeBinary(Ar);  // Name, TimeToNotify 처리
+
+	if (Ar.IsSaving())
+	{
+		Ar << Duration;
+		Ar << AmplitudeLocation;
+		Ar << AmplitudeRotationDeg;
+		Ar << Frequency;
+		Ar << Priority;
+
+		int32 NoiseModeInt = static_cast<int32>(NoiseMode);
+		Ar << NoiseModeInt;
+
+		Ar << MixRatio;
+	}
+	else if (Ar.IsLoading())
+	{
+		Ar << Duration;
+		Ar << AmplitudeLocation;
+		Ar << AmplitudeRotationDeg;
+		Ar << Frequency;
+		Ar << Priority;
+
+		int32 NoiseModeInt;
+		Ar << NoiseModeInt;
+		NoiseMode = static_cast<EShakeNoise>(NoiseModeInt);
+
+		Ar << MixRatio;
+	}
 }

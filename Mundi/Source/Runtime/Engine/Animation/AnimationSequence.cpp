@@ -69,10 +69,26 @@ bool UAnimationSequence::Save(const FString& InFilePath)
         Writer << FrameRate;
         Serialization::WriteArray(Writer, BoneTracks);
 
+        // AnimNotify 직렬화
+        uint32 NotifyCount = (uint32)AnimNotifies.Num();
+        Writer << NotifyCount;
+
+        for (UAnimNotify* Notify : AnimNotifies)
+        {
+            if (!Notify) continue;
+
+            // Notify 타입 저장
+            FString NotifyType = Notify->GetClass()->Name;
+            Serialization::WriteString(Writer, NotifyType);
+
+            // Notify 데이터 저장 (Name, TimeToNotify, 자식 데이터 포함)
+            Notify->SerializeBinary(Writer);
+        }
+
         Writer.Close();
 
-        UE_LOG("AnimationSequence saved: %s (%.2fs, %.2f fps, %d tracks)",
-               SavePath.c_str(), PlayLength, FrameRate, BoneTracks.Num());
+        UE_LOG("AnimationSequence saved: %s (%.2fs, %.2f fps, %d tracks, %d notifies)",
+               SavePath.c_str(), PlayLength, FrameRate, BoneTracks.Num(), NotifyCount);
         return true;
     }
     catch (const std::exception& e)

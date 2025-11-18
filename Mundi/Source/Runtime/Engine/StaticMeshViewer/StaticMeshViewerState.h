@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Windows/SViewerWindowBase.h"
-
 class UWorld;
 class FViewport;
 class FViewportClient;
@@ -9,9 +7,9 @@ class AStaticMeshActor;
 class UStaticMesh;
 
 /**
- * 스태틱 메시 뷰어의 탭별 상태
+ * 스태틱 메시 뷰어 상태
  */
-class StaticMeshViewerState : public ViewerTabStateBase
+class StaticMeshViewerState
 {
 public:
     StaticMeshViewerState() = default;

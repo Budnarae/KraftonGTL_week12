@@ -17,15 +17,11 @@ SMaterialEditorWindow::SMaterialEditorWindow()
 
 SMaterialEditorWindow::~SMaterialEditorWindow()
 {
-    // 모든 탭 정리
-    for (ViewerTabStateBase* Tab : Tabs)
+    if (State)
     {
-        if (Tab)
-        {
-            DestroyTabState(Tab);
-        }
+        MaterialEditorBootstrap::DestroyEditorState(State);
+        State = nullptr;
     }
-    Tabs.Empty();
 }
 
 bool SMaterialEditorWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
@@ -42,11 +38,8 @@ bool SMaterialEditorWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
 
     SetRect(StartX, StartY, StartX + DefaultWidth, StartY + DefaultHeight);
 
-    // 첫 번째 탭 생성
-    OpenNewTab("Material Editor 1");
-
-    // 뷰포트 크기 초기화
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
+    // Create editor state
+    State = MaterialEditorBootstrap::CreateEditorState("Editor", World, Device);
     if (State && State->Viewport)
     {
         State->Viewport->Resize((uint32)StartX, (uint32)StartY, (uint32)DefaultWidth, (uint32)DefaultHeight);
@@ -56,17 +49,6 @@ bool SMaterialEditorWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
     return true;
 }
 
-ViewerTabStateBase* SMaterialEditorWindow::CreateTabState(const char* Name)
-{
-    return MaterialEditorBootstrap::CreateEditorState(Name, World, Device);
-}
-
-void SMaterialEditorWindow::DestroyTabState(ViewerTabStateBase* State)
-{
-    MaterialEditorState* MEState = static_cast<MaterialEditorState*>(State);
-    MaterialEditorBootstrap::DestroyEditorState(MEState);
-}
-
 void SMaterialEditorWindow::LoadAsset(const FString& AssetPath)
 {
     LoadMaterial(AssetPath);
@@ -74,7 +56,6 @@ void SMaterialEditorWindow::LoadAsset(const FString& AssetPath)
 
 void SMaterialEditorWindow::LoadMaterial(const FString& Path)
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (!State)
         return;
 
@@ -87,7 +68,6 @@ void SMaterialEditorWindow::LoadMaterial(const FString& Path)
 
 void SMaterialEditorWindow::OnRender()
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (!State)
         return;
 
@@ -101,9 +81,6 @@ void SMaterialEditorWindow::OnRender()
         CenterRect.UpdateMinMax();
         return;
     }
-
-    // 탭 바 렌더링
-    RenderTabBar();
 
     // 메인 패널 레이아웃
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
@@ -229,7 +206,6 @@ void SMaterialEditorWindow::OnRender()
 
 void SMaterialEditorWindow::OnUpdate(float DeltaSeconds)
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -246,7 +222,6 @@ void SMaterialEditorWindow::OnUpdate(float DeltaSeconds)
 
 void SMaterialEditorWindow::OnRenderViewport()
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
     {
         const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
@@ -261,7 +236,6 @@ void SMaterialEditorWindow::OnRenderViewport()
 
 void SMaterialEditorWindow::OnMouseMove(FVector2D MousePos)
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -274,7 +248,6 @@ void SMaterialEditorWindow::OnMouseMove(FVector2D MousePos)
 
 void SMaterialEditorWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -287,7 +260,6 @@ void SMaterialEditorWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
 void SMaterialEditorWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
-    MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 

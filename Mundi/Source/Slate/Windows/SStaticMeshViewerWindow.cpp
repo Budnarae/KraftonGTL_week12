@@ -18,15 +18,11 @@ SStaticMeshViewerWindow::SStaticMeshViewerWindow()
 
 SStaticMeshViewerWindow::~SStaticMeshViewerWindow()
 {
-    // 모든 탭 정리
-    for (ViewerTabStateBase* Tab : Tabs)
+    if (State)
     {
-        if (Tab)
-        {
-            DestroyTabState(Tab);
-        }
+        StaticMeshViewerBootstrap::DestroyViewerState(State);
+        State = nullptr;
     }
-    Tabs.Empty();
 }
 
 bool SStaticMeshViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)
@@ -43,11 +39,8 @@ bool SStaticMeshViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld
 
     SetRect(StartX, StartY, StartX + DefaultWidth, StartY + DefaultHeight);
 
-    // 첫 번째 탭 생성
-    OpenNewTab("Static Mesh Viewer 1");
-
-    // 뷰포트 크기 초기화
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
+    // Create viewer state
+    State = StaticMeshViewerBootstrap::CreateViewerState("Viewer", World, Device);
     if (State && State->Viewport)
     {
         State->Viewport->Resize((uint32)StartX, (uint32)StartY, (uint32)DefaultWidth, (uint32)DefaultHeight);
@@ -57,17 +50,6 @@ bool SStaticMeshViewerWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld
     return true;
 }
 
-ViewerTabStateBase* SStaticMeshViewerWindow::CreateTabState(const char* Name)
-{
-    return StaticMeshViewerBootstrap::CreateViewerState(Name, World, Device);
-}
-
-void SStaticMeshViewerWindow::DestroyTabState(ViewerTabStateBase* State)
-{
-    StaticMeshViewerState* SMState = static_cast<StaticMeshViewerState*>(State);
-    StaticMeshViewerBootstrap::DestroyViewerState(SMState);
-}
-
 void SStaticMeshViewerWindow::LoadAsset(const FString& AssetPath)
 {
     LoadStaticMesh(AssetPath);
@@ -75,7 +57,6 @@ void SStaticMeshViewerWindow::LoadAsset(const FString& AssetPath)
 
 void SStaticMeshViewerWindow::LoadStaticMesh(const FString& Path)
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (!State || Path.empty())
         return;
 
@@ -101,7 +82,6 @@ void SStaticMeshViewerWindow::LoadStaticMesh(const FString& Path)
 
 void SStaticMeshViewerWindow::OnRender()
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (!State)
         return;
 
@@ -115,9 +95,6 @@ void SStaticMeshViewerWindow::OnRender()
         CenterRect.UpdateMinMax();
         return;
     }
-
-    // === 탭 바 렌더링 ===
-    RenderTabBar();
 
     // === 메인 패널 레이아웃 ===
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
@@ -260,7 +237,6 @@ void SStaticMeshViewerWindow::OnRender()
 
 void SStaticMeshViewerWindow::OnUpdate(float DeltaSeconds)
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -277,7 +253,6 @@ void SStaticMeshViewerWindow::OnUpdate(float DeltaSeconds)
 
 void SStaticMeshViewerWindow::OnRenderViewport()
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
     {
         const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
@@ -292,7 +267,6 @@ void SStaticMeshViewerWindow::OnRenderViewport()
 
 void SStaticMeshViewerWindow::OnMouseMove(FVector2D MousePos)
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -305,7 +279,6 @@ void SStaticMeshViewerWindow::OnMouseMove(FVector2D MousePos)
 
 void SStaticMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -318,7 +291,6 @@ void SStaticMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
 void SStaticMeshViewerWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
-    StaticMeshViewerState* State = static_cast<StaticMeshViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 

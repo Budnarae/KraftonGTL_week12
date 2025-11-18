@@ -11,7 +11,6 @@ ViewerState* SkeletalViewerBootstrap::CreateViewerState(const char* Name, UWorld
     if (!InDevice) return nullptr;
 
     ViewerState* State = new ViewerState();
-    State->Name = Name ? Name : "Viewer";
 
     // Preview world 만들기
     State->World = NewObject<UWorld>();

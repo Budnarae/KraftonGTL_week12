@@ -4,6 +4,7 @@
 #include "Source/Runtime/Engine/AnimationViewer/AnimationViewerState.h"
 #include "Source/Slate/Widgets/BoneHierarchyWidget.h"
 #include "Source/Slate/Widgets/BonePropertyEditor.h"
+#include "Source/Slate/Widgets/NotifyPropertyEditor.h"
 
 class FViewport;
 class FViewportClient;
@@ -38,16 +39,14 @@ public:
 
     void OnRenderViewport();
 
-    // Accessors (active tab)
+    // Accessors
     FViewport* GetViewport() const
     {
-        AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
         return State ? State->Viewport : nullptr;
     }
 
     FViewportClient* GetViewportClient() const
     {
-        AnimationViewerState* State = static_cast<AnimationViewerState*>(ActiveState);
         return State ? State->Client : nullptr;
     }
 
@@ -55,12 +54,8 @@ public:
     void LoadSkeletalMesh(const FString& Path);
     void LoadAnimation(const FString& Path);
 
-protected:
-    // SViewerWindowBase overrides (탭 관리)
-    virtual ViewerTabStateBase* CreateTabState(const char* Name) override;
-    virtual void DestroyTabState(ViewerTabStateBase* State) override;
-
 private:
+    AnimationViewerState* State = nullptr;
     // Layout state
     float LeftPanelRatio = 0.25f;
     float RightPanelRatio = 0.25f;
@@ -72,6 +67,7 @@ private:
     // UI Widgets
     FBoneHierarchyWidget BoneHierarchy;
     FBonePropertyEditor PropertyEditor;
+    FNotifyPropertyEditor NotifyPropertyEditor;
 
     // 본 선택 상태 (BoneHierarchyWidget용)
     int32 SelectedBoneIndex = -1;
@@ -81,18 +77,11 @@ private:
     int32 SelectedMeshIndex = -1;
     int32 SelectedAnimIndex = -1;
 
-    // 노티파이 (UI only - stub)
-    struct FNotifyMarker
-    {
-        float Time = 0.0f;
-        FString Name = "Notify";
-        FString Type = "Default";  // 노티파이 타입
-    };
-    TArray<FNotifyMarker> NotifyMarkers;
-
     // 컨텍스트 메뉴 상태
-    bool bShowNotifyContextMenu = false;
     float PendingNotifyTime = 0.0f;
+
+    // 선택된 Notify
+    UAnimNotify* SelectedNotify = nullptr;
 
     // 헬퍼 함수
     void UpdateBoneTransformFromSkeleton(AnimationViewerState* State);
