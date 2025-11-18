@@ -1076,6 +1076,14 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 		for (int i = 0; i < RootNode->GetChildCount(); i++)
 		{
 			FbxNode* ChildNode = RootNode->GetChild(i);
+
+			// ChildNode 자체가 Skeleton이면 Armature가 아님
+			if (ChildNode->GetNodeAttribute() &&
+				ChildNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+			{
+				continue;
+			}
+
 			for (int j = 0; j < ChildNode->GetChildCount(); j++)
 			{
 				FbxNode* GrandChild = ChildNode->GetChild(j);
@@ -1792,6 +1800,14 @@ void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*,
 		for (int i = 0; i < RootNode->GetChildCount(); i++)
 		{
 			FbxNode* ChildNode = RootNode->GetChild(i);
+
+			// ChildNode 자체가 Skeleton이면 Armature가 아님
+			if (ChildNode->GetNodeAttribute() &&
+				ChildNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+			{
+				continue;
+			}
+
 			for (int j = 0; j < ChildNode->GetChildCount(); j++)
 			{
 				FbxNode* GrandChild = ChildNode->GetChild(j);
