@@ -61,9 +61,6 @@ void UAnimInstance::UpdateAnimation(float DeltaTime)
 
 void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
-    // LastAnimationTime 갱신 (현재 시간을 저장)
-    LastAnimationTime = CurrentAnimationTime;
-
     // C++ ASM 사용 시 (현재 주석 처리 - Lua ASM 사용)
     // TransitionTimer += DeltaSeconds;
     // for (UAnimNodeTransitionRule* Rule : TransitionRules)
@@ -114,17 +111,12 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
             );
             if (ScriptComp)
             {
-                // AnimUpdate를 호출하고 현재 재생 중인 AnimNode_Sequence를 반환받음
-                FAnimNode_Sequence* CurrentNode = nullptr;
-                if (ScriptComp->CallFunctionWithReturn("AnimUpdate", CurrentNode, DeltaSeconds))
-                {
-                    if (CurrentNode)
-                    {
-                        // Node에서 현재 시간과 Sequence 가져옴
-                        CurrentAnimationTime = CurrentNode->CurrentTime;
-                        CurrentAnimation = CurrentNode->Sequence;
-                    }
-                }
+                ScriptComp->CallFunctionWithReturn
+                (
+                    "AnimUpdate",
+                    CurrentAnimState,
+                    DeltaSeconds
+                );
             }
         }
     }
@@ -132,47 +124,53 @@ void UAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UAnimInstance::PostUpdateAnimation()
 {
-    // 현재 재생 중인 애니메이션이 없으면 조기 반환
-    if (!CurrentAnimation)
-        return;
-
-    // 현재 애니메이션의 AnimNotify 목록 가져오기
-    const TArray<UAnimNotify*>& AnimNotifies = CurrentAnimation->GetAnimNotifies();
-
-    // LastAnimationTime과 CurrentAnimationTime 사이에 있는 AnimNotify 실행
-    for (UAnimNotify* Notify : AnimNotifies)
+    if (!CurrentAnimState) return;
+    
+    for (FAnimNode_Base* AnimNode : CurrentAnimState->OwnedNodes)
     {
-        if (!Notify)
-            continue;
+        FAnimNode_Sequence* AnimNode_Sequence = dynamic_cast<FAnimNode_Sequence*>(AnimNode);
+        if (!AnimNode_Sequence) continue;
+        
+        // 현재 애니메이션의 AnimNotify 목록 가져오기
+        const TArray<UAnimNotify*>& AnimNotifies = AnimNode_Sequence->Sequence->GetAnimNotifies();
+        float CurrentTime = AnimNode_Sequence->CurrentTime;
+        float LastTime = AnimNode_Sequence->LastTime;
 
-        float NotifyTime = Notify->GetTimeToNotify();
-
-        // 시간 범위 체크: LastAnimationTime < NotifyTime <= CurrentAnimationTime
-        // 루프 애니메이션 고려
-        bool bShouldTrigger = false;
-
-        if (LastAnimationTime <= CurrentAnimationTime)
+        // LastAnimationTime과 CurrentAnimationTime 사이에 있는 AnimNotify 실행
+        for (UAnimNotify* Notify : AnimNotifies)
         {
-            // 일반 경우: 시간이 순방향으로 진행
-            if (NotifyTime > LastAnimationTime && NotifyTime <= CurrentAnimationTime)
+            if (!Notify)
+                continue;
+
+            float NotifyTime = Notify->GetTimeToNotify();
+
+            // 시간 범위 체크: LastAnimationTime < NotifyTime <= CurrentAnimationTime
+            // 루프 애니메이션 고려
+            bool bShouldTrigger = false;
+
+            if (LastTime <= CurrentTime)
             {
-                bShouldTrigger = true;
+                // 일반 경우: 시간이 순방향으로 진행
+                if (NotifyTime > LastTime && NotifyTime <= CurrentTime)
+                {
+                    bShouldTrigger = true;
+                }
             }
-        }
-        else
-        {
-            // 루프 경우: 애니메이션이 끝에서 처음으로 돌아감
-            // LastTime이 CurrentTime보다 크다는 것은 루프가 발생했다는 의미
-            if (NotifyTime > LastAnimationTime || NotifyTime <= CurrentAnimationTime)
+            else
             {
-                bShouldTrigger = true;
+                // 루프 경우: 애니메이션이 끝에서 처음으로 돌아감
+                // LastTime이 CurrentTime보다 크다는 것은 루프가 발생했다는 의미
+                if (NotifyTime > LastTime || NotifyTime <= CurrentTime)
+                {
+                    bShouldTrigger = true;
+                }
             }
-        }
 
-        // Notify 실행 (조건이 맞으면 실행)
-        if (bShouldTrigger)
-        {
-            Notify->Notify();
+            // Notify 실행 (조건이 맞으면 실행)
+            if (bShouldTrigger)
+            {
+                Notify->Notify();
+            }
         }
     }
 }

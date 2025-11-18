@@ -222,18 +222,24 @@ function AnimUpdate(DeltaTime)
         end
     end
 
-    -- 현재 재생 중인 AnimNode_Sequence 반환
-    local CurrentNode = nil
-
-    if ASM.bIsInTransition and ASM.BlendTo then
-        -- Transition 중이면 BlendTo (목표 State의 Node) 반환
-        CurrentNode = ASM.BlendTo
-    elseif ASM.current_state then
-        -- 일반 상태면 현재 State의 EntryNode 반환 (새로운 구조)
-        CurrentNode = ASM.current_state:GetEntryNode()
-    end
-
-    return CurrentNode
+    ---- 현재 재생 중인 AnimNode_Sequence 반환
+    --local CurrentNode = nil
+    --
+    --if ASM.bIsInTransition and ASM.BlendTo then
+    --    -- Transition 중이면 BlendTo (목표 State의 Node) 반환
+    --    CurrentNode = ASM.BlendTo
+    --elseif ASM.current_state then
+    --    -- 일반 상태면 현재 State의 EntryNode 반환 (새로운 구조)
+    --    CurrentNode = ASM.current_state:GetEntryNode()
+    --end
+    --
+    --if CurrentNode.CurrentTime == nil then
+    --    print("Current Time is nil");
+    --end
+    --
+    --return CurrentNode.CurrentTime;
+    
+    return ASM.current_state;
 end
 
 -- AnimEvaluate: UAnimInstance::EvaluateAnimation에서 호출

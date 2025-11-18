@@ -3,6 +3,7 @@
 class USkeletalMeshComponent;
 class UAnimationSequence;
 class UAnimNotify;
+struct FAnimState;
 
 class UAnimInstance : public UObject
 {
@@ -83,9 +84,7 @@ protected:
 
     // 현재 포즈를 저장할 변수
     // FPoseContext CurrentPose;
-
-    float CurrentAnimationTime = 0.0;
-    float LastAnimationTime = 0.0;
 private:
     bool bIsInitialized = false;
+    FAnimState* CurrentAnimState;
 };

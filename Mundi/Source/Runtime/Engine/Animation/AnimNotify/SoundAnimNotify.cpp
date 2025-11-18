@@ -7,7 +7,7 @@ IMPLEMENT_CLASS(USoundAnimNotify)
 
 void USoundAnimNotify::Notify()
 {
-    if (!Sound || !Owner || Owner->IsPendingDestroy())
+    if (!Sound || !Owner/* || Owner->IsPendingDestroy()*/)
         return;
 
     // Crash 방지용 임시

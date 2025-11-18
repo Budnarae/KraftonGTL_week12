@@ -13,6 +13,7 @@ struct FAnimNode_Sequence : FAnimNode_Base
 {
     UAnimationSequence* Sequence = nullptr;
     float CurrentTime = 0.0f;
+    float LastTime = 0.0f;
     float PlayRate = 1.0f;
     bool bLooping = true;
 
@@ -21,6 +22,7 @@ struct FAnimNode_Sequence : FAnimNode_Base
         Sequence = InSeq;
         bLooping = bInLoop;
         CurrentTime = 0.0f;
+        LastTime = 0.0f;
     }
 
     void SetLooping(bool bInLooping) { bLooping = bInLooping; }
@@ -46,6 +48,8 @@ struct FAnimNode_Sequence : FAnimNode_Base
     {
         if (!Sequence)
             return;
+
+        LastTime = CurrentTime;
 
         const float Length = Sequence->GetPlayLength();
         if (Length <= 0.0f)

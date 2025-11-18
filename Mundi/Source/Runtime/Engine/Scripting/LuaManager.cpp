@@ -395,7 +395,9 @@ FLuaManager::FLuaManager()
     SharedLib.set_function("FAnimState", fanimstate_constructor);
     Lua->set_function("FAnimState", fanimstate_constructor);
  
-    SharedLib.new_usertype<FAnimNode_Base>("FAnimNode_Base",
+    SharedLib.new_usertype<FAnimNode_Base>
+    (
+        "FAnimNode_Base",
         sol::no_constructor
     );
  
