@@ -26,6 +26,9 @@ public:
     virtual void Tick(float DeltaSeconds) override;
     virtual void EndPlay() override;
 
+    // APawn interface
+    virtual void SetupPlayerInputComponent() override;
+
     // Character interface
 
     /**
@@ -63,4 +66,8 @@ protected:
 
     // 스켈레탈 메시
     USkeletalMeshComponent* MeshComponent = nullptr;
+
+    // 이동 속도
+    UPROPERTY(EditAnywhere, Category="Character|Movement")
+    float MovementSpeed = 300.0f;
 };
