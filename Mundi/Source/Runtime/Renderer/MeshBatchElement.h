@@ -62,6 +62,9 @@ struct FMeshBatchElement
 	ID3D11ShaderResourceView* BoneMatrixSRV = nullptr;
 	ID3D11ShaderResourceView* BoneNormalMatrixSRV = nullptr;
 
+	// 스켈레탈 메시 여부 (CPU/GPU 스키닝 모두 true)
+	bool bIsSkeletalMesh = false;
+
 	// 기즈모 하이라이트, 빌보드 틴트 등 인스턴스별 색상 오버라이드입니다.
 	// (기본값으로 흰색(1,1,1,1)을 설정하는 것이 일반적입니다.)
 	FLinearColor InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);

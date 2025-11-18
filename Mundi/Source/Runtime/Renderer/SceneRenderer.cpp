@@ -20,7 +20,7 @@
 #include "BVHierarchy.h"
 #include "SelectionManager.h"
 #include "StaticMeshComponent.h"
-#include "DecalStatManager.h"
+#include "StatManagement/DecalStatManager.h"
 #include "BillboardComponent.h"
 #include "TextRenderComponent.h"
 #include "OBB.h"
@@ -48,6 +48,7 @@
 #include "PostProcessing/VignettePass.h"
 #include "FbxLoader.h"
 #include "SkinnedMeshComponent.h"
+#include "StatManagement/SkinningStatManager.h"
 
 FSceneRenderer::FSceneRenderer(UWorld* InWorld, FSceneView* InView, URenderer* InOwnerRenderer)
 	: World(InWorld)
@@ -114,7 +115,9 @@ void FSceneRenderer::Render()
 	}
 	else if (View->RenderSettings->GetViewMode() == EViewMode::VMI_Wireframe)
 	{
+		FSkinningStatManager::GetInstance().RecordStart();
 		RenderWireframePath();
+		FSkinningStatManager::GetInstance().RecordEnd();
 	}
 	else if (View->RenderSettings->GetViewMode() == EViewMode::VMI_SceneDepth)
 	{
@@ -1312,6 +1315,9 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 	ID3D11SamplerState* ShadowSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::Shadow);
 	ID3D11SamplerState* VSMSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::VSM);
 
+	// 스켈레탈 메시 GPU 타이밍 측정용
+	bool bGPUQueryStarted = false;
+
 	// 정렬된 리스트 순회
 	for (const FMeshBatchElement& Batch : InMeshBatches)
 	{
@@ -1428,6 +1434,24 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 			CurrentTopology = Batch.PrimitiveTopology;
 		}
 
+		// 스켈레탈 메시 GPU 타이밍: 타입 전환 감지
+		// (CPU/GPU 모드 모두 Batch.bIsSkeletalMesh == true)
+		bool bIsSkeletalMesh = Batch.bIsSkeletalMesh;
+
+		// 스켈레탈 → 논스켈레탈 전환 시 RecordEnd
+		if (!bIsSkeletalMesh && bGPUQueryStarted)
+		{
+			FSkinningStatManager::GetInstance().RecordEnd();
+			bGPUQueryStarted = false;
+		}
+
+		// 첫 스켈레탈 메시에서 RecordStart
+		if (bIsSkeletalMesh && !bGPUQueryStarted)
+		{
+			FSkinningStatManager::GetInstance().RecordStart();
+			bGPUQueryStarted = true;
+		}
+
 		// 4. GPU 스키닝 리소스 (VS t12, t13) 바인딩
 		if (Batch.BoneMatrixSRV != CurrentVSBoneMatrixSRV ||
 			Batch.BoneNormalMatrixSRV != CurrentVSBoneNormalSRV)
@@ -1444,6 +1468,12 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 
 		// 6. 드로우 콜 실행
 		RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+	}
+
+	// 스켈레탈 메시 GPU 타이밍: 마지막 배치가 스켈레탈이었으면 종료
+	if (bGPUQueryStarted)
+	{
+		FSkinningStatManager::GetInstance().RecordEnd();
 	}
 
 	// 루프 종료 후 리스트 비우기 (옵션)
