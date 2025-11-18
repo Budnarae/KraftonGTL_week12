@@ -15,7 +15,8 @@
 #include "Source/Runtime/Engine/Animation/AnimationSequence.h"
 #include "Source/Runtime/Engine/Animation/AnimDataModel.h"
 #include "Source/Runtime/AssetManagement/StaticMesh.h"
-#include "Source/Runtime/Engine/Animation/AnimNotify/AnimNotify.h"
+#include "Source/Runtime/Engine/Animation/AnimNotify/SoundAnimNotify.h"
+#include "Source/Runtime/Engine/Animation/AnimNotify/CameraShakeAnimNotify.h"
 
 IMPLEMENT_CLASS(UFbxLoader)
 
@@ -1458,37 +1459,54 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 				AnimSequence->SetDataModel(DataModel);
 
 				// AnimNotify 읽기
-				uint32 NotifyCount = 0;
-				Reader << NotifyCount;
-
-				for (uint32 i = 0; i < NotifyCount; ++i)
+				if (!Reader.IsEOF())
 				{
-					// Notify 타입 읽기
-					FString NotifyType;
-					Serialization::ReadString(Reader, NotifyType);
+					uint32 NotifyCount = 0;
+					Reader << NotifyCount;
 
-					// 리플렉션 시스템으로 동적 생성
-					UClass* NotifyClass = UClass::FindClass(FName(NotifyType));
-					if (!NotifyClass)
+					for (uint32 i = 0; i < NotifyCount; ++i)
 					{
-						UE_LOG("Failed to find AnimNotify class: %s", NotifyType.c_str());
-						continue;
+						// Notify 타입 읽기
+						FString NotifyType;
+						Serialization::ReadString(Reader, NotifyType);
+
+						// Notify 생성
+						UAnimNotify* Notify = nullptr;
+						if (NotifyType == "USoundAnimNotify")
+						{
+							Notify = NewObject<USoundAnimNotify>();
+						}
+						else if (NotifyType == "UCameraShakeAnimNotify")
+						{
+							Notify = NewObject<UCameraShakeAnimNotify>();
+						}
+						else
+						{
+							UE_LOG("Unknown AnimNotify type: %s", NotifyType.c_str());
+							// 알 수 없는 타입이면 스킵 (데이터는 읽어야 함)
+							// 하지만 SerializeNotify를 호출할 수 없으므로 파일이 손상될 수 있음
+							continue;
+						}
+
+						if (Notify)
+						{
+							// 공통 데이터 읽기
+							FString NotifyName;
+							float TimeToNotify = 0.0f;
+							Serialization::ReadString(Reader, NotifyName);
+							Reader << TimeToNotify;
+
+							Notify->SetNotifyName(FName(NotifyName));
+							Notify->SetTimeToNotify(TimeToNotify);
+
+							// Notify별 데이터 읽기
+							Notify->SerializeNotify(Reader);
+
+							// AnimSequence에 추가
+							AnimSequence->AddAnimNotify(Notify);
+						}
 					}
-
-					UAnimNotify* Notify = static_cast<UAnimNotify*>(NewObject(NotifyClass));
-					if (!Notify)
-					{
-						UE_LOG("Failed to create AnimNotify instance: %s", NotifyType.c_str());
-						continue;
-					}
-
-					// Notify 데이터 읽기 (Name, TimeToNotify, 자식 데이터 포함)
-					Notify->SerializeBinary(Reader);
-
-					// AnimSequence에 추가
-					AnimSequence->AddAnimNotify(Notify);
 				}
-
 
 				Reader.Close();
 

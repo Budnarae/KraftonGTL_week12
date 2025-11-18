@@ -14,6 +14,7 @@ public:
     ~USoundAnimNotify() override = default;
 
     void Notify() override;
+    void SerializeBinary(FArchive& Ar) override;
 
     AActor* GetOwner();
     void SetOwner(AActor* InOwner);
