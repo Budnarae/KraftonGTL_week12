@@ -123,7 +123,7 @@ function BeginPlay()
         end
     end
 
-    -- StateB: CameraShake Notify 추가
+    -- StateB: CameraShake Notify 추가 (펄린노이즈 사용)
     if AnimB then
         local NotifyB = NewCameraShakeAnimNotify()
         if NotifyB then
@@ -134,6 +134,7 @@ function BeginPlay()
             NotifyB:SetPriority(0)
             NotifyB:SetTimeToNotify(1.0)
             NotifyB:SetAnimation(AnimB)
+            NotifyB:SetNoiseMode(EShakeNoise.Sine)  -- 펄린노이즈 사용
             AnimB:AddAnimNotify(NotifyB)
         end
     end

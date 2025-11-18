@@ -11,6 +11,16 @@ UAnimationSequence::UAnimationSequence(const FSkeleton& InSkeleton) : Skeleton(I
 
 UAnimationSequence::~UAnimationSequence()
 {
+    // AnimNotify 정리
+    for (UAnimNotify* Notify : AnimNotifies)
+    {
+        if (Notify)
+        {
+            DeleteObject(Notify);
+        }
+    }
+    AnimNotifies.Empty();
+
     if (DataModel)
     {
         DeleteObject(DataModel);

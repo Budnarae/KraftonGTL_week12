@@ -544,6 +544,13 @@ FLuaManager::FLuaManager()
         "SetAnimation", &USoundAnimNotify::SetAnimation
     );
 
+    // EShakeNoise enum 등록
+    sol::table EShakeNoiseTable = Lua->create_table();
+    EShakeNoiseTable["Sine"] = EShakeNoise::Sine;
+    EShakeNoiseTable["Perlin"] = EShakeNoise::Perlin;
+    EShakeNoiseTable["Mixed"] = EShakeNoise::Mixed;
+    SharedLib["EShakeNoise"] = EShakeNoiseTable;
+
     // UCameraShakeAnimNotify usertype 등록
     SharedLib.new_usertype<UCameraShakeAnimNotify>("UCameraShakeAnimNotify",
         sol::constructors<UCameraShakeAnimNotify()>(),
@@ -560,7 +567,11 @@ FLuaManager::FLuaManager()
         "GetTimeToNotify", &UCameraShakeAnimNotify::GetTimeToNotify,
         "SetTimeToNotify", &UCameraShakeAnimNotify::SetTimeToNotify,
         "GetAnimation", &UCameraShakeAnimNotify::GetAnimation,
-        "SetAnimation", &UCameraShakeAnimNotify::SetAnimation
+        "SetAnimation", &UCameraShakeAnimNotify::SetAnimation,
+        "GetNoiseMode", &UCameraShakeAnimNotify::GetNoiseMode,
+        "SetNoiseMode", &UCameraShakeAnimNotify::SetNoiseMode,
+        "GetMixRatio", &UCameraShakeAnimNotify::GetMixRatio,
+        "SetMixRatio", &UCameraShakeAnimNotify::SetMixRatio
     );
 
     // UAnimationSequence usertype 등록

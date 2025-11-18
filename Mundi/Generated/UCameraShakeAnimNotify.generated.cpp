@@ -40,6 +40,8 @@ BEGIN_PROPERTIES(UCameraShakeAnimNotify)
     ADD_PROPERTY(float, AmplitudeRotationDeg, "CameraShake", true, "회전 흔들림 진폭 (도)")
     ADD_PROPERTY(float, Frequency, "CameraShake", true, "쉐이크 주파수")
     ADD_PROPERTY(int32, Priority, "CameraShake", true, "우선순위")
+    ADD_PROPERTY(EShakeNoise, NoiseMode, "CameraShake", true, "노이즈 모드 (Sine/Perlin/Mixed)")
+    ADD_PROPERTY(float, MixRatio, "CameraShake", true, "Mixed 모드 시 혼합 비율 (0=Sine, 1=Perlin)")
 END_PROPERTIES()
 
 // ===== Lua Binding =====
