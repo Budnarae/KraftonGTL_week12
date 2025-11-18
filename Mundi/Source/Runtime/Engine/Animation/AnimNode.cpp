@@ -332,7 +332,8 @@ void FAnimNode_BlendSpace1D::Update(const FAnimationUpdateContext& Context)
     CalculateSampleWeights();
 
     // 2) 시간 동기화
-    SynchronizeSampleTimes();
+    // SynchronizeSampleTimes();
+    SimpleSynchronizeSampleTimes();
 
     // 3) 가중치가 0이 아닌 시퀀스들만 Update
     for (FBlendSample1D& Sample : Samples)
@@ -438,6 +439,31 @@ void FAnimNode_BlendSpace1D::CalculateSampleWeights()
             Samples[Index + 1].Weight = T;
             break;
         }
+    }
+}
+
+void FAnimNode_BlendSpace1D::SimpleSynchronizeSampleTimes()
+{
+    if (bIsTimeSynchronized) { return; }
+    bIsTimeSynchronized = true;
+
+    float MaxPlayTime = 0;
+    int32 MasterIndex = 0;
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        float PlayTime = Samples[i].SequenceNode->GetLength();
+        if (PlayTime > MaxPlayTime)
+        {
+            MaxPlayTime = PlayTime;
+            MasterIndex = i;
+        }   
+    }
+    
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        if (Samples[i].Weight == 0) //|| i == MasterIndex)
+            continue;
+        Samples[i].SequenceNode->SetPlayRate(MaxPlayTime);
     }
 }
 
