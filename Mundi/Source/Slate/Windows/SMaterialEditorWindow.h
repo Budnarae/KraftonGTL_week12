@@ -36,28 +36,22 @@ public:
 
     void OnRenderViewport();
 
-    // Accessors (active tab)
+    // Accessors
     FViewport* GetViewport() const
     {
-        MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
         return State ? State->Viewport : nullptr;
     }
 
     FViewportClient* GetViewportClient() const
     {
-        MaterialEditorState* State = static_cast<MaterialEditorState*>(ActiveState);
         return State ? State->Client : nullptr;
     }
 
-    // Load a material into the active tab
+    // Load a material
     void LoadMaterial(const FString& Path);
 
-protected:
-    // SViewerWindowBase overrides (탭 관리)
-    virtual ViewerTabStateBase* CreateTabState(const char* Name) override;
-    virtual void DestroyTabState(ViewerTabStateBase* State) override;
-
 private:
+    MaterialEditorState* State = nullptr;
     // Layout state
     float LeftPanelRatio = 0.25f;
     float RightPanelRatio = 0.30f;

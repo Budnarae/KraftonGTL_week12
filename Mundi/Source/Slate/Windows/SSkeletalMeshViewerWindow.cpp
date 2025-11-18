@@ -19,15 +19,11 @@ SSkeletalMeshViewerWindow::SSkeletalMeshViewerWindow()
 
 SSkeletalMeshViewerWindow::~SSkeletalMeshViewerWindow()
 {
-    // 모든 탭 정리
-    for (ViewerTabStateBase* Tab : Tabs)
+    if (State)
     {
-        if (Tab)
-        {
-            DestroyTabState(Tab);
-        }
+        SkeletalViewerBootstrap::DestroyViewerState(State);
+        State = nullptr;
     }
-    Tabs.Empty();
 }
 
 // 베이스 클래스 Initialize 오버라이드 (기본 크기/위치 사용)
@@ -51,9 +47,8 @@ bool SSkeletalMeshViewerWindow::Initialize(float StartX, float StartY, float Wid
 
     SetRect(StartX, StartY, StartX + Width, StartY + Height);
 
-    // Create first tab/state
-    OpenNewTab("Viewer 1");
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
+    // Create viewer state
+    State = SkeletalViewerBootstrap::CreateViewerState("Viewer", InWorld, InDevice);
     if (State && State->Viewport)
     {
         State->Viewport->Resize((uint32)StartX, (uint32)StartY, (uint32)Width, (uint32)Height);
@@ -90,8 +85,6 @@ void SSkeletalMeshViewerWindow::OnRender()
     {
         bViewerVisible = true;
 
-        // 베이스 클래스의 탭 바 렌더링
-        RenderTabBar();
         ImVec2 pos = ImGui::GetWindowPos();
         ImVec2 size = ImGui::GetWindowSize();
         Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
@@ -112,7 +105,6 @@ void SSkeletalMeshViewerWindow::OnRender()
         ImGui::BeginChild("LeftPanel", ImVec2(leftWidth, totalHeight), true, ImGuiWindowFlags_NoScrollbar);
         ImGui::PopStyleVar();
 
-        ViewerState* State = static_cast<ViewerState*>(ActiveState);
         if (State)
         {
             // Asset Browser Section
@@ -334,7 +326,6 @@ void SSkeletalMeshViewerWindow::OnRender()
 
 void SSkeletalMeshViewerWindow::OnUpdate(float DeltaSeconds)
 {
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
     if (!State || !State->Viewport)
         return;
 
@@ -354,7 +345,6 @@ void SSkeletalMeshViewerWindow::OnUpdate(float DeltaSeconds)
 
 void SSkeletalMeshViewerWindow::OnMouseMove(FVector2D MousePos)
 {
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
     if (!State || !State->Viewport) return;
 
     if (CenterRect.Contains(MousePos))
@@ -366,7 +356,6 @@ void SSkeletalMeshViewerWindow::OnMouseMove(FVector2D MousePos)
 
 void SSkeletalMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
     if (!State || !State->Viewport) return;
 
     if (CenterRect.Contains(MousePos))
@@ -453,7 +442,6 @@ void SSkeletalMeshViewerWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
 void SSkeletalMeshViewerWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
     if (!State || !State->Viewport) return;
 
     if (CenterRect.Contains(MousePos))
@@ -465,7 +453,6 @@ void SSkeletalMeshViewerWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 
 void SSkeletalMeshViewerWindow::OnRenderViewport()
 {
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
     if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
     {
         const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
@@ -496,7 +483,6 @@ void SSkeletalMeshViewerWindow::OnRenderViewport()
 
 void SSkeletalMeshViewerWindow::LoadSkeletalMesh(const FString& Path)
 {
-    ViewerState* State = static_cast<ViewerState*>(ActiveState);
     if (!State || Path.empty())
         return;
 
@@ -539,19 +525,6 @@ void SSkeletalMeshViewerWindow::LoadSkeletalMesh(const FString& Path)
 void SSkeletalMeshViewerWindow::LoadAsset(const FString& AssetPath)
 {
     LoadSkeletalMesh(AssetPath);
-}
-
-ViewerTabStateBase* SSkeletalMeshViewerWindow::CreateTabState(const char* Name)
-{
-    ViewerState* State = SkeletalViewerBootstrap::CreateViewerState(Name, World, Device);
-    return State;
-}
-
-void SSkeletalMeshViewerWindow::DestroyTabState(ViewerTabStateBase* State)
-{
-    if (!State) return;
-    ViewerState* SkeletalState = static_cast<ViewerState*>(State);
-    SkeletalViewerBootstrap::DestroyViewerState(SkeletalState);
 }
 
 void SSkeletalMeshViewerWindow::UpdateBoneTransformFromSkeleton(ViewerState* State)

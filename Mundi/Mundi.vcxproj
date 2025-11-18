@@ -398,6 +398,7 @@
     <ClCompile Include="Source\Slate\Widgets\AssetBrowserWidget.cpp" />
     <ClCompile Include="Source\Slate\Widgets\BoneHierarchyWidget.cpp" />
     <ClCompile Include="Source\Slate\Widgets\BonePropertyEditor.cpp" />
+    <ClCompile Include="Source\Slate\Widgets\NotifyPropertyEditor.cpp" />
     <ClCompile Include="Source\Slate\Widgets\PropertyRenderer.cpp" />
     <ClCompile Include="Source\Slate\Windows\ContentBrowserWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\SSkeletalMeshViewerWindow.cpp" />
@@ -808,6 +809,7 @@
     <ClInclude Include="Source\Slate\Widgets\AssetBrowserWidget.h" />
     <ClInclude Include="Source\Slate\Widgets\BoneHierarchyWidget.h" />
     <ClInclude Include="Source\Slate\Widgets\BonePropertyEditor.h" />
+    <ClInclude Include="Source\Slate\Widgets\NotifyPropertyEditor.h" />
     <ClInclude Include="Source\Slate\Widgets\PropertyRenderer.h" />
     <ClInclude Include="Source\Slate\Windows\ContentBrowserWindow.h" />
     <ClInclude Include="Source\Slate\Windows\SSkeletalMeshViewerWindow.h" />

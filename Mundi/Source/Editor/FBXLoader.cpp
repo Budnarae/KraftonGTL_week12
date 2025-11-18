@@ -15,6 +15,7 @@
 #include "Source/Runtime/Engine/Animation/AnimationSequence.h"
 #include "Source/Runtime/Engine/Animation/AnimDataModel.h"
 #include "Source/Runtime/AssetManagement/StaticMesh.h"
+#include "Source/Runtime/Engine/Animation/AnimNotify/AnimNotify.h"
 
 IMPLEMENT_CLASS(UFbxLoader)
 
@@ -1449,13 +1450,47 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 				Reader << PlayLength;
 				Reader << FrameRate;
 				Serialization::ReadArray(Reader, BoneTracks);
-				Reader.Close();
 
 				// UAnimationSequence 생성
 				UAnimationSequence* AnimSequence = NewObject<UAnimationSequence>();
 				UAnimDataModel* DataModel = NewObject<UAnimDataModel>();
 				DataModel->Initialize(BoneTracks, PlayLength, FrameRate);
 				AnimSequence->SetDataModel(DataModel);
+
+				// AnimNotify 읽기
+				uint32 NotifyCount = 0;
+				Reader << NotifyCount;
+
+				for (uint32 i = 0; i < NotifyCount; ++i)
+				{
+					// Notify 타입 읽기
+					FString NotifyType;
+					Serialization::ReadString(Reader, NotifyType);
+
+					// 리플렉션 시스템으로 동적 생성
+					UClass* NotifyClass = UClass::FindClass(FName(NotifyType));
+					if (!NotifyClass)
+					{
+						UE_LOG("Failed to find AnimNotify class: %s", NotifyType.c_str());
+						continue;
+					}
+
+					UAnimNotify* Notify = static_cast<UAnimNotify*>(NewObject(NotifyClass));
+					if (!Notify)
+					{
+						UE_LOG("Failed to create AnimNotify instance: %s", NotifyType.c_str());
+						continue;
+					}
+
+					// Notify 데이터 읽기 (Name, TimeToNotify, 자식 데이터 포함)
+					Notify->SerializeBinary(Reader);
+
+					// AnimSequence에 추가
+					AnimSequence->AddAnimNotify(Notify);
+				}
+
+
+				Reader.Close();
 
 				Animations.Add(AnimSequence);
 

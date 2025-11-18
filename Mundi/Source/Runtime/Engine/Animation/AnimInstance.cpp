@@ -175,6 +175,9 @@ void UAnimInstance::PostUpdateAnimation()
             Notify->Notify();
         }
     }
+
+    // LastAnimationTime 업데이트
+    LastAnimationTime = CurrentAnimationTime;
 }
 
 void UAnimInstance::EvaluateAnimation()

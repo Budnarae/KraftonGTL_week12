@@ -2,6 +2,8 @@
 #include "SoundAnimNotify.h"
 
 #include "FAudioDevice.h"
+#include "Archive.h"
+#include "ResourceManager.h"
 
 IMPLEMENT_CLASS(USoundAnimNotify)
 
@@ -59,4 +61,35 @@ float USoundAnimNotify::GetPitch()
 void USoundAnimNotify::SetPitch(const float InPitch)
 {
     Pitch = InPitch;
+}
+
+void USoundAnimNotify::SerializeBinary(FArchive& Ar)
+{
+    Super::SerializeBinary(Ar);  // Name, TimeToNotify 처리
+
+    if (Ar.IsSaving())
+    {
+        // Sound 에셋 경로 저장
+        FString SoundPath = Sound ? Sound->GetFilePath() : "";
+        Serialization::WriteString(Ar, SoundPath);
+
+        // Volume, Pitch 저장
+        Ar << Volume;
+        Ar << Pitch;
+    }
+    else if (Ar.IsLoading())
+    {
+        // Sound 에셋 경로 로드
+        FString SoundPath;
+        Serialization::ReadString(Ar, SoundPath);
+
+        if (!SoundPath.empty())
+        {
+            Sound = UResourceManager::GetInstance().Load<USound>(SoundPath);
+        }
+
+        // Volume, Pitch 로드
+        Ar << Volume;
+        Ar << Pitch;
+    }
 }

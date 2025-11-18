@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Source/Runtime/Core/Containers/UEContainer.h"
-#include "Windows/SViewerWindowBase.h"
 
 class UWorld;
 class FViewport;
@@ -19,9 +18,9 @@ enum class EPreviewMeshType : uint8
 };
 
 /**
- * 머티리얼 에디터의 탭별 상태
+ * 머티리얼 에디터 상태
  */
-class MaterialEditorState : public ViewerTabStateBase
+class MaterialEditorState
 {
 public:
     MaterialEditorState() = default;
