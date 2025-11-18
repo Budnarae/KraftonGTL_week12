@@ -7,6 +7,7 @@
 #include <ObjManager.h>
 #include "FAudioDevice.h"
 #include <sol/sol.hpp>
+#include "GameModeBase.h"
 
 float UGameEngine::ClientWidth = 1024.0f;
 float UGameEngine::ClientHeight = 1024.0f;
@@ -219,6 +220,18 @@ bool UGameEngine::Startup(HINSTANCE hInstance)
     for (AActor* Actor : LevelActors)
     {
         Actor->BeginPlay();
+    }
+
+    // GameMode를 찾아서 World에 설정
+    AGameModeBase* GameMode = GWorld->FindActor<AGameModeBase>();
+    if (GameMode)
+    {
+        GWorld->SetGameMode(GameMode);
+        UE_LOG("[Game] GameMode found and set: %s", GameMode->GetClass()->Name);
+    }
+    else
+    {
+        UE_LOG("[Game] No GameMode found in level");
     }
 
     bPlayActive = true;

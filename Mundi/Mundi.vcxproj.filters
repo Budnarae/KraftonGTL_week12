@@ -676,7 +676,25 @@
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.cpp">
       <Filter>Source\Runtime\Engine\Animation</Filter>
     </ClCompile>
-  <ClCompile Include="Generated\USoundAnimNotify.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
+  <ClCompile Include="Generated\APawn.generated.cpp">
+  <Filter>Generated</Filter>
+  </ClCompile>
+  <ClCompile Include="Generated\APlayerController.generated.cpp">
+  <Filter>Generated</Filter>
+  </ClCompile>
+  <ClCompile Include="Generated\ACharacter.generated.cpp">
+  <Filter>Generated</Filter>
+  </ClCompile>
+  <ClCompile Include="Generated\AGameModeBase.generated.cpp">
+  <Filter>Generated</Filter>
+  </ClCompile>
+  <ClCompile Include="Generated\ATempCharacter.generated.cpp">
+  <Filter>Generated</Filter>
+  </ClCompile>
+  <ClCompile Include="Generated\USoundAnimNotify.generated.cpp">
+  <Filter>Generated</Filter>
+  </ClCompile>
+  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Source\Editor\Clipboard\ClipboardManager.h">
@@ -1440,6 +1458,7 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.h">
       <Filter>Source\Runtime\Engine\Animation</Filter>
     </ClInclude>
+  <ClInclude Include="Generated\APawn.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\APlayerController.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ACharacter.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\AGameModeBase.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ATempCharacter.generated.h"><Filter>Generated</Filter></ClInclude>
   <ClInclude Include="Generated\USoundAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">

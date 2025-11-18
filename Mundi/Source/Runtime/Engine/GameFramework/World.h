@@ -27,6 +27,7 @@ class BVHierachy;
 class UStaticMesh;
 class FOcclusionCullingManagerCPU;
 class APlayerCameraManager;
+class AGameModeBase;
 
 struct FTransform;
 struct FSceneCompData;
@@ -103,6 +104,12 @@ public:
     void SetPlayerCameraManager(APlayerCameraManager* InPlayerCameraManager) {  PlayerCameraManager = InPlayerCameraManager; };
     APlayerCameraManager* GetPlayerCameraManager() { return PlayerCameraManager; };
 
+    void SetGameMode(AGameModeBase* InGameMode) { GameMode = InGameMode; }
+    AGameModeBase* GetGameMode() const { return GameMode; }
+
+    // 기본 GameMode 클래스 (PIE/게임 시작 시 자동 스폰)
+    UClass* DefaultGameModeClass = nullptr;
+
     // Per-world render settings
     URenderSettings& GetRenderSettings() { return RenderSettings; }
     const URenderSettings& GetRenderSettings() const { return RenderSettings; }
@@ -146,7 +153,8 @@ private:
     ACameraActor* MainEditorCameraActor = nullptr;  // 첫번째 뷰포트 용 에디터 카메라
     AGridActor* GridActor = nullptr;
     AGizmoActor* GizmoActor = nullptr;
-    APlayerCameraManager* PlayerCameraManager;
+    APlayerCameraManager* PlayerCameraManager = nullptr;
+    AGameModeBase* GameMode = nullptr;
 
     /** === 레벨 컨테이너 === */
     std::unique_ptr<ULevel> Level;

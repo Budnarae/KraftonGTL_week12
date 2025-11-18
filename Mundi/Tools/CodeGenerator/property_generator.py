@@ -32,19 +32,36 @@ class PropertyGenerator:
 
     def __init__(self):
         self.template = Template(PROPERTY_TEMPLATE)
+        self.all_classes = {}  # 상속 체인 추적용
+
+    def set_all_classes(self, classes: list):
+        """모든 ClassInfo를 딕셔너리로 저장 (상속 체인 추적용)"""
+        self.all_classes = {cls.name: cls for cls in classes}
+
+    def is_actor_subclass(self, class_name: str) -> bool:
+        """클래스가 AActor의 하위 클래스인지 확인 (재귀적으로 상속 체인 추적)"""
+        if class_name == 'AActor':
+            return True
+        if class_name not in self.all_classes:
+            # 알 수 없는 클래스 (외부 클래스)
+            # A로 시작하면 Actor로 간주 (휴리스틱)
+            return class_name.startswith('A') and class_name[1:2].isupper()
+
+        parent = self.all_classes[class_name].parent
+        return self.is_actor_subclass(parent)
 
     def generate(self, class_info: ClassInfo) -> str:
         """ClassInfo로부터 BEGIN_PROPERTIES 블록 생성"""
 
         # mark_type 결정:
         # 1. AActor 자체는 MARK 없음
-        # 2. AActor를 상속받은 클래스는 MARK_AS_SPAWNABLE
+        # 2. AActor를 상속받은 클래스는 MARK_AS_SPAWNABLE (상속 체인 추적)
         # 3. 나머지는 MARK_AS_COMPONENT
         mark_type = None
         if class_info.name == 'AActor':
             mark_type = None  # AActor는 MARK 없음
-        elif class_info.parent == 'AActor':
-            mark_type = 'SPAWNABLE'  # AActor 직접 상속
+        elif self.is_actor_subclass(class_info.parent):
+            mark_type = 'SPAWNABLE'  # AActor의 하위 클래스
         else:
             mark_type = 'COMPONENT'  # 그 외 (컴포넌트 등)
 
