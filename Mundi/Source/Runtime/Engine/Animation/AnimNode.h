@@ -206,9 +206,9 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
     TArray<float> GridXValues; 
     TArray<float> GridYValues;
 
-    TArray <FBlendSample2D> BlendSamples;
+    TArray <FBlendSample2D> Samples;
 
-    bool bIsTimeSynchronized = true;
+    bool bIsTimeSynchronized = false;
 
     void SetBlendInput(float InX, float InY)
     {
@@ -224,14 +224,14 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
         const int32 NumX = GridXValues.Num();
         const int32 NumY = GridYValues.Num();
 
-        BlendSamples.SetNum(NumX * NumY);
+        Samples.SetNum(NumX * NumY);
         for (int32 YIndex = 0; YIndex < NumY; ++YIndex)
         {
             for (int32 XIndex = 0; XIndex < NumX; ++XIndex)
             {
                 const int32 SampleIndex = XIndex + YIndex * NumX;
-                BlendSamples[SampleIndex].GridXIndex = XIndex;
-                BlendSamples[SampleIndex].GridYIndex = YIndex;
+                Samples[SampleIndex].GridXIndex = XIndex;
+                Samples[SampleIndex].GridYIndex = YIndex;
             }
         }
     }
@@ -244,7 +244,7 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
         if (XIndex < 0 || XIndex >= NumX || YIndex < 0 || YIndex >= NumY) { return; }
 
         const int32 SampleIndex = XIndex + NumX * YIndex;
-        BlendSamples[SampleIndex].SequenceNode = SequenceNode;
+        Samples[SampleIndex].SequenceNode = SequenceNode;
     }
 
     virtual void Update(const FAnimationUpdateContext& Context) override;
@@ -253,6 +253,7 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
 private:
     void CalculateSampleWeights();
     void SynchronizeSampleTimes();
+    void SimpleSynchronizeSampleTimes();
 };
 
 struct FAnimState
@@ -301,6 +302,11 @@ struct FAnimState
     FAnimNode_BlendSpace1D* CreateBlendSpace1DNode()
     {
         return CreateNode<FAnimNode_BlendSpace1D>();
+    }
+
+    FAnimNode_BlendSpace2D* CreateBlendSpace2DNode()
+    {
+        return CreateNode<FAnimNode_BlendSpace2D>();
     }
 };
 

@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "LuaManager.h"
 #include "LuaComponentProxy.h"
 #include "GameObject.h"
@@ -414,7 +414,8 @@ FLuaManager::FLuaManager()
             [](FAnimState& self, UAnimationSequence* seq) { return self.CreateSequenceNode(seq, true); },
             [](FAnimState& self, UAnimationSequence* seq, bool bLoop) { return self.CreateSequenceNode(seq, bLoop); }
         ),
-        "CreateBlendSpace1DNode", &FAnimState::CreateBlendSpace1DNode
+        "CreateBlendSpace1DNode", &FAnimState::CreateBlendSpace1DNode,
+        "CreateBlendSpace2DNode", &FAnimState::CreateBlendSpace2DNode
     );
 
     // FAnimationUpdateContext 생성자 함수 등록 (전역과 SharedLib 모두)
@@ -560,6 +561,52 @@ FLuaManager::FLuaManager()
         "Evaluate", &FAnimNode_BlendSpace1D::Evaluate
     );
  
+    // FAnimNode_BlendSpace2D usertype 등록
+    SharedLib.new_usertype<FAnimNode_BlendSpace2D>("FAnimNode_BlendSpace2D",
+        sol::constructors<FAnimNode_BlendSpace2D()>(),
+        sol::base_classes, sol::bases<FAnimNode_Base>(),
+        "SetBlendInput", [](FAnimNode_BlendSpace2D& Self, float InX, float InY)
+        {
+            Self.SetBlendInput(InX, InY);
+        },
+        "SetGridAxes", [](FAnimNode_BlendSpace2D& Self, sol::table XTable, sol::table YTable)
+        {
+            auto Convert = [](sol::table Table)
+            {
+                TArray<float> Values;
+                Values.Reserve(static_cast<int32>(Table.size()));
+                for (auto& Pair : Table)
+                {
+                    sol::object Value = Pair.second;
+                    if (Value.is<double>())
+                    {
+                        Values.Add(static_cast<float>(Value.as<double>()));
+                    }
+                    else if (Value.is<int>())
+                    {
+                        Values.Add(static_cast<float>(Value.as<int>()));
+                    }
+                    else if (Value.is<float>())
+                    {
+                        Values.Add(Value.as<float>());
+                    }
+                }
+                return Values;
+            };
+
+            Self.SetGridAxes(Convert(XTable), Convert(YTable));
+        },
+        "AddSample", [](FAnimNode_BlendSpace2D& Self, FAnimNode_Sequence* Node, int32 XIndex, int32 YIndex)
+        {
+            Self.AddSample(Node, XIndex, YIndex);
+        },
+        "IsTimeSynchronized", sol::property(
+            [](const FAnimNode_BlendSpace2D& Self) { return Self.bIsTimeSynchronized; },
+            [](FAnimNode_BlendSpace2D& Self, bool bValue) { Self.bIsTimeSynchronized = bValue; }
+        ),
+        "Update", &FAnimNode_BlendSpace2D::Update,
+        "Evaluate", &FAnimNode_BlendSpace2D::Evaluate
+    );
     // FAnimNode_StateMachine 생성자 함수 등록 (전역과 SharedLib 모두)
     auto fanimsm_constructor = []() { return FAnimNode_StateMachine(); };
     SharedLib.set_function("CreateAnimNodeStateMachine", fanimsm_constructor);
@@ -1014,4 +1061,5 @@ sol::protected_function FLuaManager::GetFunc(sol::environment& Env, const char* 
     
     return Func;
 }
+
 
