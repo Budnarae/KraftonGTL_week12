@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimNode.h"
 
 // ====================================
@@ -443,7 +443,7 @@ void FAnimNode_BlendSpace1D::CalculateSampleWeights()
 
 void FAnimNode_BlendSpace1D::SynchronizeSampleTimes()
 {
-    if (!IsTimeSynchronized) { return; }
+    if (!bIsTimeSynchronized) { return; }
 
     // 가장 Weight가 큰 샘플을 마스터로 선택
     int32 MasterIndex = INDEX_NONE;
@@ -474,6 +474,231 @@ void FAnimNode_BlendSpace1D::SynchronizeSampleTimes()
         }
 
         FBlendSample1D& Sample = Samples[Index];
+        if (Sample.SequenceNode && Sample.Weight > KINDA_SMALL_NUMBER)
+        {
+            Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);
+        }
+    }
+}
+
+
+// 주어진 값(InputValue)가 Grid 중 어느 Index 사이에 있는지+Weight 찾음
+static void FindGridInterval(
+    const TArray<float>& GridValues,
+    float InputValue,
+    int32& OutLowerIndex,
+    int32& OutUpperIndex,
+    float& OutWeight)
+{
+    const int32 Count = GridValues.Num();
+    if (Count == 0)
+    {
+        OutLowerIndex = OutUpperIndex = 0; OutWeight = 0.0f; return;
+    }
+
+    if (InputValue <= GridValues[0])
+    {
+        OutLowerIndex = OutUpperIndex = 0; OutWeight = 0.0f; return;
+    }
+    
+    if (InputValue >= GridValues[Count-1])
+    {
+        OutLowerIndex = OutUpperIndex = Count-1; OutWeight = 0.0f; return;
+    }
+
+    for (int32 Index = 0; Index < Count - 1; ++Index)
+    {
+        const float Value0 = GridValues[Index];
+        const float Value1 = GridValues[Index+1];
+
+        if (InputValue >= Value0 && InputValue <= Value1)
+        {
+            OutLowerIndex = Index;
+            OutUpperIndex = Index + 1;
+
+            const float Range = Value1 - Value0;
+            OutWeight = (Range > KINDA_SMALL_NUMBER)
+                ? (InputValue - Value0) / Range
+                : 0.0f;
+
+            return;
+        }
+    }
+}
+
+void FAnimNode_BlendSpace2D::Update(const FAnimationUpdateContext& Context)
+{
+    if (BlendSamples.Num() == 0) { return; }
+
+    CalculateSampleWeights();
+
+    if (bIsTimeSynchronized)
+    {
+        SynchronizeSampleTimes();
+    }
+
+    for (FBlendSample2D& Sample : BlendSamples)
+    {
+        if (Sample.Weight > KINDA_SMALL_NUMBER && Sample.SequenceNode)
+        {
+            Sample.SequenceNode->Update(Context);
+        }
+    }
+}
+
+void FAnimNode_BlendSpace2D::Evaluate(FPoseContext& Output)
+{
+    if (!Output.Skeleton) { return; }
+
+    if (BlendSamples.Num() == 0) { Output.ResetToRefPose(); return; }
+
+    FPoseContext SamplePose(Output);
+    const int32 NumBones = Output.EvaluatedPoses.Num();
+
+    bool HasAnyPose = false;
+    float TotalWeight = 0.0f;
+
+    for (FBlendSample2D& Sample : BlendSamples)
+    {
+        if (Sample.Weight <= KINDA_SMALL_NUMBER || Sample.SequenceNode == nullptr) { continue; }
+
+        SamplePose.ResetToRefPose();
+        Sample.SequenceNode->Evaluate(SamplePose);
+
+        if (!HasAnyPose)
+        {
+            Output.EvaluatedPoses = SamplePose.EvaluatedPoses;
+            TotalWeight = Sample.Weight;
+            HasAnyPose = true;
+        }
+        else
+        {
+            const float NewTotalWeight = TotalWeight + Sample.Weight;
+            const float Alpha = Sample.Weight / NewTotalWeight;
+
+            for (int32 BoneIndex = 0; BoneIndex < NumBones; ++BoneIndex)
+            {
+                Output.EvaluatedPoses[BoneIndex] =
+                    FTransform::Lerp(
+                        Output.EvaluatedPoses[BoneIndex],
+                        SamplePose.EvaluatedPoses[BoneIndex],
+                        Alpha
+                    );
+            }
+            TotalWeight = NewTotalWeight;
+        }
+    }
+    if (!HasAnyPose) { Output.ResetToRefPose(); }
+}
+
+void FAnimNode_BlendSpace2D::CalculateSampleWeights()
+{
+    const int32 NumX = GridXValues.Num();
+    const int32 NumY = GridYValues.Num();
+
+    if (NumX == 0 || NumY == 0) { return; }
+
+    // 1) 모든 Weight 초기화
+    for (FBlendSample2D& Sample : BlendSamples) { Sample.Weight = 0.0f; }
+
+    // 2) X/Y 각각에서 구간 및 보간 인자 찾기
+    int32 LowerXIndex = 0, UpperXIndex = 0; float XAlpha = 0;
+    int32 LowerYIndex = 0, UpperYIndex = 0; float YAlpha = 0;
+
+    FindGridInterval(GridXValues, BlendInputX, LowerXIndex, UpperXIndex, XAlpha);
+    FindGridInterval(GridYValues, BlendInputY, LowerYIndex, UpperYIndex, YAlpha);
+
+    // 3) 예외 케이스, 축이 한쪽으로 몰려서 Lower == Upper일 때
+    const bool bSingleX = (LowerXIndex == UpperXIndex);
+    const bool bSingleY = (LowerYIndex == UpperYIndex);
+
+    const int32 NumGridX = NumX;
+
+    auto GetSampleIndex = [NumGridX](int32 XIndex, int32 YIndex)
+    {
+        return XIndex + YIndex * NumGridX;
+    };
+
+    if (bSingleX && bSingleY)
+    {
+        // 딱 하나의 격자 포인트
+        const int32 SampleIndex = GetSampleIndex(LowerXIndex, LowerYIndex);
+        BlendSamples[SampleIndex].Weight = 1.0f;
+        return;
+    }
+
+    if (bSingleX && !bSingleY)
+    {
+        // 수직선 위에 있음 → 1D 보간 (Y축만)
+        const int32 SampleIndexBottom = GetSampleIndex(LowerXIndex, LowerYIndex);
+        const int32 SampleIndexTop = GetSampleIndex(LowerXIndex, UpperYIndex);
+
+        BlendSamples[SampleIndexBottom].Weight = 1.0f - YAlpha;
+        BlendSamples[SampleIndexTop].Weight = YAlpha;
+        return;
+    }
+
+    if (!bSingleX && bSingleY)
+    {
+        // 수평선 위에 있음 → 1D 보간 (X축만)
+        const int32 SampleIndexLeft = GetSampleIndex(LowerXIndex, LowerYIndex);
+        const int32 SampleIndexRight = GetSampleIndex(UpperXIndex, LowerYIndex);
+
+        BlendSamples[SampleIndexLeft].Weight = 1.0f - XAlpha;
+        BlendSamples[SampleIndexRight].Weight = XAlpha;
+        return;
+    }
+    
+    // 4) 일반 케이스: 사각형 셀 안에 있음 → bilinear interpolation
+    const int32 SampleIndexBottomLeft = GetSampleIndex(LowerXIndex, LowerYIndex);
+    const int32 SampleIndexBottomRight = GetSampleIndex(UpperXIndex, LowerYIndex);
+    const int32 SampleIndexTopLeft = GetSampleIndex(LowerXIndex, UpperYIndex);
+    const int32 SampleIndexTopRight = GetSampleIndex(UpperXIndex, UpperYIndex);
+
+    const float WeightBottomLeft = (1.0f - XAlpha) * (1.0f - YAlpha);
+    const float WeightBottomRight = XAlpha * (1.0f - YAlpha);
+    const float WeightTopLeft = (1.0f - XAlpha) * YAlpha;
+    const float WeightTopRight = XAlpha * YAlpha;
+
+    BlendSamples[SampleIndexBottomLeft].Weight = WeightBottomLeft;
+    BlendSamples[SampleIndexBottomRight].Weight = WeightBottomRight;
+    BlendSamples[SampleIndexTopLeft].Weight = WeightTopLeft;
+    BlendSamples[SampleIndexTopRight].Weight = WeightTopRight;
+}
+
+void FAnimNode_BlendSpace2D::SynchronizeSampleTimes()
+{
+    if (!bIsTimeSynchronized) { return; }
+
+    // 가장 Weight가 큰 샘플을 마스터로 선택
+    int32 MasterIndex = INDEX_NONE;
+    float MaximumWeight = 0.0f;
+
+    for (int32 Index = 0; Index < BlendSamples.Num(); ++Index)
+    {
+        if (BlendSamples[Index].Weight > MaximumWeight)
+        {
+            MaximumWeight = BlendSamples[Index].Weight;
+            MasterIndex = Index;
+        }
+    }
+
+    if (MasterIndex == INDEX_NONE) { return; }
+
+    FBlendSample2D& MasterSample = BlendSamples[MasterIndex];
+    if (MasterSample.SequenceNode == nullptr) { return; }
+
+    float MasterNormalizedTime = MasterSample.SequenceNode->GetNormalizedTime();
+
+    // 나머지 시퀀스들 시간 맞춰주기
+    for (int32 Index = 0; Index < BlendSamples.Num(); ++Index)
+    {
+        if (Index == MasterIndex)
+        {
+            continue;
+        }
+
+        FBlendSample2D& Sample = BlendSamples[Index];
         if (Sample.SequenceNode && Sample.Weight > KINDA_SMALL_NUMBER)
         {
             Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);

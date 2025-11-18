@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "AnimationSequence.h"
 #include "Delegates.h"
 #include "AnimNodeTransitionRule.h"
@@ -135,14 +135,27 @@ struct FBlendSample1D
     float Weight = 0.0f;
 };
 
+struct FBlendSample2D
+{
+    int32 GridXIndex = 0;
+    int32 GridYIndex = 0;
+    FAnimNode_Sequence* SequenceNode = nullptr;
+    float Weight = 0.0f;
+};
+
 struct FAnimNode_BlendSpace1D : public FAnimNode_Base
 {
     float BlendInput = 0.0f; // 외부 세팅 값 (ex: 이동 속도)
     float MinimumPosition = 0.0f; // BlendSpace 시작값
     float MaximumPosition = 1.0f; // BlendSpace 끝값
-    bool IsTimeSynchronized = true; // 샘플 시퀀스들끼리 시간 동기화 여부
+    bool bIsTimeSynchronized = true; // 샘플 시퀀스들끼리 시간 동기화 여부
 
     TArray <FBlendSample1D> Samples;
+
+    void SetBlendInput(float InValue) { BlendInput = InValue; }
+
+    virtual void Update(const FAnimationUpdateContext& Context) override;
+    virtual void Evaluate(FPoseContext& Output) override;
 
     void AddSample(FAnimNode_Sequence* SequenceNode, float Position)
     {
@@ -157,8 +170,62 @@ struct FAnimNode_BlendSpace1D : public FAnimNode_Base
             return A.Position < B.Position;
         });
     }
+private:
+    void CalculateSampleWeights();
+    void SynchronizeSampleTimes();
+};
 
-    void SetBlendInput(float InValue) { BlendInput = InValue; }
+
+struct FAnimNode_BlendSpace2D : public FAnimNode_Base
+{
+    float BlendInputX = 0.0f;
+    float BlendInputY = 0.0f;
+
+    // 축 정의 : 1D처럼 단순히 Min, Max만 설정하는 게 아니라, 구간을 설정해야하기 때문
+    // => 오름차순 정렬
+    TArray<float> GridXValues; 
+    TArray<float> GridYValues;
+
+    TArray <FBlendSample2D> BlendSamples;
+
+    bool bIsTimeSynchronized = true;
+
+    void SetBlendInput(float InX, float InY)
+    {
+        BlendInputX = InX;
+        BlendInputY = InY;
+    }
+    
+    void SetGridAxes(const TArray<float>& InXValues, const TArray<float>& InYValues)
+    {
+        GridXValues = InXValues;
+        GridYValues = InYValues;
+
+        const int32 NumX = GridXValues.Num();
+        const int32 NumY = GridYValues.Num();
+
+        BlendSamples.SetNum(NumX * NumY);
+        for (int32 YIndex = 0; YIndex < NumY; ++YIndex)
+        {
+            for (int32 XIndex = 0; XIndex < NumX; ++XIndex)
+            {
+                const int32 SampleIndex = XIndex + YIndex * NumX;
+                BlendSamples[SampleIndex].GridXIndex = XIndex;
+                BlendSamples[SampleIndex].GridYIndex = YIndex;
+            }
+        }
+    }
+
+    void AddSample(FAnimNode_Sequence* SequenceNode, int32 XIndex, int32 YIndex)
+    {
+        const int32 NumX = GridXValues.Num();
+        const int32 NumY = GridYValues.Num();
+
+        if (XIndex < 0 || XIndex >= NumX || YIndex < 0 || YIndex >= NumY) { return; }
+
+        const int32 SampleIndex = XIndex + NumX * YIndex;
+        BlendSamples[SampleIndex].SequenceNode = SequenceNode;
+    }
 
     virtual void Update(const FAnimationUpdateContext& Context) override;
     virtual void Evaluate(FPoseContext& Output) override;

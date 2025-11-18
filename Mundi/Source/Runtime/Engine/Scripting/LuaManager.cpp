@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "LuaManager.h"
 #include "LuaComponentProxy.h"
 #include "GameObject.h"
@@ -548,8 +548,8 @@ FLuaManager::FLuaManager()
             [](FAnimNode_BlendSpace1D& Self, float Value) { Self.MaximumPosition = Value; }
         ),
         "IsTimeSynchronized", sol::property(
-            [](const FAnimNode_BlendSpace1D& Self) { return Self.IsTimeSynchronized; },
-            [](FAnimNode_BlendSpace1D& Self, bool bValue) { Self.IsTimeSynchronized = bValue; }
+            [](const FAnimNode_BlendSpace1D& Self) { return Self.bIsTimeSynchronized; },
+            [](FAnimNode_BlendSpace1D& Self, bool bValue) { Self.bIsTimeSynchronized = bValue; }
         ),
         "Update", &FAnimNode_BlendSpace1D::Update,
         "Evaluate", &FAnimNode_BlendSpace1D::Evaluate
