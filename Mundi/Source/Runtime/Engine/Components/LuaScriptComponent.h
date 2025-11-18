@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ActorComponent.h"
 #include "Vector.h"
@@ -78,8 +78,22 @@ public:
 			return false;
 		}
 
-		// 반환값 추출
-		OutReturn = Result;
+		// 반환값 추출 (없으면 기본값)
+		if (Result.return_count() == 0)
+		{
+			OutReturn = ReturnType{};
+			return true;
+		}
+
+		sol::optional<ReturnType> Value = Result;
+		if (Value)
+		{
+			OutReturn = Value.value();
+		}
+		else
+		{
+			OutReturn = ReturnType{};
+		}
 		return true;
 	}
 
