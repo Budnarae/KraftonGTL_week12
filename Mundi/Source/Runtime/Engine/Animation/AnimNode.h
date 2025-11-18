@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "AnimationSequence.h"
 #include "Delegates.h"
 #include "AnimNodeTransitionRule.h"
@@ -154,9 +154,14 @@ struct FAnimNode_BlendSpace1D : public FAnimNode_Base
     float MaximumPosition = 1.0f; // BlendSpace 끝값
     bool bIsTimeSynchronized = true; // 샘플 시퀀스들끼리 시간 동기화 여부
 
+    bool bHasManualMin = false;
+    bool bHasManualMax = false;
+
     TArray <FBlendSample1D> Samples;
 
     void SetBlendInput(float InValue) { BlendInput = InValue; }
+    void SetMinimumPosition(float InValue) { MinimumPosition = InValue; bHasManualMin = true; }
+    void SetMaximumPosition(float InValue) { MaximumPosition = InValue; bHasManualMax = true; }
 
     virtual void Update(const FAnimationUpdateContext& Context) override;
     virtual void Evaluate(FPoseContext& Output) override;
@@ -173,10 +178,14 @@ struct FAnimNode_BlendSpace1D : public FAnimNode_Base
         {
             return A.Position < B.Position;
         });
+
+        UpdateRangeFromSamples();
     }
+
 private:
     void CalculateSampleWeights();
     void SynchronizeSampleTimes();
+    void UpdateRangeFromSamples();
 };
 
 

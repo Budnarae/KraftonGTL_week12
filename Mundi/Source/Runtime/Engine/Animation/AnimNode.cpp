@@ -704,4 +704,29 @@ void FAnimNode_BlendSpace2D::SynchronizeSampleTimes()
             Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);
         }
     }
+}void FAnimNode_BlendSpace1D::UpdateRangeFromSamples()
+{
+    if (Samples.Num() == 0)
+    {
+        if (!bHasManualMin)
+        {
+            MinimumPosition = 0.0f;
+        }
+
+        if (!bHasManualMax)
+        {
+            MaximumPosition = 1.0f;
+        }
+        return;
+    }
+
+    if (!bHasManualMin)
+    {
+        MinimumPosition = Samples[0].Position;
+    }
+
+    if (!bHasManualMax)
+    {
+        MaximumPosition = Samples.Last().Position;
+    }
 }
