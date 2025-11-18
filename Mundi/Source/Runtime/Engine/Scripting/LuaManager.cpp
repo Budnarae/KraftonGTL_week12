@@ -576,9 +576,21 @@ FLuaManager::FLuaManager()
         "ResetTransitionFlags", &FAnimNode_StateMachine::ResetTransitionFlags
     );
 
+    // UAnimNotify usertype 등록
+    SharedLib.new_usertype<UAnimNotify>("UAnimNotify",
+        sol::no_constructor,
+        "GetNotifyName", &UAnimNotify::GetNotifyName,
+        "SetNotifyName", &UAnimNotify::SetNotifyName,
+        "GetTimeToNotify", &UAnimNotify::GetTimeToNotify,
+        "SetTimeToNotify", &UAnimNotify::SetTimeToNotify,
+        "GetAnimation", &UAnimNotify::GetAnimation,
+        "SetAnimation", &UAnimNotify::SetAnimation
+    );
+
     // USoundAnimNotify usertype 등록
     SharedLib.new_usertype<USoundAnimNotify>("USoundAnimNotify",
         sol::constructors<USoundAnimNotify()>(),
+        sol::base_classes, sol::bases<UAnimNotify>(),
         "GetOwner", &USoundAnimNotify::GetOwner,
         "SetOwner", &USoundAnimNotify::SetOwner,
         "GetSound", &USoundAnimNotify::GetSound,
@@ -896,3 +908,4 @@ sol::protected_function FLuaManager::GetFunc(sol::environment& Env, const char* 
     
     return Func;
 }
+
