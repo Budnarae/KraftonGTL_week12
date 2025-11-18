@@ -14,12 +14,7 @@ public:
 
     float GetTimeToNotify();
     void SetTimeToNotify(float InTimeToNotify);
-
-    UAnimationSequence* GetAnimation();
-    void SetAnimation(UAnimationSequence* InAnimation);
-
 protected:
     FName Name{};
     float TimeToNotify{};
-    UAnimationSequence* Animation{};  // 이 Notify가 속한 애니메이션
 };

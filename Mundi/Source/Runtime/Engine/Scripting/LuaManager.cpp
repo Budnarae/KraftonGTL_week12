@@ -583,9 +583,7 @@ FLuaManager::FLuaManager()
         "GetNotifyName", &UAnimNotify::GetNotifyName,
         "SetNotifyName", &UAnimNotify::SetNotifyName,
         "GetTimeToNotify", &UAnimNotify::GetTimeToNotify,
-        "SetTimeToNotify", &UAnimNotify::SetTimeToNotify,
-        "GetAnimation", &UAnimNotify::GetAnimation,
-        "SetAnimation", &UAnimNotify::SetAnimation
+        "SetTimeToNotify", &UAnimNotify::SetTimeToNotify
     );
 
     // USoundAnimNotify usertype 등록
@@ -601,9 +599,7 @@ FLuaManager::FLuaManager()
         "GetPitch", &USoundAnimNotify::GetPitch,
         "SetPitch", &USoundAnimNotify::SetPitch,
         "GetTimeToNotify", &USoundAnimNotify::GetTimeToNotify,
-        "SetTimeToNotify", &USoundAnimNotify::SetTimeToNotify,
-        "GetAnimation", &USoundAnimNotify::GetAnimation,
-        "SetAnimation", &USoundAnimNotify::SetAnimation
+        "SetTimeToNotify", &USoundAnimNotify::SetTimeToNotify
     );
 
     // EShakeNoise enum 등록
@@ -629,8 +625,6 @@ FLuaManager::FLuaManager()
         "SetPriority", &UCameraShakeAnimNotify::SetPriority,
         "GetTimeToNotify", &UCameraShakeAnimNotify::GetTimeToNotify,
         "SetTimeToNotify", &UCameraShakeAnimNotify::SetTimeToNotify,
-        "GetAnimation", &UCameraShakeAnimNotify::GetAnimation,
-        "SetAnimation", &UCameraShakeAnimNotify::SetAnimation,
         "GetNoiseMode", &UCameraShakeAnimNotify::GetNoiseMode,
         "SetNoiseMode", &UCameraShakeAnimNotify::SetNoiseMode,
         "GetMixRatio", &UCameraShakeAnimNotify::GetMixRatio,

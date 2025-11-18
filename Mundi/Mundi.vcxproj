@@ -273,6 +273,7 @@
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\CameraShakeAnimNotify.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotifyState.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.cpp" />
@@ -736,6 +737,7 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\CameraShakeAnimNotify.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotifyState.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.h" />
     <ClInclude Include="Source\Runtime\Engine\Animation\FloatComparisonRule.h" />
     <ClInclude Include="Source\Runtime\Engine\Audio\Sound.h" />

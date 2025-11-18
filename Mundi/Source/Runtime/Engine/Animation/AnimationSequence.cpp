@@ -312,4 +312,25 @@ void UAnimationSequence::RemoveAnimNotify(UAnimNotify* InNotify)
     AnimNotifies.Remove(InNotify);
 }
 
+void UAnimationSequence::AddAnimNotifyState(UAnimNotifyState* InNotifyState)
+{
+    if (!InNotifyState)
+        return;
 
+    // 중복 체크
+    for (UAnimNotifyState* NotifyState : AnimNotifyStates)
+    {
+        if (NotifyState == InNotifyState)
+            return;
+    }
+
+    AnimNotifyStates.Add(InNotifyState);
+}
+
+void UAnimationSequence::RemoveAnimNotifyState(UAnimNotifyState* InNotifyState)
+{
+    if (!InNotifyState)
+        return;
+
+    AnimNotifyStates.Remove(InNotifyState);
+}

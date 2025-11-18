@@ -140,7 +140,6 @@ function BeginPlay()
             NotifyA:SetVolume(1.0)
             NotifyA:SetPitch(1.0)
             NotifyA:SetOwner(OwnerActor)
-            NotifyA:SetAnimation(AnimA)
             AnimA:AddAnimNotify(NotifyA)
         end
     end
@@ -171,7 +170,6 @@ function BeginPlay()
     --         NotifyB:SetVolume(1.0)
     --         NotifyB:SetPitch(1.0)
     --         NotifyB:SetOwner(OwnerActor)
-    --         NotifyB:SetAnimation(AnimB)
     --         AnimB:AddAnimNotify(NotifyB)
     --     end
     -- end
@@ -185,7 +183,6 @@ function BeginPlay()
             NotifyC:SetVolume(1.0)
             NotifyC:SetPitch(1.0)
             NotifyC:SetOwner(OwnerActor)
-            NotifyC:SetAnimation(AnimC)
             AnimC:AddAnimNotify(NotifyC)
         end
     end
