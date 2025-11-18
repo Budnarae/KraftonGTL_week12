@@ -676,24 +676,36 @@
     <ClCompile Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.cpp">
       <Filter>Source\Runtime\Engine\Animation</Filter>
     </ClCompile>
-  <ClCompile Include="Generated\APawn.generated.cpp">
-  <Filter>Generated</Filter>
-  </ClCompile>
-  <ClCompile Include="Generated\APlayerController.generated.cpp">
-  <Filter>Generated</Filter>
-  </ClCompile>
-  <ClCompile Include="Generated\ACharacter.generated.cpp">
-  <Filter>Generated</Filter>
-  </ClCompile>
-  <ClCompile Include="Generated\AGameModeBase.generated.cpp">
-  <Filter>Generated</Filter>
-  </ClCompile>
-  <ClCompile Include="Generated\ATempCharacter.generated.cpp">
-  <Filter>Generated</Filter>
-  </ClCompile>
-  <ClCompile Include="Generated\USoundAnimNotify.generated.cpp">
-  <Filter>Generated</Filter>
-  </ClCompile>
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.cpp">
+      <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\CameraShakeAnimNotify.cpp">
+      <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.cpp">
+      <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\APawn.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\APlayerController.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\ACharacter.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\AGameModeBase.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\ATempCharacter.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\USoundAnimNotify.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UCameraShakeAnimNotify.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -1459,7 +1471,17 @@
       <Filter>Source\Runtime\Engine\Animation</Filter>
     </ClInclude>
   <ClInclude Include="Generated\APawn.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\APlayerController.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ACharacter.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\AGameModeBase.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ATempCharacter.generated.h"><Filter>Generated</Filter></ClInclude>
-  <ClInclude Include="Generated\USoundAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
+  <ClInclude Include="Generated\USoundAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude>
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.h">
+      <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\CameraShakeAnimNotify.h">
+      <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.h">
+      <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
+    </ClInclude>
+  <ClInclude Include="Generated\USoundAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UCameraShakeAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
       <UniqueIdentifier>{5795df92-1510-45f1-8bda-7ed2d162568b}</UniqueIdentifier>
@@ -1601,6 +1623,9 @@
     </Filter>
     <Filter Include="Source\Runtime\Engine\Animation">
       <UniqueIdentifier>{c159fbfe-e4c4-4bc0-a419-38c1498cbc22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Runtime\Engine\Animation\AnimNotify">
+      <UniqueIdentifier>{d159fbfe-e4c4-4bc0-a419-38c1498cbc23}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

@@ -13,6 +13,7 @@
 #include "../Animation/AnimInstance.h"
 #include "../Animation/AnimNotify/AnimNotify.h"
 #include "../Animation/AnimNotify/SoundAnimNotify.h"
+#include "../Animation/AnimNotify/CameraShakeAnimNotify.h"
 #include "../Audio/Sound.h"
 #include "../Components/SkeletalMeshComponent.h"
 #include "../../AssetManagement/ResourceManager.h"
@@ -605,6 +606,25 @@ FLuaManager::FLuaManager()
         "SetAnimation", &USoundAnimNotify::SetAnimation
     );
 
+    // UCameraShakeAnimNotify usertype 등록
+    SharedLib.new_usertype<UCameraShakeAnimNotify>("UCameraShakeAnimNotify",
+        sol::constructors<UCameraShakeAnimNotify()>(),
+        "GetDuration", &UCameraShakeAnimNotify::GetDuration,
+        "SetDuration", &UCameraShakeAnimNotify::SetDuration,
+        "GetAmplitudeLocation", &UCameraShakeAnimNotify::GetAmplitudeLocation,
+        "SetAmplitudeLocation", &UCameraShakeAnimNotify::SetAmplitudeLocation,
+        "GetAmplitudeRotationDeg", &UCameraShakeAnimNotify::GetAmplitudeRotationDeg,
+        "SetAmplitudeRotationDeg", &UCameraShakeAnimNotify::SetAmplitudeRotationDeg,
+        "GetFrequency", &UCameraShakeAnimNotify::GetFrequency,
+        "SetFrequency", &UCameraShakeAnimNotify::SetFrequency,
+        "GetPriority", &UCameraShakeAnimNotify::GetPriority,
+        "SetPriority", &UCameraShakeAnimNotify::SetPriority,
+        "GetTimeToNotify", &UCameraShakeAnimNotify::GetTimeToNotify,
+        "SetTimeToNotify", &UCameraShakeAnimNotify::SetTimeToNotify,
+        "GetAnimation", &UCameraShakeAnimNotify::GetAnimation,
+        "SetAnimation", &UCameraShakeAnimNotify::SetAnimation
+    );
+
     // UAnimInstance usertype 등록
     SharedLib.new_usertype<UAnimInstance>("UAnimInstance",
         sol::no_constructor,
@@ -624,6 +644,13 @@ FLuaManager::FLuaManager()
         []() -> USoundAnimNotify*
         {
             return NewObject<USoundAnimNotify>();
+        }
+    );
+
+    SharedLib.set_function("NewCameraShakeAnimNotify",
+        []() -> UCameraShakeAnimNotify*
+        {
+            return NewObject<UCameraShakeAnimNotify>();
         }
     );
 
