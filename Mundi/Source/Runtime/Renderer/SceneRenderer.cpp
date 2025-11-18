@@ -168,10 +168,7 @@ void FSceneRenderer::RenderLitPath()
     }
 
 	// Base Pass
-
-	FSkinningStatManager::GetInstance().RecordStart();
 	RenderOpaquePass(View->RenderSettings->GetViewMode());
-	FSkinningStatManager::GetInstance().RecordEnd();
 	RenderDecalPass();
 }
 
@@ -1318,6 +1315,9 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 	ID3D11SamplerState* ShadowSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::Shadow);
 	ID3D11SamplerState* VSMSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::VSM);
 
+	// 스켈레탈 메시 GPU 타이밍 측정용
+	bool bGPUQueryStarted = false;
+
 	// 정렬된 리스트 순회
 	for (const FMeshBatchElement& Batch : InMeshBatches)
 	{
@@ -1434,6 +1434,23 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 			CurrentTopology = Batch.PrimitiveTopology;
 		}
 
+		// 스켈레탈 메시 GPU 타이밍: 타입 전환 감지
+		bool bIsSkeletalMesh = (Batch.BoneMatrixSRV != nullptr);
+
+		// 스켈레탈 → 논스켈레탈 전환 시 RecordEnd
+		if (!bIsSkeletalMesh && bGPUQueryStarted)
+		{
+			FSkinningStatManager::GetInstance().RecordEnd();
+			bGPUQueryStarted = false;
+		}
+
+		// 첫 스켈레탈 메시에서 RecordStart
+		if (bIsSkeletalMesh && !bGPUQueryStarted)
+		{
+			FSkinningStatManager::GetInstance().RecordStart();
+			bGPUQueryStarted = true;
+		}
+
 		// 4. GPU 스키닝 리소스 (VS t12, t13) 바인딩
 		if (Batch.BoneMatrixSRV != CurrentVSBoneMatrixSRV ||
 			Batch.BoneNormalMatrixSRV != CurrentVSBoneNormalSRV)
@@ -1450,6 +1467,12 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 
 		// 6. 드로우 콜 실행
 		RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+	}
+
+	// 스켈레탈 메시 GPU 타이밍: 마지막 배치가 스켈레탈이었으면 종료
+	if (bGPUQueryStarted)
+	{
+		FSkinningStatManager::GetInstance().RecordEnd();
 	}
 
 	// 루프 종료 후 리스트 비우기 (옵션)
