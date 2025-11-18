@@ -22,6 +22,9 @@ ACharacter::ACharacter()
     // Offset mesh so feet are at capsule bottom
     // Usually mesh origin is at feet, so offset up by half height (default 100.0f)
     MeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -100.0f));
+
+    // TEMP CODE
+    MeshComponent->SetSkeletalMesh("James");
 }
 
 ACharacter::~ACharacter() = default;

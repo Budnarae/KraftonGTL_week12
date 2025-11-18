@@ -397,16 +397,32 @@ void UEditorEngine::StartPIE()
         Actor->BeginPlay();
     }
 
-    // GameMode를 찾아서 World에 설정
+    // 코드로 DefaultGameModeClass 설정 (임시)
+    GWorld->DefaultGameModeClass = AGameModeBase::StaticClass();
+
+    // GameMode를 찾거나 동적으로 스폰
     AGameModeBase* GameMode = GWorld->FindActor<AGameModeBase>();
+    if (!GameMode && GWorld->DefaultGameModeClass)
+    {
+        // DefaultGameModeClass가 설정되어 있으면 자동으로 스폰
+        GameMode = Cast<AGameModeBase>(GWorld->SpawnActor(GWorld->DefaultGameModeClass, FTransform()));
+        if (GameMode)
+        {
+            UE_LOG("[PIE] GameMode spawned from DefaultGameModeClass: %s", GWorld->DefaultGameModeClass->Name);
+            GameMode->BeginPlay();  // 수동으로 BeginPlay 호출 (이미 모든 액터 BeginPlay 완료 후)
+        }
+    }
+
     if (GameMode)
     {
         GWorld->SetGameMode(GameMode);
-        UE_LOG("[PIE] GameMode found and set: %s", GameMode->GetClass()->Name);
+        UE_LOG("[PIE] GameMode set: %s", GameMode->GetClass()->Name);
+        UE_LOG("[PIE] DefaultPawnClass: %s", GameMode->GetDefaultPawnClass() ? GameMode->GetDefaultPawnClass()->Name : "None");
+        UE_LOG("[PIE] PlayerControllerClass: %s", GameMode->GetPlayerControllerClass() ? GameMode->GetPlayerControllerClass()->Name : "None");
     }
     else
     {
-        UE_LOG("[PIE] No GameMode found in level");
+        UE_LOG("[PIE] No GameMode found or spawned");
     }
 
     // NOTE: BeginPlay 중에 삭제된 액터 삭제 후 Tick 시작

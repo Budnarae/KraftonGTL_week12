@@ -107,6 +107,9 @@ public:
     void SetGameMode(AGameModeBase* InGameMode) { GameMode = InGameMode; }
     AGameModeBase* GetGameMode() const { return GameMode; }
 
+    // 기본 GameMode 클래스 (PIE/게임 시작 시 자동 스폰)
+    UClass* DefaultGameModeClass = nullptr;
+
     // Per-world render settings
     URenderSettings& GetRenderSettings() { return RenderSettings; }
     const URenderSettings& GetRenderSettings() const { return RenderSettings; }

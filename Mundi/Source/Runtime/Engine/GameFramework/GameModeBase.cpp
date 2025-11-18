@@ -2,6 +2,7 @@
 #include "GameModeBase.h"
 #include "World.h"
 #include "Pawn.h"
+#include "Character.h"
 #include "PlayerController.h"
 #include "PlayerCameraManager.h"
 
@@ -9,6 +10,10 @@ AGameModeBase::AGameModeBase()
 {
     ObjectName = "GameModeBase";
     bCanEverTick = false;
+
+    // 기본 클래스 설정 (생성자에서 기본값 지정)
+    DefaultPawnClass = ACharacter::StaticClass();
+    PlayerControllerClass = APlayerController::StaticClass();
 }
 
 AGameModeBase::~AGameModeBase() = default;
