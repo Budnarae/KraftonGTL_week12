@@ -616,6 +616,7 @@ FLuaManager::FLuaManager()
     // UCameraShakeAnimNotify usertype 등록
     SharedLib.new_usertype<UCameraShakeAnimNotify>("UCameraShakeAnimNotify",
         sol::constructors<UCameraShakeAnimNotify()>(),
+        sol::base_classes, sol::bases<UAnimNotify, UObject>(),  // 상속 관계 명시
         "GetDuration", &UCameraShakeAnimNotify::GetDuration,
         "SetDuration", &UCameraShakeAnimNotify::SetDuration,
         "GetAmplitudeLocation", &UCameraShakeAnimNotify::GetAmplitudeLocation,
@@ -641,7 +642,9 @@ FLuaManager::FLuaManager()
         sol::no_constructor,
         "AddAnimNotify", &UAnimationSequence::AddAnimNotify,
         "RemoveAnimNotify", &UAnimationSequence::RemoveAnimNotify,
-        "GetAnimNotifies", &UAnimationSequence::GetAnimNotifies
+        "GetAnimNotifies", &UAnimationSequence::GetAnimNotifies,
+        "GetAnimNotifyCount", &UAnimationSequence::GetAnimNotifyCount,
+        "GetPlayLength", &UAnimationSequence::GetPlayLength
     );
 
     // UAnimInstance usertype 등록

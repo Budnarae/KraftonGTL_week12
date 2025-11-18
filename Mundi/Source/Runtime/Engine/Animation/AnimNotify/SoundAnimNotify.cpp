@@ -7,25 +7,13 @@ IMPLEMENT_CLASS(USoundAnimNotify)
 
 void USoundAnimNotify::Notify()
 {
-    if (!Sound)
-    {
-        UE_LOG("[SoundAnimNotify] Sound is null, skipping notify");
+    if (!Sound || !Owner || Owner->IsPendingDestroy())
         return;
-    }
 
-    if (!Owner)
-    {
-        UE_LOG("[SoundAnimNotify] Owner is null, skipping notify");
-        return;
-    }
+    // Crash 방지용 임시
+    // FVector SoundPlayLocation = Owner->GetActorLocation();
 
-    if (Owner->IsPendingDestroy())
-    {
-        UE_LOG("[SoundAnimNotify] Owner is pending destroy, skipping notify");
-        return;
-    }
-
-    FVector SoundPlayLocation = Owner->GetActorLocation();
+    FVector SoundPlayLocation{};
     IXAudio2SourceVoice* SourceVoice = FAudioDevice::PlaySound3D(Sound, SoundPlayLocation, Volume, false);
     if (SourceVoice)
     {

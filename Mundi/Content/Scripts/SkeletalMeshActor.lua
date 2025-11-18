@@ -17,6 +17,11 @@ local StateA = nil
 local StateB = nil
 local StateC = nil
 
+-- Animation 정보 (GC 방지를 위해 전역 스코프에 저장)
+local AnimA = nil
+local AnimB = nil
+local AnimC = nil
+
 -- Transition 조건 함수들
 local function ShouldTransitionAtoB()
     return TransitionTimer >= TransitionInterval
@@ -47,10 +52,10 @@ function BeginPlay()
 
     ASM:initialize()
 
-    -- 애니메이션 로드
-    local AnimA = LoadAnimationSequence("Standard Run_mixamo.com")
-    local AnimB = LoadAnimationSequence("Standard Walk_mixamo.com")
-    local AnimC = LoadAnimationSequence("James_mixamo.com")
+    -- 애니메이션 로드 (GC 방지를 위해 스크립트 스코프 변수에 저장)
+    AnimA = LoadAnimationSequence("Standard Run_mixamo.com")
+    AnimB = LoadAnimationSequence("Standard Walk_mixamo.com")
+    AnimC = LoadAnimationSequence("James_mixamo.com")
 
     if not AnimA or not AnimB or not AnimC then
         print("[SkeletalMeshActor] Error: Failed to load animations")
@@ -140,18 +145,19 @@ function BeginPlay()
         end
     end
 
-    -- StateB: CameraShake Notify 추가 (펄린노이즈 사용)
+    -- StateB: CameraShake Notify 추가
     if AnimB then
         local NotifyB = NewCameraShakeAnimNotify()
         if NotifyB then
-            NotifyB:SetDuration(1)
+            NotifyB:SetDuration(0.5)
             NotifyB:SetAmplitudeLocation(1.0)
             NotifyB:SetAmplitudeRotationDeg(1.0)
-            NotifyB:SetFrequency(3.0)
+            NotifyB:SetFrequency(15.0)
             NotifyB:SetPriority(0)
-            NotifyB:SetTimeToNotify(1.0)
-            NotifyB:SetAnimation(AnimB)
-            NotifyB:SetNoiseMode(EShakeNoise.Sine)  -- 펄린노이즈 사용
+            NotifyB:SetTimeToNotify(1)
+            if EShakeNoise then
+                NotifyB:SetNoiseMode(EShakeNoise.Perlin)
+            end
             AnimB:AddAnimNotify(NotifyB)
         end
     end
@@ -222,9 +228,9 @@ function AnimUpdate(DeltaTime)
     if ASM.bIsInTransition and ASM.BlendTo then
         -- Transition 중이면 BlendTo (목표 State의 Node) 반환
         CurrentNode = ASM.BlendTo
-    elseif ASM.current_state and #ASM.current_state.AnimSequenceNodes > 0 then
-        -- 일반 상태면 현재 State의 첫 번째 AnimNode_Sequence 반환
-        CurrentNode = ASM.current_state.AnimSequenceNodes[1]
+    elseif ASM.current_state then
+        -- 일반 상태면 현재 State의 EntryNode 반환 (새로운 구조)
+        CurrentNode = ASM.current_state:GetEntryNode()
     end
 
     return CurrentNode
