@@ -730,7 +730,7 @@ void SAnimationViewerWindow::OnRender()
         ImGui::Text("Speed:");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        ImGui::SliderFloat("##Speed", &State->PlaybackSpeed, 0.1f, 2.0f, "%.2fx");
+        ImGui::SliderFloat("##Speed", &State->PlaybackSpeed, -1.f, 2.0f, "%.2fx");
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10.0f);
