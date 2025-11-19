@@ -6,6 +6,7 @@
 #include "CameraComponent.h"
 #include "SpringArmComponent.h"
 #include "InputManager.h"
+#include "LuaScriptComponent.h"
 
 ATempCharacter::ATempCharacter()
 {
@@ -26,6 +27,10 @@ ATempCharacter::ATempCharacter()
     // 카메라 컴포넌트 생성 (스프링 암에 부착)
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
     CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
+
+    // Lua 스크립트 컴포넌트 생성 (애니메이션 처리용)
+    ULuaScriptComponent* ScriptComp = CreateDefaultSubobject<ULuaScriptComponent>("LuaScript");
+    ScriptComp->SetScriptFilePath("Content/Scripts/TempCharacter.lua");
 }
 
 void ATempCharacter::BeginPlay()

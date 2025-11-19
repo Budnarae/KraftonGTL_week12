@@ -334,6 +334,10 @@
     <Content Include="Content\Scripts\RotatingSpawner.lua" />
     <Content Include="Content\Scripts\SHC.lua" />
     <Content Include="Content\Scripts\SkeletalMeshActor.lua" />
+    <Content Include="Content\Scripts\TempCharacter.lua" />
+    <Content Include="Content\Scripts\TestAdditiveBlend.lua" />
+    <Content Include="Content\Scripts\TestBlendSpace1D.lua" />
+    <Content Include="Content\Scripts\TestBlendSpace2D.lua" />
     <Content Include="Content\Scripts\TestPropertyBinding.lua" />
     <Content Include="Content\Scripts\Tile.lua" />
     <Content Include="Content\Scripts\TileMap.lua" />

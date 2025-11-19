@@ -31,6 +31,9 @@ public:
 
 	bool Call(const char* FuncName, sol::variadic_args VarArgs); // 다른 클래스가 날 호출할 때 씀
 
+	// 스크립트 파일 경로 설정
+	void SetScriptFilePath(const FString& InPath) { ScriptFilePath = InPath; }
+
 	// 템플릿 버전 - 일반 C++ 코드에서 호출할 때 사용
 	template<typename... Args>
 	bool CallFunction(const char* FuncName, Args&&... args)
