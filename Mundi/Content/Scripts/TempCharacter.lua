@@ -226,11 +226,15 @@ local function lerp(a, b, t)
     return a + (b - a) * t
 end
 
+CurVisibilty = true
 function AnimUpdate(deltaTime)
     if not ASM or not ASM.current_state then
         return nil
     end
 
+    if InputManager:IsKeyPressed("C") then
+        SetCursorVisible(not CurVisibilty)
+    end
     -- 점프 상태 전환 및 입력 처리
     local CurrentState = ASM.current_state
     local bIsInJumpState = (JumpState ~= nil and CurrentState == JumpState)
@@ -374,4 +378,9 @@ function EndPlay()
     CurrentX = 0.0
     CurrentY = 0.0
     FootstepSound = nil
+end
+
+function SetCursorVisible(Show)
+    InputManager:SetCursorVisible(Show)
+    CurVisibilty = Show
 end
