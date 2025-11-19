@@ -64,6 +64,13 @@ void ATempCharacter::Tick(float DeltaSeconds)
         // SpringArm 회전 적용
         FQuat NewRotation = FQuat::MakeFromEulerZYX(FVector(CameraPitch, 0.0f, CameraYaw));
         SpringArm->SetRelativeRotation(NewRotation);
+
+        // 캐릭터도 카메라 Yaw 방향으로 회전
+        FQuat TargetRotation = FQuat::MakeFromEulerZYX(FVector(0.0f, 0.0f, CameraYaw));
+        FQuat CurrentRotation = GetActorRotation();
+        float InterpSpeed = FMath::Clamp(DeltaSeconds * RotationSpeed / 36.0f, 0.0f, 1.0f);
+        FQuat CharRotation = FQuat::Slerp(CurrentRotation, TargetRotation, InterpSpeed);
+        SetActorRotation(CharRotation);
     }
 
     // 입력 처리
@@ -111,14 +118,6 @@ void ATempCharacter::Tick(float DeltaSeconds)
         FVector InputVector = ConsumeMovementInputVector();
         if (InputVector.SizeSquared() > 0.0f)
         {
-            // 이동 방향으로 캐릭터 회전
-            float TargetYaw = atan2f(InputVector.Y, InputVector.X) * (180.0f / 3.14159265f);
-            FQuat TargetRotation = FQuat::MakeFromEulerZYX(FVector(0.0f, 0.0f, TargetYaw));
-            FQuat CurrentRotation = GetActorRotation();
-            float InterpSpeed = FMath::Clamp(DeltaSeconds * RotationSpeed / 36.0f, 0.0f, 1.0f);
-            FQuat NewRotation = FQuat::Slerp(CurrentRotation, TargetRotation, InterpSpeed);
-            SetActorRotation(NewRotation);
-
             // 이동 적용
             FVector NewLocation = GetActorLocation() + InputVector * MovementSpeed * DeltaSeconds;
             SetActorLocation(NewLocation);
