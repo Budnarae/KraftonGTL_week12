@@ -1149,27 +1149,13 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 			// [샘플링 방식] 일정한 프레임 간격으로 Global Transform에서 Local 계산
 			// EvaluateLocalTransform()은 ConvertScene() 단위 변환이 적용되지 않을 수 있음
 			// 처음부터 끝까지 모든 프레임을 샘플링
-			FbxNode* ParentNode = BoneNode->GetParent();
-
 			for (FbxLongLong Frame = 0; Frame <= FrameCount; Frame++)
 			{
 				FbxTime CurrentTime;
 				CurrentTime.SetFrame(StartTime.GetFrameCount(TimeMode) + Frame, TimeMode);
 
-				// Global Transform에서 Local Transform 계산 (ConvertScene 적용된 값 사용)
-				FbxAMatrix GlobalTransform = BoneNode->EvaluateGlobalTransform(CurrentTime);
-				FbxAMatrix LocalTransform;
-
-				if (ParentNode)
-				{
-					FbxAMatrix ParentGlobalTransform = ParentNode->EvaluateGlobalTransform(CurrentTime);
-					LocalTransform = ParentGlobalTransform.Inverse() * GlobalTransform;
-				}
-				else
-				{
-					LocalTransform = GlobalTransform;
-				}
-
+				FbxAMatrix LocalTransform = BoneNode->EvaluateLocalTransform(CurrentTime);
+				
 				// 루트 본에 Armature Transform 적용 (Blender FBX 지원)
 				// Armature가 없으면 항등 행렬이므로 영향 없음
 				if (Skeleton.Bones[BoneIndex].ParentIndex == -1)
