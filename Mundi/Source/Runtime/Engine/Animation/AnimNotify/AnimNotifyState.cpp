@@ -43,7 +43,7 @@ void UAnimNotifyState::SetDurationTime(float InDurationTime)
     DurationTime = InDurationTime;
 }
 
-bool UAnimNotifyState::GetEndAlreadtCalled()
+bool UAnimNotifyState::GetEndAlreadyCalled()
 {
     return bEndAlreadyCalled;
 }

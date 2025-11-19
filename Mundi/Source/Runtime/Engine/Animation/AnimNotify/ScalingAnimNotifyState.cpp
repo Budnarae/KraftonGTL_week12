@@ -9,12 +9,6 @@ void UScalingAnimNotifyState::NotifyBegin()
     UAnimNotifyState::NotifyBegin();
 
     UE_LOG("[ScalingAnimNotifyState] NotifyBegin: Scaling started");
-
-    if (Owner)
-    {
-        // 초기 스케일값 저장
-        InitialScale = Owner->GetActorScale();
-    }
 }
 
 void UScalingAnimNotifyState::NotifyTick()
@@ -52,6 +46,12 @@ AActor* UScalingAnimNotifyState::GetOwner()
 void UScalingAnimNotifyState::SetOwner(AActor* InOwner)
 {
     Owner = InOwner;
+
+    if (Owner)
+    {
+        // 초기 스케일값 저장
+        InitialScale = Owner->GetActorScale();
+    }
 }
 
 FVector UScalingAnimNotifyState::GetScalePerTick()
