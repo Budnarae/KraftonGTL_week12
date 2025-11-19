@@ -43,6 +43,10 @@ struct FAnimNode_Sequence : FAnimNode_Base
 
         PlayRate = GetLength() / TargetPlayTime;
     }
+    void SetReversePlay()
+    {
+        PlayRate = -1.f;
+    }
 
     float GetLength() const { return Sequence ? Sequence->GetPlayLength() : 0.f; }
     float GetCurrentTime() const { return CurrentTime; }

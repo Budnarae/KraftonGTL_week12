@@ -530,6 +530,7 @@ FLuaManager::FLuaManager()
         "bLooping", &FAnimNode_Sequence::bLooping,
         "SetSequence", &FAnimNode_Sequence::SetSequence,
         "SetLooping", &FAnimNode_Sequence::SetLooping,
+        "SetReversePlay", &FAnimNode_Sequence::SetReversePlay,
         "GetNormalizedTime", &FAnimNode_Sequence::GetNormalizedTime,
         "SetNormalizedTime", &FAnimNode_Sequence::SetNormalizedTime,
         "Update", &FAnimNode_Sequence::Update,
