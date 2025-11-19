@@ -57,8 +57,8 @@ bool USkeletalMesh::Save(const FString& InOutputPath)
         return false;
     }
 
-    // 디렉토리 생성
-    std::filesystem::path FilePathObj(SavePath);
+    // 디렉토리 생성 (한글 경로 지원)
+    std::filesystem::path FilePathObj(UTF8ToWide(SavePath));
     if (FilePathObj.has_parent_path())
     {
         std::filesystem::create_directories(FilePathObj.parent_path());

@@ -650,7 +650,7 @@ FTextureData* UResourceManager::CreateOrGetTextureData(const FWideString& FilePa
 
     FTextureData* Data = new FTextureData();
 
-    // 확장자 판별 (안전)
+    // 확장자 판별 (안전) - FilePath는 이미 wstring이므로 직접 사용
     std::filesystem::path realPath(FilePath);
     std::wstring ext = realPath.has_extension() ? realPath.extension().wstring() : L"";
 for (auto& ch : ext) ch = static_cast<wchar_t>(::towlower(ch));
@@ -669,7 +669,7 @@ for (auto& ch : ext) ch = static_cast<wchar_t>(::towlower(ch));
     {
         // Fallback: Data 디렉토리 아래에서 파일명 일치 검색
         std::filesystem::path fname = std::filesystem::path(FilePath).filename();
-        std::filesystem::path dataRoot = std::filesystem::absolute(GDataDir);
+        std::filesystem::path dataRoot = std::filesystem::absolute(UTF8ToWide(GDataDir));
         bool retried = false;
         try {
             for (auto& entry : std::filesystem::recursive_directory_iterator(dataRoot))

@@ -4,6 +4,7 @@
 #include "ObjManager.h"
 #include "ResourceManager.h"
 #include "FBXLoader.h"
+#include "PathUtils.h"
 #include <filesystem>
 
 IMPLEMENT_CLASS(UStaticMesh)
@@ -53,9 +54,9 @@ void UStaticMesh::Load(const FString& InFilePath, ID3D11Device* InDevice, EVerte
 
     SetVertexType(InVertexType);
 
-    // 파일 확장자 확인
-    std::filesystem::path FilePath(InFilePath);
-    FString Extension = FilePath.extension().string();
+    // 파일 확장자 확인 (한글 경로 지원)
+    std::filesystem::path FilePath(UTF8ToWide(InFilePath));
+    FString Extension = WideToUTF8(FilePath.extension().wstring());
     std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
 
     if (Extension == ".fbx")
@@ -240,6 +241,6 @@ FString UStaticMesh::GetAssetPathFileName() const
     }
 
     // 확장자 제거해서 반환 (ResourceManager 키와 일치시키기 위함)
-    std::filesystem::path Path(CacheFilePath);
-    return (Path.parent_path() / Path.stem()).string();
+    std::filesystem::path Path(UTF8ToWide(CacheFilePath));
+    return WideToUTF8((Path.parent_path() / Path.stem()).wstring());
 }

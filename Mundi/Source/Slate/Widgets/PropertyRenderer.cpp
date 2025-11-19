@@ -19,6 +19,7 @@
 #include "SkeletalMeshComponent.h"
 #include "USlateManager.h"
 #include "ImGui/imgui_curve.hpp"
+#include "PathUtils.h"
 
 // 정적 멤버 변수 초기화
 TArray<FString> UPropertyRenderer::CachedSkeletalMeshPaths;
@@ -313,9 +314,9 @@ void UPropertyRenderer::CacheResources()
 		CachedStaticMeshPaths = ResMgr.GetAllFilePaths<UStaticMesh>();
 		for (const FString& path : CachedStaticMeshPaths)
 		{
-			// 파일명만 추출해서 표시
-			std::filesystem::path fsPath(path);
-			CachedStaticMeshItems.push_back(fsPath.filename().string());
+			// 파일명만 추출해서 표시 (한글 경로 지원)
+			std::filesystem::path fsPath(UTF8ToWide(path));
+			CachedStaticMeshItems.push_back(WideToUTF8(fsPath.filename().wstring()));
 		}
 		CachedStaticMeshPaths.Insert("", 0);
 		CachedStaticMeshItems.Insert("None", 0);
@@ -326,9 +327,9 @@ void UPropertyRenderer::CacheResources()
 		CachedSkeletalMeshPaths = ResMgr.GetAllFilePaths<USkeletalMesh>();
 		for (const FString& path : CachedSkeletalMeshPaths)
 		{
-			// 파일명만 추출해서 표시
-			std::filesystem::path fsPath(path);
-			CachedSkeletalMeshItems.push_back(fsPath.filename().string());
+			// 파일명만 추출해서 표시 (한글 경로 지원)
+			std::filesystem::path fsPath(UTF8ToWide(path));
+			CachedSkeletalMeshItems.push_back(WideToUTF8(fsPath.filename().wstring()));
 		}
 		CachedSkeletalMeshPaths.Insert("", 0);
 		CachedSkeletalMeshItems.Insert("None", 0);

@@ -3,6 +3,7 @@
 #include "TextureConverter.h"
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
+#include "PathUtils.h"
 #include <filesystem>
 
 IMPLEMENT_CLASS(UTexture)
@@ -29,13 +30,13 @@ void UTexture::Load(const FString& InFilePath, ID3D11Device* InDevice, bool bSRG
 #ifdef USE_DDS_CACHE
 	// DDS 캐싱 활성화 시: DDS 변환 및 캐시 사용
 	{
-		// 확장자 판별
-		std::filesystem::path SourcePath(InFilePath);
-		std::string Extension = SourcePath.extension().string();
-		std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::tolower);
+		// 확장자 판별 (wstring으로 변환하여 한글 경로 지원)
+		std::filesystem::path SourcePath(UTF8ToWide(InFilePath));
+		std::wstring Extension = SourcePath.extension().wstring();
+		std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::towlower);
 
 		// DDS 또는 UTXT가 아닌 경우 → Content 캐시 확인 및 생성
-		if (Extension != ".dds" && Extension != ".utxt")
+		if (Extension != L".dds" && Extension != L".utxt")
 		{
 			FString DDSCachePath = FTextureConverter::GetDDSCachePath(InFilePath);
 
@@ -74,25 +75,10 @@ void UTexture::Load(const FString& InFilePath, ID3D11Device* InDevice, bool bSRG
 #endif
 
 	// UTF-8 -> UTF-16 (Windows) 안전 변환: 한글/비ASCII 경로 대응
-	int needed = ::MultiByteToWideChar(CP_UTF8, 0, ActualLoadPath.c_str(), -1, nullptr, 0);
-	std::wstring WFilePath;
-	if (needed > 0)
-	{
-		WFilePath.resize(needed - 1);
-		::MultiByteToWideChar(CP_UTF8, 0, ActualLoadPath.c_str(), -1, WFilePath.data(), needed);
-	}
-	else
-	{
-		int needA = ::MultiByteToWideChar(CP_ACP, 0, ActualLoadPath.c_str(), -1, nullptr, 0);
-		if (needA > 0)
-		{
-			WFilePath.resize(needA - 1);
-			::MultiByteToWideChar(CP_ACP, 0, ActualLoadPath.c_str(), -1, WFilePath.data(), needA);
-		}
-	}
+	std::wstring WFilePath = UTF8ToWide(ActualLoadPath);
 
-	// 최종 로드할 파일의 확장자 재확인
-	std::filesystem::path LoadPath(ActualLoadPath);
+	// 최종 로드할 파일의 확장자 재확인 (wstring으로 변환하여 한글 경로 지원)
+	std::filesystem::path LoadPath(WFilePath);
 	std::wstring ext = LoadPath.has_extension() ? LoadPath.extension().wstring() : L"";
 	for (auto& ch : ext) ch = static_cast<wchar_t>(::towlower(ch));
 

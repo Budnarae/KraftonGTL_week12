@@ -193,8 +193,8 @@ FString FTextureConverter::GetDDSCachePath(const FString& SourcePath)
 	FString CachePath = ConvertDataPathToResourcePath(NormalizedPath);
 
 	// 4. 확장자 제거 후 .utxt 추가 (예: "Content/Textures/wood.png" → "Content/Textures/wood.utxt")
-	std::filesystem::path ContentPath(CachePath);
-	FString CachePathWithoutExt = ContentPath.parent_path().string() + "/" + ContentPath.stem().string();
+	std::filesystem::path ContentPath(UTF8ToWide(CachePath));
+	FString CachePathWithoutExt = WideToUTF8(ContentPath.parent_path().wstring()) + "/" + WideToUTF8(ContentPath.stem().wstring());
 	CachePath = CachePathWithoutExt + ".utxt";
 
 	return NormalizePath(CachePath);

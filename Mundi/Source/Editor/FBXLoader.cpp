@@ -45,11 +45,12 @@ void UFbxLoader::PreLoad()
 {
 	UFbxLoader& FbxLoader = GetInstance();
 
-	const fs::path DataDir(GDataDir);
+	FWideString WDataDir = UTF8ToWide(GDataDir);
+	const fs::path DataDir(WDataDir);
 
 	if (!fs::exists(DataDir) || !fs::is_directory(DataDir))
 	{
-		UE_LOG("UFbxLoader::Preload: Data directory not found: %s", DataDir.string().c_str());
+		UE_LOG("UFbxLoader::Preload: Data directory not found: %s", WideToUTF8(DataDir.wstring()).c_str());
 		return;
 	}
 
@@ -65,12 +66,12 @@ void UFbxLoader::PreLoad()
 			continue;
 
 		const fs::path& Path = Entry.path();
-		FString Extension = Path.extension().string();
+		FString Extension = WideToUTF8(Path.extension().wstring());
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
 		if (Extension == ".fbx")
 		{
-			FString PathStr = NormalizePath(Path.string());
+			FString PathStr = NormalizePath(WideToUTF8(Path.wstring()));
 
 			// 이미 처리된 파일인지 확인
 			if (ProcessedFiles.find(PathStr) == ProcessedFiles.end())
@@ -84,7 +85,7 @@ void UFbxLoader::PreLoad()
 		}
 		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
 		{
-			UResourceManager::GetInstance().Load<UTexture>(Path.string()); // 데칼 텍스쳐를 ui에서 고를 수 있게 하기 위해 임시로 만듬.
+			UResourceManager::GetInstance().Load<UTexture>(WideToUTF8(Path.wstring())); // 데칼 텍스쳐를 ui에서 고를 수 있게 하기 위해 임시로 만듬.
 		}
 	}
 
@@ -100,7 +101,7 @@ void UFbxLoader::PreLoad()
 
 	RESOURCE.SetSkeletalMeshs();
 
-	UE_LOG("UFbxLoader::Preload: Completed! Processed %zu .fbx files from %s", FbxFilePaths.Num(), DataDir.string().c_str());
+	UE_LOG("UFbxLoader::Preload: Completed! Processed %zu .fbx files from %s", FbxFilePaths.Num(), WideToUTF8(DataDir.wstring()).c_str());
 }
 
 
@@ -148,8 +149,9 @@ FSkeletalMeshData* UFbxLoader::LoadFbxMeshAsset(const FString& FilePath)
 
 	// Cooked 경로 계산
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 
 	// 캐시에서 로드 시도
 	FSkeletalMeshData* MeshData = TryLoadMeshFromCache(FilePath);
@@ -1050,10 +1052,12 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 	int AnimStackCount = InScene->GetSrcObjectCount<FbxAnimStack>();
 
 	// FBX 파일명 추출 (확장자 제거)
-	std::filesystem::path FbxFilePath(FbxPath);
-	FString BaseName = FbxFilePath.stem().string();  // 확장자 없는 파일명
+	FWideString WFbxPath = UTF8ToWide(FbxPath);
+	std::filesystem::path FbxFilePath(WFbxPath);
+	FString BaseName = WideToUTF8(FbxFilePath.stem().wstring());  // 확장자 없는 파일명
 	FString CacheDir = ConvertDataPathToResourcePath(NormalizePath(FbxPath));
-	std::filesystem::path CacheDirPath(CacheDir);
+	FWideString WCacheDir = UTF8ToWide(CacheDir);
+	std::filesystem::path CacheDirPath(WCacheDir);
 	CacheDirPath = CacheDirPath.parent_path();
 
 	// 캐시 디렉토리 생성
@@ -1189,7 +1193,7 @@ void UFbxLoader::LoadAnimationsFromScene(FbxScene* InScene, const TMap<FbxNode*,
 
 		// 개별 애니메이션 파일로 저장: BaseName_AnimName.uanim
 		FString SanitizedAnimName = SanitizeFileName(AnimName);
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).string();
+		FString AnimFileName = WideToUTF8((CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).wstring());
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
@@ -1318,8 +1322,9 @@ FSkeletalMeshData* UFbxLoader::TryLoadMeshFromCache(const FString& FbxPath)
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
 
 	// 확장자 제거 (예: "Content/Models/character.fbx" → "Content/Models/character")
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 
 	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
@@ -1412,8 +1417,9 @@ void UFbxLoader::SaveMeshToCache(FSkeletalMeshData* MeshData, const FString& Fbx
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
 
 	// 확장자 제거 (예: "Content/Models/character.fbx" → "Content/Models/character")
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 
 	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
@@ -1459,12 +1465,14 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 	FString NormalizedPath = NormalizePath(FbxPath);
 
 	// FBX 파일명 추출
-	std::filesystem::path FbxFilePath(FbxPath);
-	FString BaseName = FbxFilePath.stem().string();
+	FWideString WFbxPath = UTF8ToWide(FbxPath);
+	std::filesystem::path FbxFilePath(WFbxPath);
+	FString BaseName = WideToUTF8(FbxFilePath.stem().wstring());
 
 	// 캐시 디렉토리 경로
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
-	std::filesystem::path CacheDirPath(CachePathStr);
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CacheDirPath(WCachePathStr);
 	CacheDirPath = CacheDirPath.parent_path();
 
 	if (!std::filesystem::exists(CacheDirPath))
@@ -1483,7 +1491,7 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 			if (!Entry.is_regular_file())
 				continue;
 
-			FString FileName = Entry.path().filename().string();
+			FString FileName = WideToUTF8(Entry.path().filename().wstring());
 
 			// 패턴 매칭: BaseName_로 시작하고 .uanim으로 끝나는지 확인
 			if (FileName.find(BaseName + "_") == 0 && FileName.ends_with(".uanim"))
@@ -1497,7 +1505,7 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 				}
 
 				// 개별 애니메이션 파일 읽기
-				FString AnimFilePath = Entry.path().string();
+				FString AnimFilePath = WideToUTF8(Entry.path().wstring());
 				FWindowsBinReader Reader(AnimFilePath);
 				if (!Reader.IsOpen())
 				{
@@ -1558,8 +1566,8 @@ TArray<UAnimationSequence*> UFbxLoader::TryLoadAnimationsFromCache(const FString
 				Animations.Add(AnimSequence);
 
 				// 파일명에서 AnimName 추출: "BaseName_AnimName.uanim" → "AnimName"
-				FString AnimNameWithExt = Entry.path().stem().string(); // "BaseName_AnimName.anim"
-				FString AnimNameFull = std::filesystem::path(AnimNameWithExt).stem().string(); // "BaseName_AnimName"
+				FString AnimNameWithExt = WideToUTF8(Entry.path().stem().wstring()); // "BaseName_AnimName.anim"
+				FString AnimNameFull = AnimNameWithExt; // "BaseName_AnimName"
 				FString Prefix = BaseName + "_";
 				FString AnimName = (AnimNameFull.find(Prefix) == 0)
 					? AnimNameFull.substr(Prefix.length())
@@ -1593,8 +1601,9 @@ FFbxAssetData* UFbxLoader::LoadFbxAssets(const FString& FilePath)
 
 	// Cooked 경로 계산
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 
 	FFbxAssetData* AssetData = new FFbxAssetData();
 
@@ -1686,8 +1695,9 @@ bool UFbxLoader::IsCacheValid(const FString& FbxPath)
 	FString NormalizedPath = NormalizePath(FbxPath);
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
 
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 	const FString BinPathFileName = CachePathWithoutExt + ".uskel";
 
 	if (!std::filesystem::exists(BinPathFileName))
@@ -1714,8 +1724,9 @@ void UFbxLoader::BakeFbxCacheOnly(const FString& FilePath)
 
 	// Cooked 경로 계산
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 
 	// 캐시가 이미 최신이면 스킵
 	if (IsCacheValid(FilePath))
@@ -1760,10 +1771,12 @@ void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*,
 	int AnimStackCount = InScene->GetSrcObjectCount<FbxAnimStack>();
 
 	// FBX 파일명 추출 (확장자 제거)
-	std::filesystem::path FbxFilePath(FbxPath);
-	FString BaseName = FbxFilePath.stem().string();
+	FWideString WFbxPath = UTF8ToWide(FbxPath);
+	std::filesystem::path FbxFilePath(WFbxPath);
+	FString BaseName = WideToUTF8(FbxFilePath.stem().wstring());
 	FString CacheDir = ConvertDataPathToResourcePath(NormalizePath(FbxPath));
-	std::filesystem::path CacheDirPath(CacheDir);
+	FWideString WCacheDir = UTF8ToWide(CacheDir);
+	std::filesystem::path CacheDirPath(WCacheDir);
 	CacheDirPath = CacheDirPath.parent_path();
 
 	// 캐시 디렉토리 생성
@@ -1893,7 +1906,7 @@ void UFbxLoader::SaveAnimationCachesOnly(FbxScene* InScene, const TMap<FbxNode*,
 
 		// 개별 애니메이션 파일로 저장 (메모리에 UObject 생성하지 않음!)
 		FString SanitizedAnimName = SanitizeFileName(AnimName);
-		FString AnimFileName = (CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).string();
+		FString AnimFileName = WideToUTF8((CacheDirPath / (BaseName + "_" + SanitizedAnimName + ".uanim")).wstring());
 
 		FWindowsBinWriter Writer(AnimFileName);
 		float PlayLengthFloat = static_cast<float>(PlayLength);
@@ -1921,8 +1934,9 @@ void UFbxLoader::LoadFromCacheToMemory(const FString& FbxPath)
 
 	// 바이너리 캐시 경로 계산 (이게 ResourceManager 키가 됨!)
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedPath);
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 	// 예: "Resources/Models/character"
 
 	// 애니메이션 캐시 로드
@@ -1930,8 +1944,9 @@ void UFbxLoader::LoadFromCacheToMemory(const FString& FbxPath)
 	TArray<UAnimationSequence*> AnimSequences = TryLoadAnimationsFromCache(FbxPath, AnimationNames);
 
 	// 파일명 추출 (확장자 제거)
-	std::filesystem::path FilePath(FbxPath);
-	FString FileName = FilePath.stem().string();
+	FWideString WFbxPath = UTF8ToWide(FbxPath);
+	std::filesystem::path FilePath(WFbxPath);
+	FString FileName = WideToUTF8(FilePath.stem().wstring());
 
 	ID3D11Device* Device = GEngine.GetRHIDevice()->GetDevice();
 

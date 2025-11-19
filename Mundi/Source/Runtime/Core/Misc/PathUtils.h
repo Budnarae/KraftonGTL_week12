@@ -32,25 +32,6 @@ inline FString NormalizePath(const FString& InPath)
 	return Result;
 }
 
-/**
- * @brief 경로에서 확장자를 제거합니다.
- * @details "Data/Models/cube.obj" -> "Data/Models/cube"
- * @param InPath 확장자를 제거할 경로
- * @return 확장자가 제거된 경로
- */
-inline FString RemoveExtension(const FString& InPath)
-{
-	fs::path Path(InPath);
-	if (Path.has_parent_path())
-	{
-		return Path.parent_path().string() + "/" + Path.stem().string();
-	}
-	else
-	{
-		return Path.stem().string();
-	}
-}
-
 // ============================================================================
 // 문자열 인코딩 변환 유틸리티 함수
 // ============================================================================
@@ -122,6 +103,26 @@ inline FString WideToUTF8(const FWideString& InWideStr)
 	);
 
 	return result;
+}
+
+/**
+ * @brief 경로에서 확장자를 제거합니다.
+ * @details "Data/Models/cube.obj" -> "Data/Models/cube"
+ * @param InPath 확장자를 제거할 경로
+ * @return 확장자가 제거된 경로
+ */
+inline FString RemoveExtension(const FString& InPath)
+{
+	FWideString WPath = UTF8ToWide(InPath);
+	fs::path Path(WPath);
+	if (Path.has_parent_path())
+	{
+		return WideToUTF8((Path.parent_path() / Path.stem()).wstring());
+	}
+	else
+	{
+		return WideToUTF8(Path.stem().wstring());
+	}
 }
 
 inline FString ConvertDataPathToResourcePath(const FString& InAssetPath)

@@ -138,7 +138,8 @@ bool GetMtlDependencies(const FString& ObjPath, TArray<FString>& OutMtlFilePaths
 		return false;
 	}
 
-	fs::path BaseDir = fs::path(ObjPath).parent_path();
+	FWideString WObjPath = UTF8ToWide(ObjPath);
+	fs::path BaseDir = fs::path(WObjPath).parent_path();
 	FString Line;
 
 	while (std::getline(InFile, Line))
@@ -153,8 +154,9 @@ bool GetMtlDependencies(const FString& ObjPath, TArray<FString>& OutMtlFilePaths
 			FString MtlFileName = Line.substr(7);
 			if (!MtlFileName.empty())
 			{
-				fs::path FullPath = fs::weakly_canonical(BaseDir / MtlFileName);
-				FString PathStr = FullPath.string();
+				FWideString WMtlFileName = UTF8ToWide(MtlFileName);
+				fs::path FullPath = fs::weakly_canonical(BaseDir / WMtlFileName);
+				FString PathStr = WideToUTF8(FullPath.wstring());
 				std::replace(PathStr.begin(), PathStr.end(), '\\', '/');
 				OutMtlFilePaths.AddUnique(NormalizePath(PathStr));
 			}
@@ -173,17 +175,21 @@ bool GetMtlDependencies(const FString& ObjPath, TArray<FString>& OutMtlFilePaths
 bool ShouldRegenerateCache(const FString& ObjPath, const FString& BinPath, const FString& MatBinPath)
 {
 	// 캐시 파일 중 하나라도 존재하지 않으면 무조건 재생성해야 합니다.
-	if (!fs::exists(BinPath) || !fs::exists(MatBinPath))
+	FWideString WBinPath = UTF8ToWide(BinPath);
+	FWideString WMatBinPath = UTF8ToWide(MatBinPath);
+	FWideString WObjPath = UTF8ToWide(ObjPath);
+
+	if (!fs::exists(WBinPath) || !fs::exists(WMatBinPath))
 	{
 		return true;
 	}
 
 	try
 	{
-		auto BinTimestamp = fs::last_write_time(BinPath);
+		auto BinTimestamp = fs::last_write_time(WBinPath);
 
 		// 1. 원본 .obj 파일의 수정 시간을 캐시 파일과 비교합니다.
-		if (fs::last_write_time(ObjPath) > BinTimestamp)
+		if (fs::last_write_time(WObjPath) > BinTimestamp)
 		{
 			return true;
 		}
@@ -199,7 +205,8 @@ bool ShouldRegenerateCache(const FString& ObjPath, const FString& BinPath, const
 		for (const FString& MtlPath : MtlDependencies)
 		{
 			// .mtl 파일이 존재하지 않거나 캐시보다 최신 버전이면 재생성합니다.
-			if (!fs::exists(MtlPath) || fs::last_write_time(MtlPath) > BinTimestamp)
+			FWideString WMtlPath = UTF8ToWide(MtlPath);
+			if (!fs::exists(WMtlPath) || fs::last_write_time(WMtlPath) > BinTimestamp)
 			{
 				return true;
 			}
@@ -223,8 +230,9 @@ bool FObjManager::CookObjToCache(const FString& ObjPath)
 
 	// 캐시 파일 경로 설정
 	FString CachePathStr = ConvertDataPathToResourcePath(NormalizedObjPath);
-	std::filesystem::path CachePath(CachePathStr);
-	FString CachePathWithoutExt = CachePath.parent_path().string() + "/" + CachePath.stem().string();
+	FWideString WCachePathStr = UTF8ToWide(CachePathStr);
+	std::filesystem::path CachePath(WCachePathStr);
+	FString CachePathWithoutExt = WideToUTF8((CachePath.parent_path() / CachePath.stem()).wstring());
 
 	const FString BinPathFileName = CachePathWithoutExt + ".umesh";
 	const FString MatBinPathFileName = CachePathWithoutExt + ".umat";
@@ -237,7 +245,8 @@ bool FObjManager::CookObjToCache(const FString& ObjPath)
 	}
 
 	// 캐시를 저장할 디렉토리 생성
-	fs::path CacheFileDirPath(BinPathFileName);
+	FWideString WBinPathFileName = UTF8ToWide(BinPathFileName);
+	fs::path CacheFileDirPath(WBinPathFileName);
 	if (CacheFileDirPath.has_parent_path())
 	{
 		fs::create_directories(CacheFileDirPath.parent_path());
@@ -297,8 +306,8 @@ bool FObjManager::CookObjToCache(const FString& ObjPath)
 		UE_LOG("ERROR: Failed to write cache files for '%s': %s", NormalizedObjPath.c_str(), e.what());
 
 		// 실패 시 불완전한 파일 삭제
-		fs::remove(BinPathFileName);
-		fs::remove(MatBinPathFileName);
+		fs::remove(UTF8ToWide(BinPathFileName));
+		fs::remove(UTF8ToWide(MatBinPathFileName));
 		return false;
 	}
 #else
@@ -356,15 +365,16 @@ bool FObjManager::LoadFromCache(const FString& BinPath, const FString& MatBinPat
 
 void FObjManager::Preload()
 {
-	const fs::path DataDir(GDataDir);
-	const fs::path ContentDir = fs::path(GDataDir).parent_path() / "Content";
+	FWideString WDataDir = UTF8ToWide(GDataDir);
+	const fs::path DataDir(WDataDir);
+	const fs::path ContentDir = fs::path(WDataDir).parent_path() / L"Content";
 
 	// ===== PHASE 1: Cook (.obj → .umesh) =====
 	UE_LOG("=== PHASE 1: Cooking .obj files to .umesh cache ===");
 
 	if (!fs::exists(DataDir) || !fs::is_directory(DataDir))
 	{
-		UE_LOG("ERROR: Data directory not found: %s", DataDir.string().c_str());
+		UE_LOG("ERROR: Data directory not found: %s", WideToUTF8(DataDir.wstring()).c_str());
 		return;
 	}
 
@@ -377,13 +387,13 @@ void FObjManager::Preload()
 			continue;
 
 		const fs::path& Path = Entry.path();
-		FString Extension = Path.extension().string();
+		FString Extension = WideToUTF8(Path.extension().wstring());
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(),
 		               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
 		if (Extension == ".obj")
 		{
-			FString PathStr = NormalizePath(Path.string());
+			FString PathStr = NormalizePath(WideToUTF8(Path.wstring()));
 
 			if (ProcessedObjFiles.find(PathStr) == ProcessedObjFiles.end())
 			{
@@ -396,7 +406,7 @@ void FObjManager::Preload()
 		}
 		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
 		{
-			UResourceManager::GetInstance().Load<UTexture>(Path.string());
+			UResourceManager::GetInstance().Load<UTexture>(WideToUTF8(Path.wstring()));
 		}
 	}
 
@@ -407,7 +417,7 @@ void FObjManager::Preload()
 
 	if (!fs::exists(ContentDir) || !fs::is_directory(ContentDir))
 	{
-		UE_LOG("WARNING: Content directory not found: %s", ContentDir.string().c_str());
+		UE_LOG("WARNING: Content directory not found: %s", WideToUTF8(ContentDir.wstring()).c_str());
 		UE_LOG("Skipping resource loading phase");
 		return;
 	}
@@ -421,13 +431,13 @@ void FObjManager::Preload()
 			continue;
 
 		const fs::path& Path = Entry.path();
-		FString Extension = Path.extension().string();
+		FString Extension = WideToUTF8(Path.extension().wstring());
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(),
 		               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
 		if (Extension == ".umesh")
 		{
-			FString PathStr = NormalizePath(Path.string());
+			FString PathStr = NormalizePath(WideToUTF8(Path.wstring()));
 
 			if (ProcessedUmeshFiles.find(PathStr) == ProcessedUmeshFiles.end())
 			{
@@ -471,8 +481,9 @@ FStaticMesh* FObjManager::LoadObjStaticMeshAsset(const FString& PathFileName)
 	}
 
 	// 2. 확장자 확인 (.obj 또는 .umesh 허용)
-	std::filesystem::path Path(NormalizedPathStr);
-	FString Extension = Path.extension().string();
+	FWideString WPath = UTF8ToWide(NormalizedPathStr);
+	std::filesystem::path Path(WPath);
+	FString Extension = WideToUTF8(Path.extension().wstring());
 	std::transform(Extension.begin(), Extension.end(), Extension.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 

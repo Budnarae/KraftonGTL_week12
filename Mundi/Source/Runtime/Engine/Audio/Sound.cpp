@@ -22,7 +22,7 @@ bool USound::LoadWavFromFile(const FWideString& FilePath)
     DurationSec = 0.0f;
     ZeroMemory(&WaveFormat, sizeof(WaveFormat));
 
-    std::ifstream fs(std::filesystem::path(FilePath), std::ios::binary);
+    std::ifstream fs(FilePath, std::ios::binary);
     if (!fs.is_open())
     {
         UE_LOG("[Audio] Failed to open WAV: %s", WideToUTF8(FilePath).c_str());

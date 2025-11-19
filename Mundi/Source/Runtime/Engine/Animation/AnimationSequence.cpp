@@ -2,6 +2,7 @@
 #include "AnimationSequence.h"
 #include "WindowsBinWriter.h"
 #include "AnimNotify/AnimNotify.h"
+#include "PathUtils.h"
 #include <filesystem>
 
 IMPLEMENT_CLASS(UAnimationSequence)
@@ -49,11 +50,11 @@ bool UAnimationSequence::Save(const FString& InFilePath)
         return false;
     }
 
-    // 디렉토리 생성
-    std::filesystem::path FilePath(SavePath);
-    if (FilePath.has_parent_path())
+    // 디렉토리 생성 (한글 경로 지원)
+    std::filesystem::path FilePathObj(UTF8ToWide(SavePath));
+    if (FilePathObj.has_parent_path())
     {
-        std::filesystem::create_directories(FilePath.parent_path());
+        std::filesystem::create_directories(FilePathObj.parent_path());
     }
 
     try
