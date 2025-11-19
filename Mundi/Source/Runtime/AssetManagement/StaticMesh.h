@@ -28,7 +28,7 @@ public:
     void SetIndexCount(uint32 Cnt) { IndexCount = Cnt; }
     uint32 GetVertexStride() const { return VertexStride; };
 
-	const FString& GetAssetPathFileName() const { return StaticMeshAsset ? StaticMeshAsset->PathFileName : FilePath; }
+	FString GetAssetPathFileName() const;  // 확장자 제거된 경로 반환
     void SetStaticMeshAsset(FStaticMesh* InStaticMesh) { StaticMeshAsset = InStaticMesh; }
 	FStaticMesh* GetStaticMeshAsset() const { return StaticMeshAsset; }
 

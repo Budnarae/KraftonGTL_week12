@@ -318,6 +318,8 @@ void USceneComponent::SetupAttachment(USceneComponent* InParent, EAttachmentRule
     RelativeLocation = RelativeTransform.Translation;
     RelativeRotation = RelativeTransform.Rotation;
     RelativeScale = RelativeTransform.Scale3D;
+
+    OnTransformUpdated();
 }
 
 void USceneComponent::DetachFromParent(bool bKeepWorld)

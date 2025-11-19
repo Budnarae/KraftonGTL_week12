@@ -2,6 +2,7 @@
 #include "PlayerController.h"
 #include "Pawn.h"
 #include "PlayerCameraManager.h"
+#include "CameraComponent.h"
 
 APlayerController::APlayerController()
 {
@@ -77,26 +78,28 @@ void APlayerController::SetupInputComponent()
 
 void APlayerController::AddYawInput(float DeltaYaw)
 {
-    if (PlayerCameraManager)
+    if (PlayerCameraManager && PlayerCameraManager->GetViewCamera())
     {
+        UCameraComponent* Camera = PlayerCameraManager->GetViewCamera();
         float ScaledYaw = DeltaYaw * MouseSensitivity;
-        FVector CurrentRotation = PlayerCameraManager->GetActorRotation().ToEulerZYXDeg();
+        FVector CurrentRotation = Camera->GetWorldRotation().ToEulerZYXDeg();
         CurrentRotation.Z += ScaledYaw;
-        PlayerCameraManager->SetActorRotation(CurrentRotation);
+        Camera->SetWorldRotation(FQuat::MakeFromEulerZYX(CurrentRotation));
     }
 }
 
 void APlayerController::AddPitchInput(float DeltaPitch)
 {
-    if (PlayerCameraManager)
+    if (PlayerCameraManager && PlayerCameraManager->GetViewCamera())
     {
+        UCameraComponent* Camera = PlayerCameraManager->GetViewCamera();
         float ScaledPitch = DeltaPitch * MouseSensitivity * (bInvertMouseY ? 1.0f : -1.0f);
-        FVector CurrentRotation = PlayerCameraManager->GetActorRotation().ToEulerZYXDeg();
+        FVector CurrentRotation = Camera->GetWorldRotation().ToEulerZYXDeg();
         CurrentRotation.X += ScaledPitch;
 
         // Clamp pitch to prevent camera flip
         CurrentRotation.X = FMath::Clamp(CurrentRotation.X, -89.0f, 89.0f);
 
-        PlayerCameraManager->SetActorRotation(CurrentRotation);
+        Camera->SetWorldRotation(FQuat::MakeFromEulerZYX(CurrentRotation));
     }
 }
