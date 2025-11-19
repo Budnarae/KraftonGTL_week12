@@ -1,4 +1,4 @@
-﻿-- TempCharacter.lua
+-- TempCharacter.lua
 -- BlendSpace2D를 사용한 4방향 걷기 애니메이션
 
 local AnimationStateMachine = dofile("Content/Scripts/AnimationStateMachine.lua")
@@ -137,8 +137,8 @@ function BeginPlay()
     RightBackAnim = LoadAnimationSequence("Jog Backward Diagonal Right_mixamo.com")
 
     JumpAnim     = LoadAnimationSequence("Jumping_mixamo.com")
-    DizzyAnim    = LoadAnimationSequence("Flying Back Death")
-    DizzyAnim2 = LoadAnimationSequence("Flying Back Death")
+    DizzyAnim    = LoadAnimationSequence("Flying Back Death_mixamo.com")
+    DizzyAnim2 = LoadAnimationSequence("Flying Back Death_mixamo.com")
 
     if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim and DizzyAnim and DizzyAnim2 and JumpAnim) then
         print("[TempCharacter] Failed to load Cactus animations")
