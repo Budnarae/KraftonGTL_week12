@@ -3,6 +3,7 @@
 #include "World.h"
 #include "PlayerController.h"
 #include "PlayerCameraManager.h"
+#include "CameraComponent.h"
 #include "InputManager.h"
 
 ATempCharacter::ATempCharacter()
@@ -14,11 +15,25 @@ ATempCharacter::ATempCharacter()
     {
         MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
     }
+
+    // 카메라 컴포넌트 생성
+    CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
+    CameraComp->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
+    CameraComp->SetRelativeLocation({-10, 0, 5});
 }
 
 void ATempCharacter::BeginPlay()
 {
     Super::BeginPlay();
+
+    // 내 카메라를 뷰 카메라로 설정
+    if (CameraComp)
+    {
+        if (APlayerCameraManager* CM = GetWorld()->GetPlayerCameraManager())
+        {
+            CM->SetViewCamera(CameraComp);
+        }
+    }
 }
 
 void ATempCharacter::Tick(float DeltaSeconds)
@@ -33,13 +48,13 @@ void ATempCharacter::Tick(float DeltaSeconds)
 
         // Get camera direction from player controller
         APlayerController* PC = Cast<APlayerController>(Controller);
-        if (PC && PC->GetPlayerCameraManager())
+        if (PC && PC->GetPlayerCameraManager() && PC->GetPlayerCameraManager()->GetViewCamera())
         {
-            APlayerCameraManager* CameraManager = PC->GetPlayerCameraManager();
+            UCameraComponent* Camera = PC->GetPlayerCameraManager()->GetViewCamera();
 
             // Get camera forward and right vectors (flattened to ground plane)
-            FVector Forward = CameraManager->GetActorForward();
-            FVector Right = CameraManager->GetActorRight();
+            FVector Forward = Camera->GetForward();
+            FVector Right = Camera->GetRight();
             Forward.Z = 0.0f;
             Right.Z = 0.0f;
             Forward.Normalize();
