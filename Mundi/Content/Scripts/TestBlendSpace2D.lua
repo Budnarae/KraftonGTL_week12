@@ -7,8 +7,8 @@ local ASM = nil
 local SkeletalComp = nil
 local BlendSpaceNode = nil
 
-local InputX = 0.0
-local InputY = 0.0
+local InputX = 1.0
+local InputY = 1.0
 local AutoTimer = 0.0
 local bAutoDrive = true
 local AutoSpeed = 1.35
@@ -59,11 +59,11 @@ local function handle_ease_hotkeys()
 end
 
 local function clamp_axis(value)
-    if value < -1.0 then
-        return -1.0
+    if value < 0.0 then
+        return 0.0
     end
-    if value > 1.0 then
-        return 1.0
+    if value > 2.0 then
+        return 2.0
     end
     return value
 end
@@ -77,11 +77,11 @@ local function update_blend_inputs(deltaTime)
         print(string.format("[TestBlendSpace2D] Input Mode: %s", modeName))
     end
 
-    if bAutoDrive then
-        AutoTimer = AutoTimer + deltaTime * AutoSpeed
-        InputX = math.sin(AutoTimer)
-        InputY = math.cos(AutoTimer * 0.75)
-    else
+    -- if bAutoDrive then
+    --     AutoTimer = AutoTimer + deltaTime * AutoSpeed
+    --     InputX = math.sin(AutoTimer)
+    --     InputY = math.cos(AutoTimer * 0.75)
+    -- else
         local delta = deltaTime * 2.0
         if InputManager:IsKeyDown('H') then
             InputX = InputX + delta
@@ -95,7 +95,9 @@ local function update_blend_inputs(deltaTime)
         if InputManager:IsKeyDown('G') then
             InputY = InputY - delta
         end
-    end
+        print("X " .. InputX)
+        print("Y " .. InputY)
+    -- end
 
     InputX = clamp_axis(InputX)
     InputY = clamp_axis(InputY)
@@ -150,11 +152,11 @@ function BeginPlay()
     ASM = AnimationStateMachine:new()
     ASM:initialize()
 
-    IdleAnim     = LoadAnimationSequence("Standard Run_mixamo.com")
+    IdleAnim     = LoadAnimationSequence("Idle_mixamo.com")
     ForwardAnim  = LoadAnimationSequence("Standard Walk_mixamo.com")
-    BackwardAnim = LoadAnimationSequence("Standard Run_mixamo.com")
-    LeftAnim     = LoadAnimationSequence("Standard Run_mixamo.com")
-    RightAnim    = LoadAnimationSequence("Standard Walk_mixamo.com")
+    BackwardAnim = LoadAnimationSequence("Walking Backward_mixamo.com")
+    LeftAnim     = LoadAnimationSequence("Left Strafe Walk_mixamo.com")
+    RightAnim    = LoadAnimationSequence("Right Strafe Walk_mixamo.com")
 
     if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim) then
         print("[TestBlendSpace2D] Failed to load required animations")

@@ -125,7 +125,7 @@ function BeginPlay()
     ASM = AnimationStateMachine:new()
     ASM:initialize()
 
-    IdleAnim = LoadAnimationSequence("Standard Idle_mixamo.com")
+    IdleAnim = LoadAnimationSequence("Idle_mixamo.com")
     WalkAnim = LoadAnimationSequence("Standard Walk_mixamo.com")
     RunAnim  = LoadAnimationSequence("Standard Run_mixamo.com")
 
