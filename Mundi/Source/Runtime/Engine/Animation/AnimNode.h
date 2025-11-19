@@ -122,6 +122,10 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
     float BlendTime = 0.2f;
     float BlendTimeElapsed = 0.f;
     bool bIsBlending = false;
+    bool bHasCachedBlendEndpoints = false;
+
+    FPoseContext CachedFromPose;
+    FPoseContext CachedToPose;
 
     virtual void Update(const FAnimationUpdateContext& Context) override
     {
@@ -136,6 +140,12 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
             if (BlendTimeElapsed >= BlendTime)
                 bIsBlending = false;
         }
+        else
+        {
+            bHasCachedBlendEndpoints = false;
+            CachedFromPose.EvaluatedPoses.SetNum(0);
+            CachedToPose.EvaluatedPoses.SetNum(0);
+        }
     }
 
     virtual void Evaluate(FPoseContext& Output) override
@@ -143,13 +153,31 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
         if (!From || !To)
             return;
 
-        FPoseContext PoseFrom(Output.Skeleton);
-        FPoseContext PoseTo(Output.Skeleton);
+         // 기존 방식: 매 프레임에서 From/To를 평가하고 섞는다.
+         FPoseContext PoseFrom(Output.Skeleton);
+         FPoseContext PoseTo(Output.Skeleton);
+         From->Evaluate(PoseFrom);
+         To->Evaluate(PoseTo);
+         Blend(PoseFrom, PoseTo, Alpha, Output);
 
-        From->Evaluate(PoseFrom);
-        To->Evaluate(PoseTo);
+        //if (bIsBlending && !bHasCachedBlendEndpoints)
+        //{
+        //    CacheBlendEndpoints(Output);
+        //}
 
-        Blend(PoseFrom, PoseTo, Alpha, Output);
+        //if (!bHasCachedBlendEndpoints)
+        //{
+        //    return;
+        //}
+
+        //const int32 BoneCnt = std::min(CachedFromPose.EvaluatedPoses.Num(), CachedToPose.EvaluatedPoses.Num());
+        //Output.EvaluatedPoses.SetNum(BoneCnt);
+
+        //const float ClampedWeight = std::clamp(Alpha, 0.0f, 1.0f);
+        //for (int i = 0; i < BoneCnt; i++)
+        //{
+        //    Output.EvaluatedPoses[i] = FTransform::Lerp(CachedFromPose.EvaluatedPoses[i], CachedToPose.EvaluatedPoses[i], ClampedWeight);
+        //}
     }
 
     void Blend(const FPoseContext& Start, const FPoseContext& End, float Alpha, FPoseContext& Out)
@@ -164,8 +192,31 @@ struct FAnimNode_TwoWayBlend : FAnimNode_Base
             Out.EvaluatedPoses[i] = FTransform::Lerp(Start.EvaluatedPoses[i], End.EvaluatedPoses[i], Alpha);
         }
     }
-};
 
+    void CacheBlendEndpoints(const FPoseContext& Output)
+    {
+        if (!Output.Skeleton)
+        {
+            bHasCachedBlendEndpoints = false;
+            return;
+        }
+
+        CachedFromPose = FPoseContext(Output.Skeleton);
+        CachedToPose = FPoseContext(Output.Skeleton);
+
+        From->Evaluate(CachedFromPose);
+        To->Evaluate(CachedToPose);
+
+        bHasCachedBlendEndpoints = true;
+    }
+
+    void ResetCachedBlend()
+    {
+        bHasCachedBlendEndpoints = false;
+        CachedFromPose.EvaluatedPoses.SetNum(0);
+        CachedToPose.EvaluatedPoses.SetNum(0);
+    }
+};
 struct FBlendSample1D
 {
     float Position = 0.0f; // 이 샘플이 놓인 위치 (ex: 속도 0, 200, 500)
@@ -303,20 +354,10 @@ struct FAnimNode_AdditiveBlend : public FAnimNode_Base
 
     virtual void Evaluate(FPoseContext& Output) override
     {
-        if (!BasePose)
-            return;
-
         FPoseContext Base(Output);
         FPoseContext Add(Output);
 
         BasePose->Evaluate(Base);
-
-        if (!AdditivePose)
-        {
-            Output = Base;
-            return;
-        }
-
         AdditivePose->Evaluate(Add);
 
         ApplyAdditive(Base, Add, Alpha, Output);
@@ -541,6 +582,3 @@ private:
      */
     FAnimState* FindStateByName(const FName& StateName) const;
 };
-
-
-

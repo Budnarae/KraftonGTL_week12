@@ -64,10 +64,10 @@ local function update_blend_input(deltaTime)
         print(string.format("[TestBlendSpace1D] Input Mode: %s", modeName))
     end
 
-    if bAutoDrive then
-        AutoTimer = AutoTimer + deltaTime * AutoSpeed
-        InputValue = 0.5 + 0.5 * math.sin(AutoTimer)
-    else
+    -- if bAutoDrive then
+    --     AutoTimer = AutoTimer + deltaTime * AutoSpeed
+    --     InputValue = 0.5 + 0.5 * math.sin(AutoTimer)
+    -- else
         local delta = deltaTime * 1.5
         if InputManager:IsKeyDown('L') then
             InputValue = InputValue + delta
@@ -75,7 +75,7 @@ local function update_blend_input(deltaTime)
         if InputManager:IsKeyDown('J') then
             InputValue = InputValue - delta
         end
-    end
+    -- end
 
     if InputValue < 0.0 then
         InputValue = 0.0

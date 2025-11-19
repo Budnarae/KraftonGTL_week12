@@ -186,6 +186,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
             TransitionBlendNode.BlendTime = Transition->BlendTime;
             TransitionBlendNode.BlendTimeElapsed = 0.0f;
             TransitionBlendNode.bIsBlending = true;
+            TransitionBlendNode.ResetCachedBlend();
             bUseTransitionBlend = (SourceEntry && TargetEntry);
 
             return;
