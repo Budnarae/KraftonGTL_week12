@@ -19,4 +19,12 @@ public:
 private:
     USpringArmComponent* SpringArm = nullptr;
     UCameraComponent* CameraComp = nullptr;
+
+    // 카메라 회전
+    float CameraYaw = 0.0f;
+    float CameraPitch = 0.0f;
+    float MouseSensitivity = 0.1f;
+
+    // 캐릭터 회전 속도 (degrees per second)
+    float RotationSpeed = 720.0f;
 };
