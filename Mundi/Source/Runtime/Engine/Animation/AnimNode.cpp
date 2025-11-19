@@ -617,6 +617,26 @@ void FAnimNode_BlendSpace2D::Update(const FAnimationUpdateContext& Context)
     // AdvancedCalculateSampleWeights();
     CalculateSampleWeights();
 
+    // IsUsingSoundNotify 매번 업데이트 (가장 Weight가 높은 샘플만 true)
+    float MaxWeight = 0.0f;
+    int32 DominantIndex = -1;
+    for (int32 i = 0; i < Samples.Num(); i++)
+    {
+        if (Samples[i].SequenceNode)
+        {
+            Samples[i].SequenceNode->IsUsingSoundNotify = false;
+            if (Samples[i].Weight > MaxWeight)
+            {
+                MaxWeight = Samples[i].Weight;
+                DominantIndex = i;
+            }
+        }
+    }
+    if (DominantIndex >= 0)
+    {
+        Samples[DominantIndex].SequenceNode->IsUsingSoundNotify = true;
+    }
+
     if (bIsTimeSynchronized)
     {
         SimpleSynchronizeSampleTimes();

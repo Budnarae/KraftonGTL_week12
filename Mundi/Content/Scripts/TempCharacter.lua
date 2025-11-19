@@ -18,7 +18,7 @@ local bJumpStateActive = false
 -- 블렌드 보간용
 local CurrentX = 0.0
 local CurrentY = 0.0
-local BlendSpeed = 3.0  -- 블렌드 속도 (높을수록 빠르게 전환)
+local BlendSpeed = 5.0  -- 블렌드 속도 (높을수록 빠르게 전환)
 
 -- 애니메이션 시퀀스
 local IdleAnim = nil
