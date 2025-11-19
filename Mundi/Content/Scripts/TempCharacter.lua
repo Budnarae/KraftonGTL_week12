@@ -8,10 +8,14 @@ local SkeletalComp = nil
 local MovementComp = nil
 local BlendSpaceNode = nil
 
+-- 상태 전환
+local TransitionToJump = nil
+local TransitionToLocomotion = nil
+
 -- 블렌드 보간용
 local CurrentX = 0.0
 local CurrentY = 0.0
-local BlendSpeed = 5.0  -- 블렌드 속도 (높을수록 빠르게 전환)
+local BlendSpeed = 3.0  -- 블렌드 속도 (높을수록 빠르게 전환)
 
 -- 애니메이션 시퀀스
 local IdleAnim = nil
@@ -19,6 +23,7 @@ local ForwardAnim = nil
 local BackwardAnim = nil
 local LeftAnim = nil
 local RightAnim = nil
+local JumpAnim = nil
 
 local function build_blend_space(state)
     BlendSpaceNode = state:CreateBlendSpace2DNode()
@@ -80,12 +85,14 @@ function BeginPlay()
     BackwardAnim = LoadAnimationSequence("CactusPA_Cactus_WalkBWD")
     LeftAnim     = LoadAnimationSequence("CactusPA_Cactus_WalkLFT")
     RightAnim    = LoadAnimationSequence("CactusPA_Cactus_WalkRGT")
+    JumpAnim     = LoadAnimationSequence("CactusPA_Cactus_RunFWD")
 
     if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim) then
         print("[TempCharacter] Failed to load Cactus animations")
         return
     end
 
+    -- Locomotion 상태
     local Locomotion = ASM:add_state(FName("Locomotion"))
     if not Locomotion then
         print("[TempCharacter] Failed to create Locomotion state")
@@ -98,6 +105,26 @@ function BeginPlay()
     end
 
     Locomotion:SetEntryNode(BlendSpaceNode)
+
+    -- Jump 상태
+    if JumpAnim then
+        local JumpState = ASM:add_state(FName("Jump"))
+        if JumpState then
+            local JumpNode = JumpState:CreateSequenceNode(JumpAnim, true)
+            JumpState:SetEntryNode(JumpNode)
+
+            -- 상태 전환 추가
+            TransitionToJump = ASM:add_transition(FName("Locomotion"), FName("Jump"))
+            TransitionToLocomotion = ASM:add_transition(FName("Jump"), FName("Locomotion"))
+
+            if TransitionToJump then
+                TransitionToJump.BlendTime = 0.2
+            end
+            if TransitionToLocomotion then
+                TransitionToLocomotion.BlendTime = 0.2
+            end
+        end
+    end
 
     -- 애니메이션 모드 설정 및 초기화
     SkeletalComp:SetAnimationModeInt(1)  -- AnimationBlueprint mode
@@ -115,25 +142,47 @@ function AnimUpdate(deltaTime)
         return nil
     end
 
+    -- 점프 상태 전환 체크
+    if MovementComp and ASM.current_state then
+        local bIsFalling = MovementComp:IsFalling()
+
+        -- 전환 플래그 리셋
+        if TransitionToJump then
+            TransitionToJump.CanEnterTransition = false
+        end
+        if TransitionToLocomotion then
+            TransitionToLocomotion.CanEnterTransition = false
+        end
+
+        -- 조건에 따라 전환 활성화
+        if bIsFalling then
+            if TransitionToJump then
+                TransitionToJump.CanEnterTransition = true
+            end
+        else
+            if TransitionToLocomotion then
+                TransitionToLocomotion.CanEnterTransition = true
+            end
+        end
+    end
+
     -- 속도 기반 블렌드 입력 계산
     local TargetX = 0.0
     local TargetY = 0.0
 
     if MovementComp then
-        -- 월드 속도 가져오기
         local Velocity = MovementComp:GetVelocity()
         local MaxSpeed = MovementComp:GetMaxWalkSpeed()
 
         if MaxSpeed > 0.0 then
-            -- 캐릭터의 로컬 방향 벡터 가져오기
-            local Forward = GetActorForward(Obj)
-            local Right = GetActorRight(Obj)
+            local Forward = Obj:GetForward()
+            local Right = Obj:GetRight()
 
-            -- 월드 속도를 로컬 공간으로 변환 (내적 사용)
-            local LocalY = Velocity.X * Forward.X + Velocity.Y * Forward.Y  -- Forward/Backward
-            local LocalX = Velocity.X * Right.X + Velocity.Y * Right.Y      -- Left/Right
+            -- 월드 속도를 로컬 공간으로 변환
+            local LocalY = Velocity.X * Forward.X + Velocity.Y * Forward.Y
+            local LocalX = Velocity.X * Right.X + Velocity.Y * Right.Y
 
-            -- 최대 속도로 정규화 (-1 ~ 1)
+            -- 최대 속도로 정규화
             TargetX = math.max(-1.0, math.min(1.0, LocalX / MaxSpeed))
             TargetY = math.max(-1.0, math.min(1.0, LocalY / MaxSpeed))
         end
@@ -182,6 +231,9 @@ function EndPlay()
     BackwardAnim = nil
     LeftAnim = nil
     RightAnim = nil
+    JumpAnim = nil
+    TransitionToJump = nil
+    TransitionToLocomotion = nil
     CurrentX = 0.0
     CurrentY = 0.0
 end

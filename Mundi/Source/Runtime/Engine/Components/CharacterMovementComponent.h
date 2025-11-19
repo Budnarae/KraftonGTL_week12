@@ -10,11 +10,8 @@ class ACharacter;
  */
 enum class EMovementMode : uint8
 {
-	None,
 	Walking,
-	Falling,
-	Flying,
-	Swimming
+	Falling
 };
 
 /**
@@ -38,30 +35,54 @@ public:
 	virtual void TickComponent(float DeltaSeconds) override;
 
 	// Movement Actions
+	UFUNCTION(LuaBind, DisplayName="Jump")
 	virtual void Jump();
+
+	UFUNCTION(LuaBind, DisplayName="StopJumping")
 	virtual void StopJumping();
+
+	UFUNCTION(LuaBind, DisplayName="CanJump")
 	virtual bool CanJump() const;
-	virtual bool IsJumping() const { return bIsJumping; }
+
+	UFUNCTION(LuaBind, DisplayName="IsJumping")
+	bool IsJumping() const { return bIsJumping; }
 
 	// Movement State
+	UFUNCTION(LuaBind, DisplayName="IsMovingOnGround")
 	bool IsMovingOnGround() const { return MovementMode == EMovementMode::Walking; }
+
+	UFUNCTION(LuaBind, DisplayName="IsFalling")
 	bool IsFalling() const { return MovementMode == EMovementMode::Falling; }
-	bool IsFlying() const { return MovementMode == EMovementMode::Flying; }
 
 	EMovementMode GetMovementMode() const { return MovementMode; }
 	void SetMovementMode(EMovementMode NewMovementMode);
 
 	// Getters for movement properties
+	UFUNCTION(LuaBind, DisplayName="GetVelocity")
+	FVector GetVelocity() const { return Velocity; }
+
+	UFUNCTION(LuaBind, DisplayName="GetMaxWalkSpeed")
 	float GetMaxWalkSpeed() const { return MaxWalkSpeed; }
+
+	UFUNCTION(LuaBind, DisplayName="SetMaxWalkSpeed")
 	void SetMaxWalkSpeed(float NewMaxWalkSpeed) { MaxWalkSpeed = NewMaxWalkSpeed; }
 
+	UFUNCTION(LuaBind, DisplayName="GetMaxAcceleration")
 	float GetMaxAcceleration() const { return MaxAcceleration; }
+
+	UFUNCTION(LuaBind, DisplayName="SetMaxAcceleration")
 	void SetMaxAcceleration(float NewAcceleration) { MaxAcceleration = NewAcceleration; }
 
+	UFUNCTION(LuaBind, DisplayName="GetGravityZ")
 	float GetGravityZ() const { return GravityZ; }
+
+	UFUNCTION(LuaBind, DisplayName="SetGravityZ")
 	void SetGravityZ(float NewGravity) { GravityZ = NewGravity; }
 
+	UFUNCTION(LuaBind, DisplayName="GetJumpZVelocity")
 	float GetJumpZVelocity() const { return JumpZVelocity; }
+
+	UFUNCTION(LuaBind, DisplayName="SetJumpZVelocity")
 	void SetJumpZVelocity(float NewJumpVelocity) { JumpZVelocity = NewJumpVelocity; }
 
 	// Character reference
@@ -71,7 +92,6 @@ protected:
 	// Movement calculations
 	virtual void PerformMovement(float DeltaSeconds);
 	virtual void ApplyInputToVelocity(float DeltaSeconds);
-	virtual void ApplyFriction(float DeltaSeconds, float Friction);
 	virtual void ApplyGravity(float DeltaSeconds);
 	virtual void MoveUpdatedComponent(const FVector& Delta, float DeltaSeconds);
 
@@ -96,10 +116,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Character Movement: Walking")
 	float MaxAcceleration = 20.0f;  // 20 m/s²
-
-	UPROPERTY(EditAnywhere, Category="Character Movement: Walking")
-	float GroundFriction = 8.0f;
-
+	
 	UPROPERTY(EditAnywhere, Category="Character Movement: Walking")
 	float BrakingDecelerationWalking = 20.0f;  // 20 m/s²
 
@@ -109,12 +126,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Character Movement: Jumping/Falling")
 	float GravityZ = -9.8f;  // 9.8 m/s² (지구 중력)
-
-	UPROPERTY(EditAnywhere, Category="Character Movement: Jumping/Falling")
-	float AirControl = 0.2f;
-
-	UPROPERTY(EditAnywhere, Category="Character Movement: Jumping/Falling")
-	float FallingLateralFriction = 0.0f;
 
 	// Jump state
 	bool bIsJumping = false;

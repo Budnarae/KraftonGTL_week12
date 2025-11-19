@@ -28,6 +28,8 @@ ATempCharacter::ATempCharacter()
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
     CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
 
+    MovementComponent->SetGravityZ(-16.f);
+    
     // Lua 스크립트 컴포넌트 생성 (애니메이션 처리용)
     ULuaScriptComponent* ScriptComp = CreateDefaultSubobject<ULuaScriptComponent>("LuaScript");
     ScriptComp->SetScriptFilePath("Content/Scripts/TempCharacter.lua");

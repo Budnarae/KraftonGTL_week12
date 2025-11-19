@@ -37,12 +37,9 @@ BEGIN_PROPERTIES(UCharacterMovementComponent)
     MARK_AS_COMPONENT("캐릭터 무브먼트", "캐릭터의 이동을 처리하는 컴포넌트")
     ADD_PROPERTY(float, MaxWalkSpeed, "Character Movement: Walking", true)
     ADD_PROPERTY(float, MaxAcceleration, "Character Movement: Walking", true)
-    ADD_PROPERTY(float, GroundFriction, "Character Movement: Walking", true)
     ADD_PROPERTY(float, BrakingDecelerationWalking, "Character Movement: Walking", true)
     ADD_PROPERTY(float, JumpZVelocity, "Character Movement: Jumping/Falling", true)
     ADD_PROPERTY(float, GravityZ, "Character Movement: Jumping/Falling", true)
-    ADD_PROPERTY(float, AirControl, "Character Movement: Jumping/Falling", true)
-    ADD_PROPERTY(float, FallingLateralFriction, "Character Movement: Jumping/Falling", true)
     ADD_PROPERTY(int32, JumpMaxCount, "Character Movement: Jumping/Falling", true)
 END_PROPERTIES()
 
@@ -52,7 +49,35 @@ extern "C" void LuaBind_Anchor_UCharacterMovementComponent() {}
 
 LUA_BIND_BEGIN(UCharacterMovementComponent)
 {
-    // No functions to bind
+    AddMethodR<virtual void, UCharacterMovementComponent>(
+        T, "Jump", &UCharacterMovementComponent::Jump);
+    AddMethodR<virtual void, UCharacterMovementComponent>(
+        T, "StopJumping", &UCharacterMovementComponent::StopJumping);
+    AddMethodR<virtual bool, UCharacterMovementComponent>(
+        T, "CanJump", &UCharacterMovementComponent::CanJump);
+    AddMethodR<bool, UCharacterMovementComponent>(
+        T, "IsJumping", &UCharacterMovementComponent::IsJumping);
+    AddMethodR<bool, UCharacterMovementComponent>(
+        T, "IsMovingOnGround", &UCharacterMovementComponent::IsMovingOnGround);
+    AddMethodR<bool, UCharacterMovementComponent>(
+        T, "IsFalling", &UCharacterMovementComponent::IsFalling);
+    AddMethodR<FVector, UCharacterMovementComponent>(
+        T, "GetVelocity", &UCharacterMovementComponent::GetVelocity);
+    AddMethodR<float, UCharacterMovementComponent>(
+        T, "GetMaxWalkSpeed", &UCharacterMovementComponent::GetMaxWalkSpeed);
+    AddAlias<UCharacterMovementComponent, float>(
+        T, "SetMaxWalkSpeed", &UCharacterMovementComponent::SetMaxWalkSpeed);
+    AddMethodR<float, UCharacterMovementComponent>(
+        T, "GetMaxAcceleration", &UCharacterMovementComponent::GetMaxAcceleration);
+    AddAlias<UCharacterMovementComponent, float>(
+        T, "SetMaxAcceleration", &UCharacterMovementComponent::SetMaxAcceleration);
+    AddMethodR<float, UCharacterMovementComponent>(
+        T, "GetGravityZ", &UCharacterMovementComponent::GetGravityZ);
+    AddAlias<UCharacterMovementComponent, float>(
+        T, "SetGravityZ", &UCharacterMovementComponent::SetGravityZ);
+    AddMethodR<float, UCharacterMovementComponent>(
+        T, "GetJumpZVelocity", &UCharacterMovementComponent::GetJumpZVelocity);
+    AddAlias<UCharacterMovementComponent, float>(
+        T, "SetJumpZVelocity", &UCharacterMovementComponent::SetJumpZVelocity);
 }
 LUA_BIND_END()
-

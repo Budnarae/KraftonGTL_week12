@@ -64,6 +64,7 @@ FLuaManager::FLuaManager()
         "Velocity", &FGameObject::Velocity,
         "PrintLocation", &FGameObject::PrintLocation,
         "GetForward", &FGameObject::GetForward,
+        "GetRight", &FGameObject::GetRight,
         "GetOwner", &FGameObject::GetOwner
     );
     

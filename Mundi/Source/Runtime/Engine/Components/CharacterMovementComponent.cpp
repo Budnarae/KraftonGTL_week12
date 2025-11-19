@@ -70,11 +70,6 @@ void UCharacterMovementComponent::PerformMovement(float DeltaSeconds)
 	{
 		ApplyGravity(DeltaSeconds);
 	}
-	else
-	{
-		// Apply ground friction
-		ApplyFriction(DeltaSeconds, GroundFriction);
-	}
 
 	// Calculate delta movement
 	FVector Delta = Velocity * DeltaSeconds;
@@ -109,12 +104,6 @@ void UCharacterMovementComponent::ApplyInputToVelocity(float DeltaSeconds)
 		InputVector = InputVector.GetNormalized();
 		FVector DesiredAcceleration = InputVector * MaxAcceleration;
 
-		// Apply air control reduction if falling
-		if (IsFalling())
-		{
-			DesiredAcceleration *= AirControl;
-		}
-
 		// Add to velocity
 		Velocity.X += DesiredAcceleration.X * DeltaSeconds;
 		Velocity.Y += DesiredAcceleration.Y * DeltaSeconds;
@@ -146,35 +135,9 @@ void UCharacterMovementComponent::ApplyInputToVelocity(float DeltaSeconds)
 	}
 }
 
-void UCharacterMovementComponent::ApplyFriction(float DeltaSeconds, float Friction)
-{
-	if (Friction <= 0.0f)
-	{
-		return;
-	}
-
-	FVector HorizontalVelocity(Velocity.X, Velocity.Y, 0.0f);
-	float CurrentSpeed = HorizontalVelocity.Size();
-
-	if (CurrentSpeed > 0.0f)
-	{
-		float FrictionForce = Friction * DeltaSeconds;
-		float NewSpeed = FMath::Max(0.0f, CurrentSpeed - FrictionForce * CurrentSpeed);
-		float SpeedRatio = NewSpeed / CurrentSpeed;
-		Velocity.X *= SpeedRatio;
-		Velocity.Y *= SpeedRatio;
-	}
-}
-
 void UCharacterMovementComponent::ApplyGravity(float DeltaSeconds)
 {
 	Velocity.Z += GravityZ * DeltaSeconds;
-
-	// Apply falling lateral friction
-	if (FallingLateralFriction > 0.0f)
-	{
-		ApplyFriction(DeltaSeconds, FallingLateralFriction);
-	}
 }
 
 void UCharacterMovementComponent::MoveUpdatedComponent(const FVector& Delta, float DeltaSeconds)
@@ -232,10 +195,7 @@ float UCharacterMovementComponent::GetMaxSpeed() const
 	switch (MovementMode)
 	{
 	case EMovementMode::Walking:
-		return MaxWalkSpeed;
 	case EMovementMode::Falling:
-		return MaxWalkSpeed;
-	case EMovementMode::Flying:
 		return MaxWalkSpeed;
 	default:
 		return 0.0f;
