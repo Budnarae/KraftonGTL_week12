@@ -55,10 +55,10 @@ local function build_blend_space(state)
     add_sample(RightAnim, 2, 1)     -- Right (X = 1)
 
     -- 대각선 (가장 가까운 방향 애니메이션으로 채움)
-    add_sample(ForwardAnim, 0, 2)   -- Forward-Left
-    add_sample(ForwardAnim, 2, 2)   -- Forward-Right
-    add_sample(BackwardAnim, 0, 0)  -- Backward-Left
-    add_sample(BackwardAnim, 2, 0)  -- Backward-Right
+    -- add_sample(ForwardAnim, 0, 2)   -- Forward-Left
+    -- add_sample(ForwardAnim, 2, 2)   -- Forward-Right
+    -- add_sample(BackwardAnim, 0, 0)  -- Backward-Left
+    -- add_sample(BackwardAnim, 2, 0)  -- Backward-Right
 
     BlendSpaceNode.EaseFunction = EAnimBlendEaseType.EaseInOut
     return true

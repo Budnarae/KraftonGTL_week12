@@ -473,6 +473,33 @@ void FAnimNode_BlendSpace1D::CalculateSampleWeights()
     }
 }
 
+void FAnimNode_BlendSpace1D::UpdateRangeFromSamples()
+{
+    if (Samples.Num() == 0)
+    {
+        if (!bHasManualMin)
+        {
+            MinimumPosition = 0.0f;
+        }
+
+        if (!bHasManualMax)
+        {
+            MaximumPosition = 1.0f;
+        }
+        return;
+    }
+
+    if (!bHasManualMin)
+    {
+        MinimumPosition = Samples[0].Position;
+    }
+
+    if (!bHasManualMax)
+    {
+        MaximumPosition = Samples.Last().Position;
+    }
+}
+
 void FAnimNode_BlendSpace1D::SimpleSynchronizeSampleTimes()
 {
     if (bIsTimeSynchronized) { return; }
@@ -587,6 +614,7 @@ void FAnimNode_BlendSpace2D::Update(const FAnimationUpdateContext& Context)
 {
     if (Samples.Num() == 0) { return; }
 
+    // AdvancedCalculateSampleWeights();
     CalculateSampleWeights();
 
     if (bIsTimeSynchronized)
@@ -671,10 +699,58 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
     const bool bSingleY = (LowerYIndex == UpperYIndex);
 
     const int32 NumGridX = NumX;
+    const int32 NumGridY = NumY;
 
     auto GetSampleIndex = [NumGridX](int32 XIndex, int32 YIndex)
     {
         return XIndex + YIndex * NumGridX;
+    };
+
+    auto RedistributeMissingWeights = [this, NumGridX, NumGridY]()
+    {
+        auto TryGatherNeighbor = [&](TArray<int32>& NeighborIndices, int32 XIndex, int32 YIndex)
+        {
+            if (XIndex < 0 || XIndex >= NumGridX || YIndex < 0 || YIndex >= NumGridY)
+            {
+                return;
+            }
+
+            const int32 NeighborIndex = XIndex + YIndex * NumGridX;
+            if (Samples[NeighborIndex].SequenceNode)
+            {
+                NeighborIndices.Add(NeighborIndex);
+            }
+        };
+
+        for (int32 SampleIndex = 0; SampleIndex < Samples.Num(); ++SampleIndex)
+        {
+            FBlendSample2D& Sample = Samples[SampleIndex];
+            if (Sample.Weight <= KINDA_SMALL_NUMBER || Sample.SequenceNode)
+            {
+                continue;
+            }
+
+            TArray<int32> AliveNeighbors;
+            AliveNeighbors.Reserve(4);
+
+            TryGatherNeighbor(AliveNeighbors, Sample.GridXIndex - 1, Sample.GridYIndex);
+            TryGatherNeighbor(AliveNeighbors, Sample.GridXIndex + 1, Sample.GridYIndex);
+            TryGatherNeighbor(AliveNeighbors, Sample.GridXIndex, Sample.GridYIndex - 1);
+            TryGatherNeighbor(AliveNeighbors, Sample.GridXIndex, Sample.GridYIndex + 1);
+
+            if (AliveNeighbors.Num() == 0)
+            {
+                continue;
+            }
+
+            const float WeightShare = Sample.Weight / AliveNeighbors.Num();
+            Sample.Weight = 0.0f;
+
+            for (int32 NeighborIndex : AliveNeighbors)
+            {
+                Samples[NeighborIndex].Weight += WeightShare;
+            }
+        }
     };
 
     if (bSingleX && bSingleY)
@@ -682,6 +758,7 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
         // 딱 하나의 격자 포인트
         const int32 SampleIndex = GetSampleIndex(LowerXIndex, LowerYIndex);
         Samples[SampleIndex].Weight = 1.0f;
+        RedistributeMissingWeights();
         return;
     }
 
@@ -693,6 +770,7 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
 
         Samples[SampleIndexBottom].Weight = 1.0f - YAlpha;
         Samples[SampleIndexTop].Weight = YAlpha;
+        RedistributeMissingWeights();
         return;
     }
 
@@ -704,6 +782,7 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
 
         Samples[SampleIndexLeft].Weight = 1.0f - XAlpha;
         Samples[SampleIndexRight].Weight = XAlpha;
+        RedistributeMissingWeights();
         return;
     }
     
@@ -722,6 +801,78 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
     Samples[SampleIndexBottomRight].Weight = WeightBottomRight;
     Samples[SampleIndexTopLeft].Weight = WeightTopLeft;
     Samples[SampleIndexTopRight].Weight = WeightTopRight;
+
+    RedistributeMissingWeights();
+}
+
+void FAnimNode_BlendSpace2D::AdvancedCalculateSampleWeights()
+{
+    if (Samples.Num() == 0) { return; }
+
+    // 1) 모든 Weight 초기화
+    for (FBlendSample2D& Sample : Samples) { Sample.Weight = 0.0f; }
+
+    // 2) 각 샘플까지의 거리 계산
+    struct FIndexAndDist
+    {
+        int32 Index;
+        float DistanceSquared;
+    };
+
+    TArray<FIndexAndDist> Distances;
+    Distances.Reserve(Samples.Num());
+
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
+    {
+        const FBlendSample2D& Sample = Samples[Index];
+        if (!Sample.SequenceNode) { continue; }
+
+        const float DX = BlendInputX - Sample.GridXIndex;
+        const float DY = BlendInputY - Sample.GridYIndex;
+        const float DistSq = DX * DX + DY * DY;
+
+        Distances.Add({ Index, DistSq });
+    }
+
+    if (Distances.Num() == 0) { return; }
+
+    Distances.Sort(
+        [](const FIndexAndDist& A, const FIndexAndDist& B)
+        {
+            return A.DistanceSquared < B.DistanceSquared;
+        }
+    );
+
+    const int32 MaxSamples = 4;
+    const int32 NumToUse = std::min(MaxSamples, Distances.Num());
+
+    // 3. 거리 기반으로 Weight 주기(Shepard Interpolation, 1/distance*power)
+    // 그러나 현재는 Grid 방식이기 때문에 distSq > 2인 건 버린다. -> 반대쪽 Animation이 포함되는 걸 방지
+    constexpr float Epsilon = 1e-4f;
+    constexpr float Power = 1.0f;
+    const float DistLimit = 2;
+    float WeightSum = 0.0f;
+    for (int32 Idx = 0; Idx < NumToUse; Idx++)
+    {
+        const float DistSq = Distances[Idx].DistanceSquared;
+        if (DistSq >= DistLimit) continue;
+        const float W = 1.0f / std::pow(DistSq + Epsilon, Power * 0.5f);
+
+        Samples[Distances[Idx].Index].Weight = W;
+        WeightSum += W;
+    }
+
+    if (WeightSum > KINDA_SMALL_NUMBER)
+    {
+        for (int32 I = 0; I < NumToUse; ++I)
+        {
+            const float DistSq = Distances[I].DistanceSquared;
+            if (DistSq >= DistLimit) continue;
+
+            const int32 SampleIndex = Distances[I].Index;
+            Samples[SampleIndex].Weight /= WeightSum;
+        }
+    }
 }
 
 void FAnimNode_BlendSpace2D::SimpleSynchronizeSampleTimes()
@@ -787,29 +938,5 @@ void FAnimNode_BlendSpace2D::SynchronizeSampleTimes()
             Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);
         }
     }
-}void FAnimNode_BlendSpace1D::UpdateRangeFromSamples()
-{
-    if (Samples.Num() == 0)
-    {
-        if (!bHasManualMin)
-        {
-            MinimumPosition = 0.0f;
-        }
-
-        if (!bHasManualMax)
-        {
-            MaximumPosition = 1.0f;
-        }
-        return;
-    }
-
-    if (!bHasManualMin)
-    {
-        MinimumPosition = Samples[0].Position;
-    }
-
-    if (!bHasManualMax)
-    {
-        MaximumPosition = Samples.Last().Position;
-    }
 }
+

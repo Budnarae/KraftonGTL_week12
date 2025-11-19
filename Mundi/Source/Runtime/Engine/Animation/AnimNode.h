@@ -335,6 +335,7 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
 
 private:
     void CalculateSampleWeights();
+    void AdvancedCalculateSampleWeights(); // 사실 상 안 쓰임! 쓸 사람 고쳐서 쓰셈.
     void SynchronizeSampleTimes();
     void SimpleSynchronizeSampleTimes();
 };

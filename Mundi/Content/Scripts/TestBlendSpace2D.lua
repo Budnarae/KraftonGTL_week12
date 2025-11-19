@@ -27,6 +27,13 @@ local BackwardAnim = nil
 local LeftAnim = nil
 local RightAnim = nil
 
+local FallingAnim = nil
+
+local RightForwardAnim = nil
+local LeftBackAnim = nil
+local RightBackAnim = nil
+local LeftForwardAnim = nil
+
 local function apply_ease(index)
     if not BlendSpaceNode then
         return
@@ -83,10 +90,10 @@ local function update_blend_inputs(deltaTime)
     --     InputY = math.cos(AutoTimer * 0.75)
     -- else
         local delta = deltaTime * 2.0
-        if InputManager:IsKeyDown('H') then
+        if InputManager:IsKeyDown('F') then
             InputX = InputX + delta
         end
-        if InputManager:IsKeyDown('F') then
+        if InputManager:IsKeyDown('H') then
             InputX = InputX - delta
         end
         if InputManager:IsKeyDown('T') then
@@ -133,10 +140,10 @@ local function build_blend_space(state)
     add_sample(RightAnim,    2, 1)
 
     -- Fill diagonal cells with the closest directional clips to keep interpolation stable.
-    add_sample(BackwardAnim, 0, 0)
-    add_sample(BackwardAnim, 2, 0)
-    add_sample(ForwardAnim,  0, 2)
-    add_sample(ForwardAnim,  2, 2)
+    add_sample(LeftBackAnim, 0, 0)
+    add_sample(RightBackAnim, 2, 0)
+    add_sample(LeftForwardAnim,  0, 2)
+    add_sample(RightForwardAnim,  2, 2)
 
     apply_ease(CurrentEaseIndex)
     return true
@@ -158,7 +165,15 @@ function BeginPlay()
     LeftAnim     = LoadAnimationSequence("Left Strafe Walk_mixamo.com")
     RightAnim    = LoadAnimationSequence("Right Strafe Walk_mixamo.com")
 
-    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim) then
+    FallingAnim = LoadAnimationSequence("Falling Idle_mixamo.com")
+
+    LeftForwardAnim = LoadAnimationSequence("Jog Forward Diagonal Left_mixamo.com")
+    RightForwardAnim = LoadAnimationSequence("Jog Forward Diagonal Right_mixamo.com")
+    LeftBackAnim = LoadAnimationSequence("Jog Backward Diagonal Left_mixamo.com")
+    RightBackAnim = LoadAnimationSequence("Jog Backward Diagonal Right_mixamo.com")
+
+    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim and FallingAnim
+            and LeftForwardAnim and RightForwardAnim and LeftBackAnim and RightBackAnim) then
         print("[TestBlendSpace2D] Failed to load required animations")
         return
     end
