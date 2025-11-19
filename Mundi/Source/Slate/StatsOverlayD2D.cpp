@@ -412,7 +412,7 @@ void UStatsOverlayD2D::Draw()
 		D2D1_RECT_F rc = D2D1::RectF(
 			Margin,
 			NextY,
-			Margin + PanelWidth,
+			Margin + PanelWidth + 50.f,
 			NextY + skinningPanelHeight
 		);
 
