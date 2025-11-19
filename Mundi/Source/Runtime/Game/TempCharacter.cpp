@@ -30,6 +30,8 @@ ATempCharacter::ATempCharacter()
     CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
 
     MovementComponent->SetGravityZ(-16.f);
+    MovementComponent->SetMaxWalkSpeed(2.5f);
+
     
     // Box 충돌 컴포넌트 생성 (RootComponent에 부착)
     BoxCollider = CreateDefaultSubobject<UBoxComponent>("BoxCollider");

@@ -209,7 +209,7 @@ void UAnimInstance::PostUpdateAnimation()
             // Notify 실행 (조건이 맞으면 실행)
             if (bShouldTrigger)
             {
-                Notify->Notify();
+                 Notify->Notify();
             }
         }
 
