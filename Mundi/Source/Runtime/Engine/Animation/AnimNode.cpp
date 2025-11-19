@@ -892,12 +892,29 @@ void FAnimNode_BlendSpace2D::SimpleSynchronizeSampleTimes()
         }
     }
 
+    float Weight = 0.0f;
+    int32 Index = -1;
     for (int i = 0; i < Samples.Num(); i++)
     {
+        Samples[i].SequenceNode->IsUsingSoundNotify = true;
+        if (Weight < Samples[i].Weight)
+        {
+            Weight = Samples[i].Weight;
+            Index = i;
+        }
+    }
+
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        Samples[i].SequenceNode->IsUsingSoundNotify = false;
         if (Samples[i].Weight == 0) //|| i == MasterIndex)
+        {
             continue;
+        }
+
         Samples[i].SequenceNode->SetPlayRate(MaxPlayTime);
     }
+    Samples[Index].SequenceNode->IsUsingSoundNotify = true;
 }
 
 void FAnimNode_BlendSpace2D::SynchronizeSampleTimes()

@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimInstance.h"
 #include "SkeletalMeshComponent.h"
 #include "LuaScriptComponent.h"
@@ -146,6 +146,8 @@ void UAnimInstance::PostUpdateAnimation()
     {
         FAnimNode_Sequence* AnimNode_Sequence = dynamic_cast<FAnimNode_Sequence*>(AnimNode);
         if (!AnimNode_Sequence) continue;
+
+        if (!AnimNode_Sequence->IsUsingSoundNotify) continue;
 
         // 현재 애니메이션의 AnimNotify 목록 가져오기
         const TArray<UAnimNotify*>& AnimNotifies = AnimNode_Sequence->Sequence->GetAnimNotifies();

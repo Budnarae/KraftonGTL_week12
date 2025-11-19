@@ -25,6 +25,7 @@ struct FAnimNode_Sequence : FAnimNode_Base
     float LastTime = 0.0f;
     float PlayRate = 1.0f;
     bool bLooping = true;
+    bool IsUsingSoundNotify = true;
 
     void EndPlay()
     {

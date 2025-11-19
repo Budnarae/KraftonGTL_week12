@@ -137,8 +137,8 @@ function BeginPlay()
     RightBackAnim = LoadAnimationSequence("Jog Backward Diagonal Right_mixamo.com")
 
     JumpAnim     = LoadAnimationSequence("Jumping_mixamo.com")
-    DizzyAnim    = LoadAnimationSequence("CactusPA_Cactus_Dizzy")
-    DizzyAnim2 = LoadAnimationSequence("CactusPA_Cactus_GetHit")
+    DizzyAnim    = LoadAnimationSequence("Flying Back Death")
+    DizzyAnim2 = LoadAnimationSequence("Flying Back Death")
 
     if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim and DizzyAnim and DizzyAnim2 and JumpAnim) then
         print("[TempCharacter] Failed to load Cactus animations")
