@@ -369,21 +369,48 @@ struct FAnimNode_AdditiveBlend : public FAnimNode_Base
         const int32 BoneCount = Base.EvaluatedPoses.Num();
         Out.EvaluatedPoses.SetNum(BoneCount);
 
-        for (int i = 0; i < BoneCount;i++)
+        // 기존 구현 (Lerp 방식 - 런타임에 차이 계산)
+        // Base를 Reference Pose로 간주하고 차이를 계산 후 적용
+        // Result = Base + ((Additive - Base) * Alpha) = Lerp(Base, Additive, Alpha)
+        // for (int i = 0; i < BoneCount;i++)
+        // {
+        //     const FTransform& BTrans = Base.EvaluatedPoses[i];
+        //     const FTransform& ATrans = Add.EvaluatedPoses[i];
+        //
+        //     const FQuat DeltaRot = ATrans.Rotation * BTrans.Rotation.Inverse();
+        //     const FVector DeltaPos = (ATrans.Translation - BTrans.Translation);
+        //     const FVector DeltaScale = (ATrans.Scale3D / BTrans.Scale3D);
+        //
+        //     FQuat WeightedDelta = FQuat::Slerp(FQuat::Identity(), DeltaRot, Alpha);
+        //     Out.EvaluatedPoses[i].Rotation = WeightedDelta * BTrans.Rotation;
+        //
+        //     Out.EvaluatedPoses[i].Translation = BTrans.Translation + (DeltaPos * Alpha);
+        //
+        //     Out.EvaluatedPoses[i].Scale3D = BTrans.Scale3D * FVector::Lerp(FVector(1, 1, 1), DeltaScale, Alpha);
+        // }
+
+        // // 새로운 구현 (진짜 Additive - Add가 이미 계산된 차이 포즈라고 가정)
+        // // Add = SourceAnimation - ReferencePose (오프라인에서 계산됨)
+        // // Result = (1 - Alpha) * Target + Alpha * (Target + Additive)
+        // //        = Target + Alpha * Additive
+        for (int i = 0; i < BoneCount; i++)
         {
-            const FTransform& BTrans = Base.EvaluatedPoses[i];
-            const FTransform& ATrans = Add.EvaluatedPoses[i];
-
-            const FQuat DeltaRot = ATrans.Rotation * BTrans.Rotation.Inverse();
-            const FVector DeltaPos = (ATrans.Translation - BTrans.Translation);
-            const FVector DeltaScale = (ATrans.Scale3D / BTrans.Scale3D);
-
-            FQuat WeightedDelta = FQuat::Slerp(FQuat::Identity(), DeltaRot, Alpha);
-            Out.EvaluatedPoses[i].Rotation = WeightedDelta * BTrans.Rotation;
-
-            Out.EvaluatedPoses[i].Translation = BTrans.Translation + (DeltaPos * Alpha);
-
-            Out.EvaluatedPoses[i].Scale3D = BTrans.Scale3D * FVector::Lerp(FVector(1, 1, 1), DeltaScale, Alpha);
+            const FTransform& TargetTrans = Base.EvaluatedPoses[i];
+            const FTransform& AdditiveTrans = Add.EvaluatedPoses[i];
+        
+            // Rotation: (1 - Alpha) * Target + Alpha * (Target * Additive)
+            // = Target * Slerp(Identity, Additive, Alpha)
+            FQuat AdditiveRot = FQuat::Slerp(FQuat::Identity(), AdditiveTrans.Rotation, Alpha);
+            Out.EvaluatedPoses[i].Rotation = TargetTrans.Rotation * AdditiveRot;
+        
+            // Translation: (1 - Alpha) * Target + Alpha * (Target + Additive)
+            // = Target + Alpha * Additive
+            Out.EvaluatedPoses[i].Translation = TargetTrans.Translation + (AdditiveTrans.Translation * Alpha);
+        
+            // Scale: (1 - Alpha) * Target + Alpha * (Target * Additive)
+            // = Target * Lerp(1, Additive, Alpha)
+            FVector AdditiveScale = FVector::Lerp(FVector(1, 1, 1), AdditiveTrans.Scale3D, Alpha);
+            Out.EvaluatedPoses[i].Scale3D = TargetTrans.Scale3D * AdditiveScale;
         }
     }
 };
