@@ -58,6 +58,7 @@ public:
 
     void AddAnimNotify(UAnimNotify* InNotify);
     void RemoveAnimNotify(UAnimNotify* InNotify);
+    void ClearAnimNotifies() { AnimNotifies.Empty(); }
     const TArray<UAnimNotify*>& GetAnimNotifies() const { return AnimNotifies; }
     int32 GetAnimNotifyCount() const { return AnimNotifies.Num(); }
 
@@ -67,6 +68,7 @@ public:
 
     void AddAnimNotifyState(UAnimNotifyState* InNotifyState);
     void RemoveAnimNotifyState(UAnimNotifyState* InNotifyState);
+    void ClearAnimNotifyStates() { AnimNotifyStates.Empty(); }
     const TArray<UAnimNotifyState*>& GetAnimNotifyStates() const { return AnimNotifyStates; }
     int32 GetAnimNotifyStateCount() const { return AnimNotifyStates.Num(); }
 private:
