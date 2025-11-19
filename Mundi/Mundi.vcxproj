@@ -317,6 +317,7 @@
     <Content Include="Content\Scripts\Apple.lua" />
     <Content Include="Content\Scripts\AppleManager.lua" />
     <Content Include="Content\Scripts\BoomEffect.lua" />
+    <Content Include="Content\Scripts\CameraShakeJames.lua" />
     <Content Include="Content\Scripts\CGCAttack.lua" />
     <Content Include="Content\Scripts\CGCWeapon.lua" />
     <Content Include="Content\Scripts\coach.lua" />
@@ -343,6 +344,7 @@
     <Content Include="Content\Scripts\Tile.lua" />
     <Content Include="Content\Scripts\TileMap.lua" />
     <Content Include="Content\Scripts\UIManager.lua" />
+    <Content Include="Content\Scripts\WalkingJames.lua" />
     <Content Include="Shaders\PostProcess\FadeInOut_PS.hlsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

@@ -5,6 +5,7 @@
 #include "StatsOverlayD2D.h"
 #include "USlateManager.h"
 #include "Source/Runtime/Core/ErrorHandle/ErrorHandle.h"
+#include "SkinnedMeshComponent.h"
 
 #include <windows.h>
 #include <cstdarg>
@@ -57,6 +58,8 @@ void UConsoleWidget::Initialize()
 	HelpCommandList.Add("STAT LIGHT");
 	HelpCommandList.Add("STAT SHADOW");
 	HelpCommandList.Add("STAT SKINNING");
+	HelpCommandList.Add("GPU SKINNING");
+	HelpCommandList.Add("CPU SKINNING");
 
 	// Add welcome messages
 	AddLog("=== Console Widget Initialized ===");
@@ -354,6 +357,16 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 	{
 		UStatsOverlayD2D::Get().ToggleSkinning();
 		AddLog("STAT SKINNING TOGGLED");
+	}
+	else if (Stricmp(command_line, "GPU SKINNING") == 0)
+	{
+		USkinnedMeshComponent::SetGlobalGpuSkinningEnabled(true);
+		AddLog("GPU SKINNING CHANGED");
+	}
+	else if (Stricmp(command_line, "CPU SKINNING") == 0)
+	{
+		USkinnedMeshComponent::SetGlobalGpuSkinningEnabled(false);
+		AddLog("CPU SKINNING CHANGED");
 	}
 	else if (Stricmp(command_line, "STAT ALL") == 0)
 	{
