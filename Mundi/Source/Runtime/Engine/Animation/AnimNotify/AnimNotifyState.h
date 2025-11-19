@@ -27,7 +27,7 @@ public:
     float GetDurationTime();
     void SetDurationTime(float InDurationTime);
 
-    bool GetEndAlreadtCalled();
+    bool GetEndAlreadyCalled();
 protected:
     FName Name{};
     float StartTime{};

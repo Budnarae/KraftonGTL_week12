@@ -9,12 +9,6 @@ void URotatingAnimNotifyState::NotifyBegin()
     UAnimNotifyState::NotifyBegin();
 
     UE_LOG("[RotatingAnimNotifyState] NotifyBegin: Rotation started");
-
-    if (Owner)
-    {
-        // 초기 회전값 저장 (Quaternion)
-        InitialRotation = Owner->GetActorRotation();
-    }
 }
 
 void URotatingAnimNotifyState::NotifyTick()
@@ -57,6 +51,12 @@ AActor* URotatingAnimNotifyState::GetOwner()
 void URotatingAnimNotifyState::SetOwner(AActor* InOwner)
 {
     Owner = InOwner;
+
+    if (Owner)
+    {
+        // 초기 회전값 저장 (Quaternion)
+        InitialRotation = Owner->GetActorRotation();
+    }
 }
 
 FVector URotatingAnimNotifyState::GetRotationPerTick()
