@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "LuaManager.h"
 #include "LuaComponentProxy.h"
 #include "GameObject.h"
@@ -415,7 +415,8 @@ FLuaManager::FLuaManager()
             [](FAnimState& self, UAnimationSequence* seq, bool bLoop) { return self.CreateSequenceNode(seq, bLoop); }
         ),
         "CreateBlendSpace1DNode", &FAnimState::CreateBlendSpace1DNode,
-        "CreateBlendSpace2DNode", &FAnimState::CreateBlendSpace2DNode
+        "CreateBlendSpace2DNode", &FAnimState::CreateBlendSpace2DNode,
+        "CreateAdditiveBlendNode", &FAnimState::CreateAdditiveBlendNode
     );
 
     // FAnimationUpdateContext 생성자 함수 등록 (전역과 SharedLib 모두)
@@ -541,22 +542,22 @@ FLuaManager::FLuaManager()
     SharedLib.new_usertype<FAnimNode_BlendSpace1D>("FAnimNode_BlendSpace1D",
         sol::constructors<FAnimNode_BlendSpace1D()>(),
         sol::base_classes, sol::bases<FAnimNode_Base>(),
+        "EaseFunction", sol::property(
+            [](const FAnimNode_BlendSpace1D& Self) { return Self.EaseFunction; },
+            [](FAnimNode_BlendSpace1D& Self, EAnimBlendEaseType Value) { Self.EaseFunction = Value; }
+        ),
         "SetBlendInput", &FAnimNode_BlendSpace1D::SetBlendInput,
         "AddSample", [](FAnimNode_BlendSpace1D& self, FAnimNode_Sequence* Node, float Position)
         {
             self.AddSample(Node, Position);
         },
-        "MinimumPosition", sol::property(
+        "SetMinimumPosition", sol::property(
             [](const FAnimNode_BlendSpace1D& Self) { return Self.MinimumPosition; },
             [](FAnimNode_BlendSpace1D& Self, float Value) { Self.SetMinimumPosition(Value); }
         ),
-        "MaximumPosition", sol::property(
+        "SetMaximumPosition", sol::property(
             [](const FAnimNode_BlendSpace1D& Self) { return Self.MaximumPosition; },
             [](FAnimNode_BlendSpace1D& Self, float Value) { Self.SetMaximumPosition(Value); }
-        ),
-        "IsTimeSynchronized", sol::property(
-            [](const FAnimNode_BlendSpace1D& Self) { return Self.bIsTimeSynchronized; },
-            [](FAnimNode_BlendSpace1D& Self, bool bValue) { Self.bIsTimeSynchronized = bValue; }
         ),
         "Update", &FAnimNode_BlendSpace1D::Update,
         "Evaluate", &FAnimNode_BlendSpace1D::Evaluate
@@ -566,6 +567,10 @@ FLuaManager::FLuaManager()
     SharedLib.new_usertype<FAnimNode_BlendSpace2D>("FAnimNode_BlendSpace2D",
         sol::constructors<FAnimNode_BlendSpace2D()>(),
         sol::base_classes, sol::bases<FAnimNode_Base>(),
+        "EaseFunction", sol::property(
+            [](const FAnimNode_BlendSpace2D& Self) { return Self.EaseFunction; },
+            [](FAnimNode_BlendSpace2D& Self, EAnimBlendEaseType Value) { Self.EaseFunction = Value; }
+        ),
         "SetBlendInput", [](FAnimNode_BlendSpace2D& Self, float InX, float InY)
         {
             Self.SetBlendInput(InX, InY);
@@ -601,13 +606,25 @@ FLuaManager::FLuaManager()
         {
             Self.AddSample(Node, XIndex, YIndex);
         },
-        "IsTimeSynchronized", sol::property(
-            [](const FAnimNode_BlendSpace2D& Self) { return Self.bIsTimeSynchronized; },
-            [](FAnimNode_BlendSpace2D& Self, bool bValue) { Self.bIsTimeSynchronized = bValue; }
-        ),
         "Update", &FAnimNode_BlendSpace2D::Update,
         "Evaluate", &FAnimNode_BlendSpace2D::Evaluate
     );
+    SharedLib.new_usertype<FAnimNode_AdditiveBlend>("FAnimNode_AdditiveBlend",
+        sol::constructors<FAnimNode_AdditiveBlend()>(),
+        sol::base_classes, sol::bases<FAnimNode_Base>(),
+        "SetBasePose", [](FAnimNode_AdditiveBlend& Self, FAnimNode_Base* Node) { Self.BasePose = Node; },
+        "SetAdditivePose", [](FAnimNode_AdditiveBlend& Self, FAnimNode_Base* Node) { Self.AdditivePose = Node; },
+        "GetBasePose", [](FAnimNode_AdditiveBlend& Self) { return Self.BasePose; },
+        "GetAdditivePose", [](FAnimNode_AdditiveBlend& Self) { return Self.AdditivePose; },
+        "Alpha", sol::property(
+            [](const FAnimNode_AdditiveBlend& Self) { return Self.Alpha; },
+            [](FAnimNode_AdditiveBlend& Self, float Value) { Self.Alpha = Value; }
+        ),
+        "Update", &FAnimNode_AdditiveBlend::Update,
+        "Evaluate", &FAnimNode_AdditiveBlend::Evaluate
+    );
+
+
     SharedLib.new_enum<EAnimBlendEaseType>("EAnimBlendEaseType",
         {
             {"Linear", EAnimBlendEaseType::Linear},

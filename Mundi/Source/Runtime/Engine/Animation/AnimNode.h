@@ -13,7 +13,6 @@ enum class EAnimBlendEaseType : uint8
 
 float ApplyAnimBlendEase(float Alpha, EAnimBlendEaseType EaseType);
 
-
 struct FAnimNode_Base {
 	virtual void Update(const FAnimationUpdateContext& Context) = 0;
 	virtual void Evaluate(FPoseContext& Output) = 0;
@@ -387,6 +386,11 @@ struct FAnimState
     FAnimNode_BlendSpace2D* CreateBlendSpace2DNode()
     {
         return CreateNode<FAnimNode_BlendSpace2D>();
+    }
+
+    FAnimNode_AdditiveBlend* CreateAdditiveBlendNode()
+    {
+        return CreateNode<FAnimNode_AdditiveBlend>();
     }
 };
 
