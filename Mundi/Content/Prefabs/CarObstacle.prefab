@@ -1,0 +1,84 @@
+{
+  "ObjectName" : "CarObstacle",
+  "OwnedComponents" : [{
+      "BoxExtent" : [4.823770, 1.050000, 2.403825],
+      "Id" : 1002,
+      "ObjectName" : "UBoxComponent_2",
+      "ParentId" : 1003,
+      "RelativeLocation" : [0.399512, 0.000000, 1.290453],
+      "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+      "RelativeScale" : [0.483543, 1.000000, 0.330723],
+      "Type" : "UBoxComponent",
+      "bBlockComponent" : false,
+      "bGenerateOverlapEvents" : true,
+      "bHiddenInGame" : false,
+      "bIsActive" : true,
+      "bIsVisible" : true,
+      "bShapeHiddenInGame" : true,
+      "bShapeIsVisible" : true,
+      "bTickEnabled" : true
+    }, {
+      "Id" : 1003,
+      "MaterialSlots" : [{
+          "AssetPath" : "Body",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Black",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Window.001",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Bumpers",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Lights",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Bottom",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Tires",
+          "Type" : "UMaterial"
+        }, {
+          "AssetPath" : "Wheels",
+          "Type" : "UMaterial"
+        }],
+      "ObjectName" : "UStaticMeshComponent_3",
+      "ParentId" : 0,
+      "RelativeLocation" : [0.000000, -4.016132, 0.000000],
+      "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+      "RelativeScale" : [1.000000, 1.000000, 1.000000],
+      "StaticMesh" : "Content/Resources/Model\\Car",
+      "Type" : "UStaticMeshComponent",
+      "bBlockComponent" : false,
+      "bCastShadows" : true,
+      "bGenerateOverlapEvents" : true,
+      "bHiddenInGame" : false,
+      "bIsActive" : true,
+      "bIsVisible" : true,
+      "bTickEnabled" : true
+    }, {
+      "BoxExtent" : [2.332500, 1.050000, 1.255950],
+      "Id" : 1004,
+      "ObjectName" : "UBoxComponent_1",
+      "ParentId" : 1003,
+      "RelativeLocation" : [0.000000, 0.000000, 0.520225],
+      "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+      "RelativeScale" : [3.000000, 3.000000, 0.632987],
+      "Type" : "UBoxComponent",
+      "bBlockComponent" : false,
+      "bGenerateOverlapEvents" : true,
+      "bHiddenInGame" : false,
+      "bIsActive" : true,
+      "bIsVisible" : true,
+      "bShapeHiddenInGame" : true,
+      "bShapeIsVisible" : true,
+      "bTickEnabled" : true
+    }],
+  "RootComponentId" : 1003,
+  "Tag" : "CarObstacle",
+  "Type" : "AStaticMeshActor",
+  "bActorHiddenInGame" : false,
+  "bActorIsActive" : true
+}
