@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "TempCharacter.h"
 #include "World.h"
 #include "PlayerController.h"
@@ -124,7 +124,7 @@ void ATempCharacter::Tick(float DeltaSeconds)
             // Jump input
             if (Input.IsKeyPressed(VK_SPACE))
             {
-                Jump();
+                // Jump();
             }
         }
 

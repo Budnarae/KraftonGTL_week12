@@ -1,4 +1,4 @@
--- TempCharacter.lua
+﻿-- TempCharacter.lua
 -- BlendSpace2D를 사용한 4방향 걷기 애니메이션
 
 local AnimationStateMachine = dofile("Content/Scripts/AnimationStateMachine.lua")
@@ -11,6 +11,9 @@ local BlendSpaceNode = nil
 -- 상태 전환
 local TransitionToJump = nil
 local TransitionToLocomotion = nil
+local JumpState = nil
+local JumpSequenceNode = nil
+local bJumpStateActive = false
 
 -- 블렌드 보간용
 local CurrentX = 0.0
@@ -65,10 +68,10 @@ local function build_blend_space(state)
     add_sample(RightAnim, 2, 1)     -- Right (X = 1)
 
     -- 대각선 (가장 가까운 방향 애니메이션으로 채움)
-    -- add_sample(ForwardAnim, 0, 2)   -- Forward-Left
-    -- add_sample(ForwardAnim, 2, 2)   -- Forward-Right
-    -- add_sample(BackwardAnim, 0, 0)  -- Backward-Left
-    -- add_sample(BackwardAnim, 2, 0)  -- Backward-Right
+    add_sample(LeftForwardAnim, 2, 2)   -- Forward-Left
+    add_sample(RightForwardAnim, 0, 2)   -- Forward-Right
+    add_sample(LeftBackAnim, 2, 0)  -- Backward-Left
+    add_sample(RightBackAnim, 0, 0)  -- Backward-Right
 
     BlendSpaceNode.EaseFunction = EAnimBlendEaseType.EaseInOut
     return true
@@ -118,20 +121,26 @@ function BeginPlay()
 
     ASM = AnimationStateMachine:new()
     ASM:initialize()
+    
+    -- James Animation 로드
+    FallingAnim = LoadAnimationSequence("Falling Idle_mixamo.com")
 
-    -- Cactus 애니메이션 로드
-    IdleAnim     = LoadAnimationSequence("CactusPA_Cactus_IdleBattle")
-    ForwardAnim  = LoadAnimationSequence("CactusPA_Cactus_WalkFWD")
-    BackwardAnim = LoadAnimationSequence("CactusPA_Cactus_WalkBWD")
-    LeftAnim     = LoadAnimationSequence("CactusPA_Cactus_WalkLFT")
-    RightAnim    = LoadAnimationSequence("CactusPA_Cactus_WalkRGT")
-    JumpAnim     = LoadAnimationSequence("CactusPA_Cactus_RunFWD")
+    IdleAnim     = LoadAnimationSequence("Idle_mixamo.com")
+    ForwardAnim  = LoadAnimationSequence("Standard Walk_mixamo.com")
+    BackwardAnim = LoadAnimationSequence("Walking Backward_mixamo.com")
+    LeftAnim     = LoadAnimationSequence("Left Strafe Walk_mixamo.com")
+    RightAnim    = LoadAnimationSequence("Right Strafe Walk_mixamo.com")
+
+    LeftForwardAnim = LoadAnimationSequence("Jog Forward Diagonal Left_mixamo.com")
+    RightForwardAnim = LoadAnimationSequence("Jog Forward Diagonal Right_mixamo.com")
+    LeftBackAnim = LoadAnimationSequence("Jog Backward Diagonal Left_mixamo.com")
+    RightBackAnim = LoadAnimationSequence("Jog Backward Diagonal Right_mixamo.com")
+
+    JumpAnim     = LoadAnimationSequence("Jumping_mixamo.com")
     DizzyAnim    = LoadAnimationSequence("CactusPA_Cactus_Dizzy")
-    --GetHitAnim   = LoadAnimationSequence("CactusPA_Cactus_GetHit")
-    --DizzyAnim2 = LoadAnimationSequence("CactusPA_Cactus_Dizzy")
     DizzyAnim2 = LoadAnimationSequence("CactusPA_Cactus_GetHit")
 
-    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim and DizzyAnim and DizzyAnim2) then
+    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim and DizzyAnim and DizzyAnim2 and JumpAnim) then
         print("[TempCharacter] Failed to load Cactus animations")
         return
     end
@@ -152,10 +161,13 @@ function BeginPlay()
 
     -- Jump 상태
     if JumpAnim then
-        local JumpState = ASM:add_state(FName("Jump"))
+        JumpState = ASM:add_state(FName("Jump"))
         if JumpState then
-            local JumpNode = JumpState:CreateSequenceNode(JumpAnim, true)
-            JumpState:SetEntryNode(JumpNode)
+            JumpSequenceNode = JumpState:CreateSequenceNode(JumpAnim, false)
+            if JumpSequenceNode and JumpSequenceNode.SetLooping then
+                JumpSequenceNode:SetLooping(false)
+            end
+            JumpState:SetEntryNode(JumpSequenceNode)
 
             -- 상태 전환 추가
             TransitionToJump = ASM:add_transition(FName("Locomotion"), FName("Jump"))
@@ -219,27 +231,39 @@ function AnimUpdate(deltaTime)
         return nil
     end
 
-    -- 점프 상태 전환 체크
-    if MovementComp and ASM.current_state then
-        local bIsFalling = MovementComp:IsFalling()
+    -- 점프 상태 전환 및 입력 처리
+    local CurrentState = ASM.current_state
+    local bIsInJumpState = (JumpState ~= nil and CurrentState == JumpState)
+    local bIsInHitState = (HitState ~= nil and CurrentState == HitState)
 
-        -- 전환 플래그 리셋
+    if TransitionToJump then
+        TransitionToJump.CanEnterTransition = false
+    end
+    if TransitionToLocomotion then
+        TransitionToLocomotion.CanEnterTransition = false
+    end
+
+    if bIsInJumpState then
+        bJumpStateActive = true
+    elseif bJumpStateActive then
+        bJumpStateActive = false
+    end
+
+    local bWantsJump = InputManager and InputManager.IsKeyPressed and InputManager:IsKeyPressed(' ')
+    if bWantsJump and not bIsInJumpState and not bIsInHitState and JumpSequenceNode then
+        if JumpSequenceNode.SetNormalizedTime then
+            JumpSequenceNode:SetNormalizedTime(0.0)
+        end
+        bJumpStateActive = true
         if TransitionToJump then
-            TransitionToJump.CanEnterTransition = false
+            TransitionToJump.CanEnterTransition = true
         end
-        if TransitionToLocomotion then
-            TransitionToLocomotion.CanEnterTransition = false
-        end
+    end
 
-        -- 조건에 따라 전환 활성화
-        if bIsFalling then
-            if TransitionToJump then
-                TransitionToJump.CanEnterTransition = true
-            end
-        else
-            if TransitionToLocomotion then
-                TransitionToLocomotion.CanEnterTransition = true
-            end
+    if bIsInJumpState and JumpSequenceNode and JumpSequenceNode.GetNormalizedTime then
+        local NormalizedTime = JumpSequenceNode:GetNormalizedTime()
+        if NormalizedTime >= 0.98 and TransitionToLocomotion then
+            TransitionToLocomotion.CanEnterTransition = true
         end
     end
 
@@ -336,6 +360,9 @@ function EndPlay()
     LeftAnim = nil
     RightAnim = nil
     JumpAnim = nil
+    JumpState = nil
+    JumpSequenceNode = nil
+    bJumpStateActive = false
     TransitionToJump = nil
     TransitionToLocomotion = nil
     DizzyAnim = nil
@@ -346,4 +373,5 @@ function EndPlay()
     PreviousState = nil
     CurrentX = 0.0
     CurrentY = 0.0
+    FootstepSound = nil
 end
