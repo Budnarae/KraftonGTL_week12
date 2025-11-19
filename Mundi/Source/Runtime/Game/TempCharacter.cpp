@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "TempCharacter.h"
 #include "World.h"
 #include "PlayerController.h"
@@ -16,7 +16,7 @@ ATempCharacter::ATempCharacter()
     // 스켈레탈 메시 설정
     if (MeshComponent)
     {
-        MeshComponent->SetSkeletalMesh("Content/Resources/CactusPA");
+        MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
     }
 
     // 스프링 암 생성
