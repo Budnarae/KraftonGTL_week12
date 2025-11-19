@@ -14,7 +14,7 @@ local InputY = 0.0  -- Backward(-1) / Forward(1)
 -- 블렌드 보간용
 local CurrentX = 0.0
 local CurrentY = 0.0
-local BlendSpeed = 1.0  -- 블렌드 속도 (낮을수록 부드러움)
+local BlendSpeed = 3.0  -- 블렌드 속도 (낮을수록 부드러움)
 
 -- 애니메이션 시퀀스
 local IdleAnim = nil
