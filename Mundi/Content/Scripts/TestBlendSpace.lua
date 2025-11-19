@@ -41,6 +41,7 @@ local function BuildBlendSpace(state)
     add(ForwardAnim,  1, 2)  -- front
     add(LeftAnim,     0, 1)  -- left
     add(RightAnim,    2, 1)  -- right
+    add(LeftAnim,    2, 2)  -- right
 
     -- 채우지 않은 셀들은 가장 가까운 방향 값으로 자동 보간
     return true
@@ -90,26 +91,29 @@ function BeginPlay()
     SkeletalComp:InitAnimInstance()
 end
 
+local InputX = 0.0
+local InputY = 0.0
 local function UpdateBlendInputs()
-    InputX = 0.0
-    InputY = 0.0
+    Delta  = 0.001
 
     if InputManager:IsKeyDown('T') then
-        InputY = InputY + 1.0
+        InputY = InputY + Delta
     end
     if InputManager:IsKeyDown('G') then
-        InputY = InputY - 1.0
+        InputY = InputY - Delta
     end
     if InputManager:IsKeyDown('H') then
-        InputX = InputX + 1.0
+        InputX = InputX + Delta
+        print('H')
     end
     if InputManager:IsKeyDown('F') then
-        InputX = InputX - 1.0
+        InputX = InputX - Delta
     end
 
-    InputX = math.max(-1.0, math.min(InputX, 1.0))
-    InputY = math.max(-1.0, math.min(InputY, 1.0))
-
+    InputX = math.max(0.0, math.min(InputX, 2.0))
+    InputY = math.max(0.0, math.min(InputY, 2.0))
+print(InputX)
+print(InputY)
     if BlendSpaceNode then
         BlendSpaceNode:SetBlendInput(InputX, InputY)
     end
