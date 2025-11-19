@@ -280,6 +280,7 @@
     <ClCompile Include="Source\Runtime\Engine\Animation\FloatComparisonRule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkinnedMeshComponent.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Components\SpringArmComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Character.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\GameModeBase.cpp" />
@@ -334,6 +335,10 @@
     <Content Include="Content\Scripts\RotatingSpawner.lua" />
     <Content Include="Content\Scripts\SHC.lua" />
     <Content Include="Content\Scripts\SkeletalMeshActor.lua" />
+    <Content Include="Content\Scripts\TempCharacter.lua" />
+    <Content Include="Content\Scripts\TestAdditiveBlend.lua" />
+    <Content Include="Content\Scripts\TestBlendSpace1D.lua" />
+    <Content Include="Content\Scripts\TestBlendSpace2D.lua" />
     <Content Include="Content\Scripts\TestPropertyBinding.lua" />
     <Content Include="Content\Scripts\Tile.lua" />
     <Content Include="Content\Scripts\TileMap.lua" />
@@ -559,7 +564,7 @@
     <ClCompile Include="Generated\ATempCharacter.generated.cpp" />
     <ClCompile Include="Generated\USoundAnimNotify.generated.cpp" />
     <ClCompile Include="Generated\UCameraShakeAnimNotify.generated.cpp" />
-  <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp" /></ItemGroup>
+  <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\USpringArmComponent.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -761,6 +766,8 @@
     <ClInclude Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\SkinnedMeshComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\SphereComponent.h" />
+    <ClInclude Include="Source\Runtime\Engine\Components\SpringArmComponent.h" />
+    <ClInclude Include="Source\Runtime\Engine\Components\TestAutoBindComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\AmbientLightActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_LetterBox.h" />
@@ -984,7 +991,7 @@
     <ClInclude Include="Generated\ATempCharacter.generated.h" />
     <ClInclude Include="Generated\USoundAnimNotify.generated.h" />
     <ClInclude Include="Generated\UCameraShakeAnimNotify.generated.h" />
-  <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h" /><ClInclude Include="Generated\UScalingAnimNotifyState.generated.h" /></ItemGroup>
+  <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h" /><ClInclude Include="Generated\UScalingAnimNotifyState.generated.h" /><ClInclude Include="Generated\USpringArmComponent.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />

@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AnimNode.h"
 
 float ApplyAnimBlendEase(float Alpha, EAnimBlendEaseType EaseType)
@@ -369,6 +369,7 @@ void FAnimNode_BlendSpace1D::Update(const FAnimationUpdateContext& Context)
     {
         if (Sample.Weight > KINDA_SMALL_NUMBER && Sample.SequenceNode)
         {
+
             Sample.SequenceNode->Update(Context);
         }
     }

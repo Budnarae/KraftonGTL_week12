@@ -463,8 +463,15 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 	UShader* DepthVS = UResourceManager::GetInstance().Load<UShader>("Shaders/Shadows/DepthOnly_VS.hlsl");
 	if (!DepthVS || !DepthVS->GetVertexShader()) return;
 
+	// 일반 메시용 셰이더
 	FShaderVariant* ShaderVariant = DepthVS->GetOrCompileShaderVariant();
 	if (!ShaderVariant) return;
+
+	// 스켈레탈 메시용 셰이더 (GPU 스키닝)
+	TArray<FShaderMacro> SkinningMacros;
+	SkinningMacros.Add({ "ENABLE_GPU_SKINNING", "1" });
+	FShaderVariant* SkinnedShaderVariant = DepthVS->GetOrCompileShaderVariant(SkinningMacros);
+	if (!SkinnedShaderVariant) return;
 
 	// vsm용 픽셀 셰이더
 	UShader* DepthPs = UResourceManager::GetInstance().Load<UShader>("Shaders/Shadows/DepthOnly_PS.hlsl");
@@ -473,10 +480,7 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 	FShaderVariant* ShaderVarianVSM = DepthPs->GetOrCompileShaderVariant();
 	if (!ShaderVarianVSM) return;
 
-	// 2. 파이프라인 설정
-	RHIDevice->GetDeviceContext()->IASetInputLayout(ShaderVariant->InputLayout);
-	RHIDevice->GetDeviceContext()->VSSetShader(ShaderVariant->VertexShader, nullptr, 0);
-	
+	// 2. 픽셀 셰이더 설정
     EShadowAATechnique ShadowAAType = World->GetRenderSettings().GetShadowAATechnique();
 	switch (ShadowAAType)
 	{
@@ -489,7 +493,7 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 	default:
 		RHIDevice->GetDeviceContext()->PSSetShader(nullptr, nullptr, 0);
 		break;
-	}	
+	}
 
 	// 3. 라이트의 View-Projection 행렬을 메인 ViewProj 버퍼에 설정
 	FMatrix WorldLocation = {};
@@ -497,11 +501,18 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 	ViewProjBufferType ViewProjBuffer = ViewProjBufferType(ShadowRequest.ViewMatrix, ShadowRequest.ProjectionMatrix, WorldLocation, FMatrix::Identity());	// NOTE: 그림자 맵 셰이더에는 역행렬이 필요 없으므로 Identity를 전달함
 	RHIDevice->SetAndUpdateConstantBuffer(ViewProjBufferType(ViewProjBuffer));
 
-	// 4. (DrawMeshBatches와 유사하게) 배치 순회하며 그리기
+	// 4. 배치 순회하며 그리기
 	ID3D11Buffer* CurrentVertexBuffer = nullptr;
 	ID3D11Buffer* CurrentIndexBuffer = nullptr;
 	UINT CurrentVertexStride = 0;
 	D3D11_PRIMITIVE_TOPOLOGY CurrentTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+	ID3D11ShaderResourceView* CurrentVSBoneMatrixSRV = nullptr;
+	ID3D11ShaderResourceView* CurrentVSBoneNormalSRV = nullptr;
+	bool bCurrentIsSkeletalMesh = false;
+
+	// 기본 셰이더 설정 (일반 메시용)
+	RHIDevice->GetDeviceContext()->IASetInputLayout(ShaderVariant->InputLayout);
+	RHIDevice->GetDeviceContext()->VSSetShader(ShaderVariant->VertexShader, nullptr, 0);
 
 	for (const FMeshBatchElement& Batch : InShadowBatches)
 	{
@@ -512,7 +523,32 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 			continue;
 		}
 
-		// 셰이더/픽셀 상태 변경 불필요
+		// 스켈레탈 메시 여부에 따라 셰이더 전환
+		bool bIsSkeletalMesh = Batch.bIsSkeletalMesh && Batch.BoneMatrixSRV != nullptr;
+		if (bIsSkeletalMesh != bCurrentIsSkeletalMesh)
+		{
+			if (bIsSkeletalMesh)
+			{
+				RHIDevice->GetDeviceContext()->IASetInputLayout(SkinnedShaderVariant->InputLayout);
+				RHIDevice->GetDeviceContext()->VSSetShader(SkinnedShaderVariant->VertexShader, nullptr, 0);
+			}
+			else
+			{
+				RHIDevice->GetDeviceContext()->IASetInputLayout(ShaderVariant->InputLayout);
+				RHIDevice->GetDeviceContext()->VSSetShader(ShaderVariant->VertexShader, nullptr, 0);
+			}
+			bCurrentIsSkeletalMesh = bIsSkeletalMesh;
+		}
+
+		// GPU 스키닝 리소스 바인딩
+		if (Batch.BoneMatrixSRV != CurrentVSBoneMatrixSRV ||
+			Batch.BoneNormalMatrixSRV != CurrentVSBoneNormalSRV)
+		{
+			ID3D11ShaderResourceView* BoneSrvs[2] = { Batch.BoneMatrixSRV, Batch.BoneNormalMatrixSRV };
+			RHIDevice->GetDeviceContext()->VSSetShaderResources(12, 2, BoneSrvs);
+			CurrentVSBoneMatrixSRV = Batch.BoneMatrixSRV;
+			CurrentVSBoneNormalSRV = Batch.BoneNormalMatrixSRV;
+		}
 
 		// IA 상태 변경
 		if (Batch.VertexBuffer != CurrentVertexBuffer ||
@@ -532,11 +568,18 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 			CurrentTopology = Batch.PrimitiveTopology;
 		}
 
-		// 오브젝트별 World 행렬 설정 (VS에서 필요)
+		// 오브젝트별 World 행렬 설정
 		RHIDevice->SetAndUpdateConstantBuffer(ModelBufferType(Batch.WorldMatrix, Batch.WorldMatrix.InverseAffine().Transpose()));
 
 		// 드로우 콜
 		RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+	}
+
+	// 본 SRV 바인딩 해제
+	if (CurrentVSBoneMatrixSRV || CurrentVSBoneNormalSRV)
+	{
+		ID3D11ShaderResourceView* NullBoneSrvs[2] = { nullptr, nullptr };
+		RHIDevice->GetDeviceContext()->VSSetShaderResources(12, 2, NullBoneSrvs);
 	}
 }
 
