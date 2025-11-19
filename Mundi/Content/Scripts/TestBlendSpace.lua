@@ -1,137 +1,161 @@
--- SkeletalMeshActor.lua
--- BlendSpace1D 테스트 코드
--- 'U' 키: 속도 증가, 'J' 키: 속도 감소
+-- TestBlendSpace.lua
+-- BlendSpace2D: X는 좌/우(-1~1), Y는 전/후(-1~1)
+-- T: 앞(+Y), G: 뒤(-Y), H: 오른(+X), F: 왼(-X)
 
--- AnimationStateMachine 라이브러리 로드
-dofile("Content/Scripts/AnimationStateMachine.lua")
+local AnimationStateMachine = dofile("Content/Scripts/AnimationStateMachine.lua")
 
--- 전역 변수
-local ASM = nil                 -- Lua AnimationStateMachine 인스턴스
+local ASM = nil
 local SkeletalComp = nil
-local BlendSpaceNode = nil      -- BlendSpace 노드 참조
-local CurrentSpeed = 200.0      -- 현재 속도 (걷기 속도로 시작)
+local BlendSpaceNode = nil
 
--- 걷기/달리기 애니메이션 (GC 방지를 위해 전역 스코프에 저장)
-local WalkAnim = nil
-local RunAnim = nil
+local InputX = 0.0
+local InputY = 0.0
 
+local IdleAnim = nil
+local ForwardAnim = nil
+local BackwardAnim = nil
+local LeftAnim = nil
+local RightAnim = nil
+
+local function BuildBlendSpace(state)
+    BlendSpaceNode = state:CreateBlendSpace2DNode()
+    if not BlendSpaceNode then
+        return false
+    end
+
+    local AxisX = {-1.0, 0.0, 1.0}
+    local AxisY = {-1.0, 0.0, 1.0}
+    BlendSpaceNode:SetGridAxes(AxisX, AxisY)
+
+    local function add(anim, xIndex, yIndex)
+        local node = state:CreateSequenceNode(anim, true)
+        if node then
+            BlendSpaceNode:AddSample(node, xIndex, yIndex)
+        end
+    end
+
+    -- GridYIndex: 0 = -1(back), 1 = 0, 2 = +1(front)
+    -- GridXIndex: 0 = -1(left), 1 = 0, 2 = +1(right)
+    add(BackwardAnim, 1, 0)  -- back
+    add(IdleAnim,     1, 1)  -- idle center
+    add(ForwardAnim,  1, 2)  -- front
+    add(LeftAnim,     0, 1)  -- left
+    add(RightAnim,    2, 1)  -- right
+    add(LeftAnim,    2, 2)  -- right
+
+    -- 채우지 않은 셀들은 가장 가까운 방향 값으로 자동 보간
+    return true
+end
 
 function BeginPlay()
-    -- SkeletalMeshComponent 가져오기
     SkeletalComp = GetComponent(Obj, "USkeletalMeshComponent")
     if not SkeletalComp then
-        print("[SkeletalMeshActor] Error: No SkeletalMeshComponent found")
+        print("[TestBlendSpace] Error: No SkeletalMeshComponent")
         return
     end
 
-    -- Lua AnimationStateMachine 생성 및 초기화
     ASM = AnimationStateMachine:new()
     ASM:initialize()
 
-    -- 사용할 애니메이션 로드
-    WalkAnim = LoadAnimationSequence("Standard Walk_mixamo.com")
-    RunAnim = LoadAnimationSequence("Standard Run_mixamo.com")
+    IdleAnim     = LoadAnimationSequence("Standard Run_mixamo.com")
+    ForwardAnim  = LoadAnimationSequence("Standard Walk_mixamo.com")
+    BackwardAnim = LoadAnimationSequence("Standard Run_mixamo.com")
+    LeftAnim     = LoadAnimationSequence("Standard Walk_mixamo.com")
+    RightAnim    = LoadAnimationSequence("Standard Run_mixamo.com")
 
-    if not WalkAnim or not RunAnim then
-        print("[SkeletalMeshActor] Error: Failed to load animations")
+    --IdleAnim     = LoadAnimationSequence("Standard Idle_mixamo.com")
+    --ForwardAnim  = LoadAnimationSequence("Standard Walk_mixamo.com")
+    --BackwardAnim = LoadAnimationSequence("Unarmed Walk Back_mixamo.com")
+    --LeftAnim     = LoadAnimationSequence("Left Strafe Walk_mixamo.com")
+    --RightAnim    = LoadAnimationSequence("Right Strafe Walk_mixamo.com")
+
+    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim) then
+        print("[TestBlendSpace] Error: Failed to load required animations")
         return
     end
 
-    -- 'Locomotion'이라는 새로운 State를 생성
-    local LocomotionState = ASM:add_state(FName("Locomotion"))
-    if LocomotionState then
-
-        -- 1. BlendSpace1D 노드 생성
-        BlendSpaceNode = LocomotionState:CreateBlendSpace1DNode()
-
-        -- 2. BlendSpace에 사용할 시퀀스 노드들(샘플) 생성
-        local WalkNode = LocomotionState:CreateSequenceNode(WalkAnim, true)
-        local RunNode  = LocomotionState:CreateSequenceNode(RunAnim, true)
-
-        -- 3. BlendSpace에 샘플 추가
-        BlendSpaceNode:AddSample(WalkNode, 150.0)  -- 속도 150일 때 걷기
-        BlendSpaceNode:AddSample(RunNode, 350.0)   -- 속도 350일 때 달리기
-
-        -- 4. 이 State의 시작 노드를 BlendSpace 노드로 설정
-        LocomotionState:SetEntryNode(BlendSpaceNode)
-    else
-        print("[SkeletalMeshActor] ERROR: Failed to create LocomotionState")
+    local Locomotion = ASM:add_state(FName("Locomotion"))
+    if not Locomotion then
+        print("[TestBlendSpace] Error: Failed to create state")
+        return
     end
 
-    -- AnimationMode 설정 및 AnimInstance 생성/가져오기
-    SkeletalComp:SetAnimationModeInt(1)  -- AnimationBlueprint
+    if not BuildBlendSpace(Locomotion) then
+        print("[TestBlendSpace] Error: Failed to build BlendSpace2D")
+        return
+    end
+
+    Locomotion:SetEntryNode(BlendSpaceNode)
+
+    SkeletalComp:SetAnimationModeInt(1)
     SkeletalComp:InitAnimInstance()
+end
 
-    local AnimInstance = SkeletalComp:GetAnimInstance()
-    if not AnimInstance then
-        print("[SkeletalMeshActor] Error: No AnimInstance found")
-        return
+local InputX = 0.0
+local InputY = 0.0
+local function UpdateBlendInputs()
+    Delta  = 0.001
+
+    if InputManager:IsKeyDown('T') then
+        InputY = InputY + Delta
+    end
+    if InputManager:IsKeyDown('G') then
+        InputY = InputY - Delta
+    end
+    if InputManager:IsKeyDown('H') then
+        InputX = InputX + Delta
+        print('H')
+    end
+    if InputManager:IsKeyDown('F') then
+        InputX = InputX - Delta
+    end
+
+    InputX = math.max(0.0, math.min(InputX, 2.0))
+    InputY = math.max(0.0, math.min(InputY, 2.0))
+print(InputX)
+print(InputY)
+    if BlendSpaceNode then
+        BlendSpaceNode:SetBlendInput(InputX, InputY)
     end
 end
 
-
--- AnimUpdate: UAnimInstance::NativeUpdateAnimation에서 호출
-function AnimUpdate(DeltaTime)
+function AnimUpdate(deltaTime)
     if not ASM or not ASM.current_state then
         return nil
     end
 
-    if BlendSpaceNode then
-        print(CurrentSpeed)
-        BlendSpaceNode:SetBlendInput(CurrentSpeed)
-    end
+    UpdateBlendInputs()
 
-    -- Lua ASM Update 호출
     local Context = FAnimationUpdateContext()
-    Context.DeltaTime = DeltaTime
+    Context.DeltaTime = deltaTime
     ASM:update(Context)
 
-    -- 현재 State 반환
     return ASM.current_state
 end
 
-
--- AnimEvaluate: UAnimInstance::EvaluateAnimation에서 호출
 function AnimEvaluate(PoseContext)
     if not ASM or not ASM.current_state then
         return
     end
 
-    -- Lua ASM Evaluate 호출
     ASM:evaluate(PoseContext)
 end
 
-
--- Tick: 매 프레임 호출되는 함수
-function Tick(DeltaTime)
-    -- 'K' 키를 누르면 속도 증가
-    if InputManager:IsKeyDown('K') then
-        CurrentSpeed = CurrentSpeed + 100.0 * DeltaTime
-        print('K')
-        print(CurrentSpeed)
-    end
-
-    -- 'J' 키를 누르면 속도 감소
-    if InputManager:IsKeyDown('J') then
-        CurrentSpeed = CurrentSpeed - 100.0 * DeltaTime
-        print('J')
-        print(CurrentSpeed)
-    end
-
-    -- 속도를 150 ~ 350 사이로 제한
-    CurrentSpeed = math.max(150.0, math.min(CurrentSpeed, 350.0))
+function Tick(deltaTime)
+    -- 입력 처리는 AnimUpdate에서 수행
 end
-
 
 function EndPlay()
     if ASM then
         ASM:shutdown()
     end
 
-    -- 전역 변수 정리
     ASM = nil
     SkeletalComp = nil
     BlendSpaceNode = nil
-    WalkAnim = nil
-    RunAnim = nil
+    IdleAnim = nil
+    ForwardAnim = nil
+    BackwardAnim = nil
+    LeftAnim = nil
+    RightAnim = nil
 end

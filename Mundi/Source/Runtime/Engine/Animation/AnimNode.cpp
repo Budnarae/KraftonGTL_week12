@@ -1,5 +1,33 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimNode.h"
+
+float ApplyAnimBlendEase(float Alpha, EAnimBlendEaseType EaseType)
+{
+    Alpha = FMath::Clamp(Alpha, 0.f, 1.f);
+    switch (EaseType)
+    {
+        case EAnimBlendEaseType::EaseIn :
+                return Alpha * Alpha;
+        case EAnimBlendEaseType::EaseOut:
+            {
+                float Inv = 1.f - Alpha;
+                return 1.f - Inv * Inv;
+            }
+        case EAnimBlendEaseType::EaseInOut:
+            if (Alpha < 0.5f)
+            {
+                float Scaled = Alpha * 2.f;
+                return 0.5f * Scaled * Scaled;
+            }
+            else
+            {
+                float Scaled = (1.f - Alpha) * 2.f;
+                return 1.f - 0.5f * Scaled * Scaled;
+            }
+        default:
+            return Alpha;
+    }
+}
 
 // ====================================
 // FAnimStateTransition 구현
@@ -89,6 +117,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
                 ? FMath::Clamp(TransitionElapsed / TransitionDuration, 0.f, 1.f)
                 : 1.f;
 
+            Alpha = ApplyAnimBlendEase(Alpha, TransitionBlendNode.EaseFunction);
             TransitionBlendNode.Alpha = Alpha;
 
             if (Alpha >= 1.f)
@@ -332,7 +361,8 @@ void FAnimNode_BlendSpace1D::Update(const FAnimationUpdateContext& Context)
     CalculateSampleWeights();
 
     // 2) 시간 동기화
-    SynchronizeSampleTimes();
+    // SynchronizeSampleTimes();
+    SimpleSynchronizeSampleTimes();
 
     // 3) 가중치가 0이 아닌 시퀀스들만 Update
     for (FBlendSample1D& Sample : Samples)
@@ -441,6 +471,31 @@ void FAnimNode_BlendSpace1D::CalculateSampleWeights()
     }
 }
 
+void FAnimNode_BlendSpace1D::SimpleSynchronizeSampleTimes()
+{
+    if (bIsTimeSynchronized) { return; }
+    bIsTimeSynchronized = true;
+
+    float MaxPlayTime = 0;
+    int32 MasterIndex = 0;
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        float PlayTime = Samples[i].SequenceNode->GetLength();
+        if (PlayTime > MaxPlayTime)
+        {
+            MaxPlayTime = PlayTime;
+            MasterIndex = i;
+        }   
+    }
+    
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        if (Samples[i].Weight == 0) //|| i == MasterIndex)
+            continue;
+        Samples[i].SequenceNode->SetPlayRate(MaxPlayTime);
+    }
+}
+
 void FAnimNode_BlendSpace1D::SynchronizeSampleTimes()
 {
     if (!bIsTimeSynchronized) { return; }
@@ -528,16 +583,17 @@ static void FindGridInterval(
 
 void FAnimNode_BlendSpace2D::Update(const FAnimationUpdateContext& Context)
 {
-    if (BlendSamples.Num() == 0) { return; }
+    if (Samples.Num() == 0) { return; }
 
     CalculateSampleWeights();
 
     if (bIsTimeSynchronized)
     {
-        SynchronizeSampleTimes();
+        SimpleSynchronizeSampleTimes();
+        // SynchronizeSampleTimes();
     }
 
-    for (FBlendSample2D& Sample : BlendSamples)
+    for (FBlendSample2D& Sample : Samples)
     {
         if (Sample.Weight > KINDA_SMALL_NUMBER && Sample.SequenceNode)
         {
@@ -550,7 +606,7 @@ void FAnimNode_BlendSpace2D::Evaluate(FPoseContext& Output)
 {
     if (!Output.Skeleton) { return; }
 
-    if (BlendSamples.Num() == 0) { Output.ResetToRefPose(); return; }
+    if (Samples.Num() == 0) { Output.ResetToRefPose(); return; }
 
     FPoseContext SamplePose(Output);
     const int32 NumBones = Output.EvaluatedPoses.Num();
@@ -558,7 +614,7 @@ void FAnimNode_BlendSpace2D::Evaluate(FPoseContext& Output)
     bool HasAnyPose = false;
     float TotalWeight = 0.0f;
 
-    for (FBlendSample2D& Sample : BlendSamples)
+    for (FBlendSample2D& Sample : Samples)
     {
         if (Sample.Weight <= KINDA_SMALL_NUMBER || Sample.SequenceNode == nullptr) { continue; }
 
@@ -599,7 +655,7 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
     if (NumX == 0 || NumY == 0) { return; }
 
     // 1) 모든 Weight 초기화
-    for (FBlendSample2D& Sample : BlendSamples) { Sample.Weight = 0.0f; }
+    for (FBlendSample2D& Sample : Samples) { Sample.Weight = 0.0f; }
 
     // 2) X/Y 각각에서 구간 및 보간 인자 찾기
     int32 LowerXIndex = 0, UpperXIndex = 0; float XAlpha = 0;
@@ -623,7 +679,7 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
     {
         // 딱 하나의 격자 포인트
         const int32 SampleIndex = GetSampleIndex(LowerXIndex, LowerYIndex);
-        BlendSamples[SampleIndex].Weight = 1.0f;
+        Samples[SampleIndex].Weight = 1.0f;
         return;
     }
 
@@ -633,8 +689,8 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
         const int32 SampleIndexBottom = GetSampleIndex(LowerXIndex, LowerYIndex);
         const int32 SampleIndexTop = GetSampleIndex(LowerXIndex, UpperYIndex);
 
-        BlendSamples[SampleIndexBottom].Weight = 1.0f - YAlpha;
-        BlendSamples[SampleIndexTop].Weight = YAlpha;
+        Samples[SampleIndexBottom].Weight = 1.0f - YAlpha;
+        Samples[SampleIndexTop].Weight = YAlpha;
         return;
     }
 
@@ -644,8 +700,8 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
         const int32 SampleIndexLeft = GetSampleIndex(LowerXIndex, LowerYIndex);
         const int32 SampleIndexRight = GetSampleIndex(UpperXIndex, LowerYIndex);
 
-        BlendSamples[SampleIndexLeft].Weight = 1.0f - XAlpha;
-        BlendSamples[SampleIndexRight].Weight = XAlpha;
+        Samples[SampleIndexLeft].Weight = 1.0f - XAlpha;
+        Samples[SampleIndexRight].Weight = XAlpha;
         return;
     }
     
@@ -660,10 +716,35 @@ void FAnimNode_BlendSpace2D::CalculateSampleWeights()
     const float WeightTopLeft = (1.0f - XAlpha) * YAlpha;
     const float WeightTopRight = XAlpha * YAlpha;
 
-    BlendSamples[SampleIndexBottomLeft].Weight = WeightBottomLeft;
-    BlendSamples[SampleIndexBottomRight].Weight = WeightBottomRight;
-    BlendSamples[SampleIndexTopLeft].Weight = WeightTopLeft;
-    BlendSamples[SampleIndexTopRight].Weight = WeightTopRight;
+    Samples[SampleIndexBottomLeft].Weight = WeightBottomLeft;
+    Samples[SampleIndexBottomRight].Weight = WeightBottomRight;
+    Samples[SampleIndexTopLeft].Weight = WeightTopLeft;
+    Samples[SampleIndexTopRight].Weight = WeightTopRight;
+}
+
+void FAnimNode_BlendSpace2D::SimpleSynchronizeSampleTimes()
+{
+    if (bIsTimeSynchronized) { return; }
+    bIsTimeSynchronized = true;
+
+    float MaxPlayTime = 0;
+    int32 MasterIndex = 0;
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        float PlayTime = Samples[i].SequenceNode->GetLength();
+        if (PlayTime > MaxPlayTime)
+        {
+            MaxPlayTime = PlayTime;
+            MasterIndex = i;
+        }
+    }
+
+    for (int i = 0; i < Samples.Num(); i++)
+    {
+        if (Samples[i].Weight == 0) //|| i == MasterIndex)
+            continue;
+        Samples[i].SequenceNode->SetPlayRate(MaxPlayTime);
+    }
 }
 
 void FAnimNode_BlendSpace2D::SynchronizeSampleTimes()
@@ -674,31 +755,31 @@ void FAnimNode_BlendSpace2D::SynchronizeSampleTimes()
     int32 MasterIndex = INDEX_NONE;
     float MaximumWeight = 0.0f;
 
-    for (int32 Index = 0; Index < BlendSamples.Num(); ++Index)
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
     {
-        if (BlendSamples[Index].Weight > MaximumWeight)
+        if (Samples[Index].Weight > MaximumWeight)
         {
-            MaximumWeight = BlendSamples[Index].Weight;
+            MaximumWeight = Samples[Index].Weight;
             MasterIndex = Index;
         }
     }
 
     if (MasterIndex == INDEX_NONE) { return; }
 
-    FBlendSample2D& MasterSample = BlendSamples[MasterIndex];
+    FBlendSample2D& MasterSample = Samples[MasterIndex];
     if (MasterSample.SequenceNode == nullptr) { return; }
 
     float MasterNormalizedTime = MasterSample.SequenceNode->GetNormalizedTime();
 
     // 나머지 시퀀스들 시간 맞춰주기
-    for (int32 Index = 0; Index < BlendSamples.Num(); ++Index)
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
     {
         if (Index == MasterIndex)
         {
             continue;
         }
 
-        FBlendSample2D& Sample = BlendSamples[Index];
+        FBlendSample2D& Sample = Samples[Index];
         if (Sample.SequenceNode && Sample.Weight > KINDA_SMALL_NUMBER)
         {
             Sample.SequenceNode->SetNormalizedTime(MasterNormalizedTime);

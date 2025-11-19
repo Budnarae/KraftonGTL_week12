@@ -2,17 +2,17 @@
 
 #include <d2d1_1.h>
 #include <dwrite.h>
-#include <dxgi1_2.h>
-
 #include "StatsOverlayD2D.h"
 #include "UIManager.h"
 #include "MemoryManager.h"
 #include "Picking.h"
 #include "PlatformTime.h"
-#include "DecalStatManager.h"
+#include "StatManagement/DecalStatManager.h"
+#include "StatManagement/SkinningStatManager.h"
 #include "TileCullingStats.h"
 #include "LightStats.h"
 #include "ShadowStats.h"
+#include "SkinnedMeshComponent.h"
 
 #pragma comment(lib, "d2d1")
 #pragma comment(lib, "dwrite")
@@ -98,7 +98,18 @@ static void DrawTextBlock(
 
 void UStatsOverlayD2D::Draw()
 {
-	if (!bInitialized || (!bShowFPS && !bShowMemory && !bShowPicking && !bShowDecal && !bShowTileCulling && !bShowLights && !bShowShadow) || !SwapChain)
+	if (!bInitialized ||
+		(
+			!bShowFPS &&
+			!bShowMemory &&
+			!bShowPicking &&
+			!bShowDecal &&
+			!bShowTileCulling &&
+			!bShowLights &&
+			!bShowShadow &&
+			!bShowSkinning
+		) || !SwapChain
+	)
 		return;
 
 	ID2D1Factory1* D2dFactory = nullptr;
@@ -373,6 +384,56 @@ void UStatsOverlayD2D::Draw()
 
 		NextY += shadowPanelHeight + Space;
 	}
+
+	if (bShowSkinning)
+	{
+		// 1. 스키닝 상태 가져오기
+		bool bGpuSkinning = USkinnedMeshComponent::IsGlobalGpuSkinningEnabled();
+
+		// 2. 스키닝 시간 가져오기 (이번 프레임 결과)
+		double SkinningTime = FSkinningStatManager::GetInstance().GetFinalRecordTime();
+		double GPUTime = FSkinningStatManager::GetInstance().GetGPURecordTime();
+		double CPUTime = FSkinningStatManager::GetInstance().GetCPURecordTime();
+
+		// 3. 출력 문자열 구성
+		wchar_t Buf[256];
+		swprintf_s(
+			Buf,
+			L"[Skinning]\nMode: %s\nGPU: %.3f ms | CPU: %.3f ms\nTotal: %.3f ms",
+			bGpuSkinning ? L"GPU" : L"CPU",
+			GPUTime,
+			CPUTime,
+			SkinningTime
+		);
+
+		// 4. 패널 크기 설정 (여러 줄이므로 높이 증가)
+		const float skinningPanelHeight = 110.0f;
+
+		D2D1_RECT_F rc = D2D1::RectF(
+			Margin,
+			NextY,
+			Margin + PanelWidth,
+			NextY + skinningPanelHeight
+		);
+
+		// 5. 표시 (색상은 구분용 LightSteelBlue 사용)
+		DrawTextBlock(
+			D2dCtx,
+			Dwrite,
+			Buf,
+			rc,
+			16.0f,
+			D2D1::ColorF(0, 0, 0, 0.6f),
+			D2D1::ColorF(D2D1::ColorF::LightSteelBlue)
+		);
+
+		// 6. 로그 출력 후 다음 프레임을 위해 초기화
+		//    - 이전 프레임 GPU 쿼리 결과를 읽어서 캐싱
+		//    - 이번 프레임 CPU 시간을 리셋
+		FSkinningStatManager::GetInstance().BeginFrame();
+
+		NextY += skinningPanelHeight + Space;
+	}
 	
 	D2dCtx->EndDraw();
 	D2dCtx->SetTarget(nullptr);
@@ -454,7 +515,17 @@ void UStatsOverlayD2D::SetShowShadow(bool b)
 	bShowShadow = b;
 }
 
+void UStatsOverlayD2D::SetShowSkinning(bool b)
+{
+	bShowSkinning = b;
+}
+
 void UStatsOverlayD2D::ToggleShadow()
 {
 	bShowShadow = !bShowShadow;
+}
+
+void UStatsOverlayD2D::ToggleSkinning()
+{
+	bShowSkinning = !bShowSkinning;
 }

@@ -64,14 +64,15 @@ function BeginPlay()
 
     -- Sound 로드 (애니메이션별로 다른 사운드 사용)
     local SoundA = LoadSound("Data/Audio/Shot.wav")
-    local SoundB = LoadSound("Data/Audio/HitFireball.wav")
-    local SoundC = LoadSound("Data/Audio/Shot.wav")
+    -- local SoundB = LoadSound("Data/Audio/HitFireball.wav")
+    local SoundC = LoadSound("Data/Audio/HitFireball.wav")
 
     -- State 생성 및 애니메이션 추가
     StateA = ASM:add_state(FName("StateA"))
     if StateA then
         local SeqNode = StateA:CreateSequenceNode(AnimA, true)
-        StateA:SetEntryNode(SeqNode)
+        SeqNode:SetReversePlay();
+        StateA:SetEntryNode(SeqNode);
     else
         print("[SkeletalMeshActor] ERROR: Failed to create StateA")
     end

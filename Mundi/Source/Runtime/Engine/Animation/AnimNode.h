@@ -1,7 +1,18 @@
-#pragma once
+﻿#pragma once
 #include "AnimationSequence.h"
 #include "Delegates.h"
 #include "AnimNodeTransitionRule.h"
+
+enum class EAnimBlendEaseType : uint8
+{
+    Linear = 0,
+    EaseIn,
+    EaseOut,
+    EaseInOut
+};
+
+float ApplyAnimBlendEase(float Alpha, EAnimBlendEaseType EaseType);
+
 
 struct FAnimNode_Base {
 	virtual void Update(const FAnimationUpdateContext& Context) = 0;
@@ -26,6 +37,16 @@ struct FAnimNode_Sequence : FAnimNode_Base
     }
 
     void SetLooping(bool bInLooping) { bLooping = bInLooping; }
+    void SetPlayRate(float TargetPlayTime)
+    {
+        if (TargetPlayTime == 0.0) return;
+
+        PlayRate = GetLength() / TargetPlayTime;
+    }
+    void SetReversePlay()
+    {
+        PlayRate = -1.f;
+    }
 
     float GetLength() const { return Sequence ? Sequence->GetPlayLength() : 0.f; }
     float GetCurrentTime() const { return CurrentTime; }
@@ -79,10 +100,13 @@ struct FAnimNode_Sequence : FAnimNode_Base
     }
 };
 
+
 struct FAnimNode_TwoWayBlend : FAnimNode_Base
 {
     FAnimNode_Base* From = nullptr;
     FAnimNode_Base* To = nullptr;
+
+    EAnimBlendEaseType EaseFunction = EAnimBlendEaseType::Linear;
 
     float Alpha = 0.f;        // 0 → A, 1 → B
     float BlendTime = 0.2f;
@@ -149,10 +173,12 @@ struct FBlendSample2D
 
 struct FAnimNode_BlendSpace1D : public FAnimNode_Base
 {
+    EAnimBlendEaseType EaseFunction = EAnimBlendEaseType::Linear;
+
     float BlendInput = 0.0f; // 외부 세팅 값 (ex: 이동 속도)
     float MinimumPosition = 0.0f; // BlendSpace 시작값
     float MaximumPosition = 1.0f; // BlendSpace 끝값
-    bool bIsTimeSynchronized = true; // 샘플 시퀀스들끼리 시간 동기화 여부
+    bool bIsTimeSynchronized = false; // 샘플 시퀀스들끼리 시간 동기화 여부
 
     bool bHasManualMin = false;
     bool bHasManualMax = false;
@@ -184,6 +210,7 @@ struct FAnimNode_BlendSpace1D : public FAnimNode_Base
 
 private:
     void CalculateSampleWeights();
+    void SimpleSynchronizeSampleTimes();
     void SynchronizeSampleTimes();
     void UpdateRangeFromSamples();
 };
@@ -191,6 +218,8 @@ private:
 
 struct FAnimNode_BlendSpace2D : public FAnimNode_Base
 {
+    EAnimBlendEaseType EaseFunction = EAnimBlendEaseType::Linear;
+
     float BlendInputX = 0.0f;
     float BlendInputY = 0.0f;
 
@@ -199,9 +228,9 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
     TArray<float> GridXValues; 
     TArray<float> GridYValues;
 
-    TArray <FBlendSample2D> BlendSamples;
+    TArray <FBlendSample2D> Samples;
 
-    bool bIsTimeSynchronized = true;
+    bool bIsTimeSynchronized = false;
 
     void SetBlendInput(float InX, float InY)
     {
@@ -217,14 +246,14 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
         const int32 NumX = GridXValues.Num();
         const int32 NumY = GridYValues.Num();
 
-        BlendSamples.SetNum(NumX * NumY);
+        Samples.SetNum(NumX * NumY);
         for (int32 YIndex = 0; YIndex < NumY; ++YIndex)
         {
             for (int32 XIndex = 0; XIndex < NumX; ++XIndex)
             {
                 const int32 SampleIndex = XIndex + YIndex * NumX;
-                BlendSamples[SampleIndex].GridXIndex = XIndex;
-                BlendSamples[SampleIndex].GridYIndex = YIndex;
+                Samples[SampleIndex].GridXIndex = XIndex;
+                Samples[SampleIndex].GridYIndex = YIndex;
             }
         }
     }
@@ -237,7 +266,7 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
         if (XIndex < 0 || XIndex >= NumX || YIndex < 0 || YIndex >= NumY) { return; }
 
         const int32 SampleIndex = XIndex + NumX * YIndex;
-        BlendSamples[SampleIndex].SequenceNode = SequenceNode;
+        Samples[SampleIndex].SequenceNode = SequenceNode;
     }
 
     virtual void Update(const FAnimationUpdateContext& Context) override;
@@ -246,6 +275,65 @@ struct FAnimNode_BlendSpace2D : public FAnimNode_Base
 private:
     void CalculateSampleWeights();
     void SynchronizeSampleTimes();
+    void SimpleSynchronizeSampleTimes();
+};
+
+struct FAnimNode_AdditiveBlend : public FAnimNode_Base
+{
+    FAnimNode_Base* BasePose = nullptr;
+    FAnimNode_Base* AdditivePose = nullptr;
+
+    float Alpha = 1.0f;
+
+    virtual void Update(const FAnimationUpdateContext& Context) override
+    {
+        if (BasePose) BasePose->Update(Context);
+        if (AdditivePose) AdditivePose->Update(Context);
+    }
+
+    virtual void Evaluate(FPoseContext& Output) override
+    {
+        if (!BasePose)
+            return;
+
+        FPoseContext Base(Output);
+        FPoseContext Add(Output);
+
+        BasePose->Evaluate(Base);
+
+        if (!AdditivePose)
+        {
+            Output = Base;
+            return;
+        }
+
+        AdditivePose->Evaluate(Add);
+
+        ApplyAdditive(Base, Add, Alpha, Output);
+    }
+
+    void ApplyAdditive(const FPoseContext& Base, const FPoseContext& Add, float Alpha, FPoseContext& Out)
+    {
+        const int32 BoneCount = Base.EvaluatedPoses.Num();
+        Out.EvaluatedPoses.SetNum(BoneCount);
+
+        for (int i = 0; i < BoneCount;i++)
+        {
+            const FTransform& BTrans = Base.EvaluatedPoses[i];
+            const FTransform& ATrans = Add.EvaluatedPoses[i];
+
+            const FQuat DeltaRot = ATrans.Rotation * BTrans.Rotation.Inverse();
+            const FVector DeltaPos = (ATrans.Translation - BTrans.Translation);
+            const FVector DeltaScale = (ATrans.Scale3D / BTrans.Scale3D);
+
+            FQuat WeightedDelta = FQuat::Slerp(FQuat::Identity(), DeltaRot, Alpha);
+            Out.EvaluatedPoses[i].Rotation = WeightedDelta * BTrans.Rotation;
+
+            Out.EvaluatedPoses[i].Translation = BTrans.Translation + (DeltaPos * Alpha);
+
+            Out.EvaluatedPoses[i].Scale3D = BTrans.Scale3D * FVector::Lerp(FVector(1, 1, 1), DeltaScale, Alpha);
+        }
+    }
 };
 
 struct FAnimState
@@ -294,6 +382,11 @@ struct FAnimState
     FAnimNode_BlendSpace1D* CreateBlendSpace1DNode()
     {
         return CreateNode<FAnimNode_BlendSpace1D>();
+    }
+
+    FAnimNode_BlendSpace2D* CreateBlendSpace2DNode()
+    {
+        return CreateNode<FAnimNode_BlendSpace2D>();
     }
 };
 
@@ -432,14 +525,6 @@ private:
      * @return State 포인터, 찾지 못하면 nullptr
      */
     FAnimState* FindStateByName(const FName& StateName) const;
-
-    /* 아래 요소가 필요하다면 주석을 해제하세요 */
-
-    // // 이전 State index (Transition 중 사용할 수 있음)
-    // int32 PreviousStateIndex{};
-    //
-    // // State 체류 시간
-    // float StateElapsedTime;
 };
 
 
