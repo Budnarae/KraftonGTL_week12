@@ -11,8 +11,13 @@ cbuffer ViewProjBuffer : register(b1)
     row_major float4x4 ViewMatrix;
     row_major float4x4 ProjectionMatrix;
     row_major float4x4 InverseViewMatrix;   // 0행 광원의 월드 좌표 + 스포트라이트 반경
-    row_major float4x4 InverseProjectionMatrix; 
+    row_major float4x4 InverseProjectionMatrix;
 };
+
+// GPU 스키닝 지원
+#if ENABLE_GPU_SKINNING
+#include "../Common/Skinning.hlsl"
+#endif
 
 // --- 셰이더 입출력 구조체 ---
 struct VS_INPUT
@@ -22,6 +27,10 @@ struct VS_INPUT
     float2 TexCoord : TEXCOORD0;
     float4 Tangent : TANGENT0;
     float4 Color : COLOR;
+#if ENABLE_GPU_SKINNING
+    uint4 BoneIndices : BLENDINDICES;
+    float4 BoneWeights : BLENDWEIGHT;
+#endif
 };
 
 // 출력은 오직 클립 공간 위치만 필요
@@ -34,12 +43,19 @@ struct VS_OUT
 VS_OUT mainVS(VS_INPUT Input)
 {
     VS_OUT Output = (VS_OUT) 0;
-    
+
+    float3 LocalPosition = Input.Position;
+
+#if ENABLE_GPU_SKINNING
+    // 본 변환 적용
+    LocalPosition = SkinPosition(Input.Position, Input.BoneIndices, Input.BoneWeights);
+#endif
+
     // 모델 좌표 -> 월드 좌표 -> 뷰 좌표 -> 클립 좌표
-    float4 WorldPos = mul(float4(Input.Position, 1.0f), WorldMatrix);
+    float4 WorldPos = mul(float4(LocalPosition, 1.0f), WorldMatrix);
     float4 ViewPos = mul(WorldPos, ViewMatrix);
     Output.Position = mul(ViewPos, ProjectionMatrix);
     Output.WorldPosition = WorldPos.xyz;
-    
+
     return Output;
 }
