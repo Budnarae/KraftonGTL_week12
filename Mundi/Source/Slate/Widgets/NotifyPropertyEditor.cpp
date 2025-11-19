@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "NotifyPropertyEditor.h"
+#include "PropertyRenderer.h"
 #include "Source/Runtime/Engine/Animation/AnimNotify/AnimNotify.h"
 #include "Source/Runtime/Engine/Animation/AnimNotify/SoundAnimNotify.h"
 #include "Source/Runtime/Engine/Animation/AnimNotify/CameraShakeAnimNotify.h"
@@ -102,6 +103,8 @@ bool FNotifyPropertyEditor::RenderCommonProperties(UAnimNotify* Notify, float Ma
 	}
 	ImGui::PopItemWidth();
 
+	ImGui::Spacing();
+
 	// Time to Notify
 	float timeToNotify = Notify->GetTimeToNotify();
 	ImGui::Text("Time:");
@@ -133,6 +136,21 @@ bool FNotifyPropertyEditor::RenderSoundNotifyProperties(UAnimNotify* Notify)
 
 	ImGui::Spacing();
 
+	// Sound Selection
+	ImGui::Text("Sound:");
+	ImGui::SameLine(100);
+	USound* CurrentSound = SoundNotify->GetSound();
+	USound* NewSound = nullptr;
+	ImGui::PushItemWidth(-1);
+	if (UPropertyRenderer::RenderSoundSelectionComboSimple("##Sound", CurrentSound, NewSound))
+	{
+		SoundNotify->SetSound(NewSound);
+		bChanged = true;
+	}
+	ImGui::PopItemWidth();
+
+	ImGui::Spacing();
+
 	// Volume
 	float volume = SoundNotify->GetVolume();
 	ImGui::Text("Volume:");
@@ -145,6 +163,8 @@ bool FNotifyPropertyEditor::RenderSoundNotifyProperties(UAnimNotify* Notify)
 	}
 	ImGui::PopItemWidth();
 
+	ImGui::Spacing();
+
 	// Pitch
 	float pitch = SoundNotify->GetPitch();
 	ImGui::Text("Pitch:");
@@ -156,24 +176,6 @@ bool FNotifyPropertyEditor::RenderSoundNotifyProperties(UAnimNotify* Notify)
 		bChanged = true;
 	}
 	ImGui::PopItemWidth();
-
-	// Sound (read-only for now, just display path)
-	ImGui::Text("Sound:");
-	ImGui::SameLine(100);
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-	USound* Sound = SoundNotify->GetSound();
-	if (Sound)
-	{
-		FString soundPath = Sound->GetFilePath();
-		size_t lastSlash = soundPath.find_last_of("/\\");
-		FString soundName = (lastSlash != FString::npos) ? soundPath.substr(lastSlash + 1) : soundPath;
-		ImGui::TextWrapped("%s", soundName.c_str());
-	}
-	else
-	{
-		ImGui::TextWrapped("(None)");
-	}
-	ImGui::PopStyleColor();
 
 	return bChanged;
 }
@@ -204,6 +206,8 @@ bool FNotifyPropertyEditor::RenderCameraShakeNotifyProperties(UAnimNotify* Notif
 	}
 	ImGui::PopItemWidth();
 
+	ImGui::Spacing();
+
 	// Amplitude Location
 	float ampLoc = ShakeNotify->GetAmplitudeLocation();
 	ImGui::Text("Amplitude Loc:");
@@ -215,6 +219,8 @@ bool FNotifyPropertyEditor::RenderCameraShakeNotifyProperties(UAnimNotify* Notif
 		bChanged = true;
 	}
 	ImGui::PopItemWidth();
+
+	ImGui::Spacing();
 
 	// Amplitude Rotation
 	float ampRot = ShakeNotify->GetAmplitudeRotationDeg();
@@ -228,6 +234,8 @@ bool FNotifyPropertyEditor::RenderCameraShakeNotifyProperties(UAnimNotify* Notif
 	}
 	ImGui::PopItemWidth();
 
+	ImGui::Spacing();
+
 	// Frequency
 	float frequency = ShakeNotify->GetFrequency();
 	ImGui::Text("Frequency:");
@@ -240,6 +248,8 @@ bool FNotifyPropertyEditor::RenderCameraShakeNotifyProperties(UAnimNotify* Notif
 	}
 	ImGui::PopItemWidth();
 
+	ImGui::Spacing();
+
 	// Priority
 	int32 priority = ShakeNotify->GetPriority();
 	ImGui::Text("Priority:");
@@ -251,6 +261,8 @@ bool FNotifyPropertyEditor::RenderCameraShakeNotifyProperties(UAnimNotify* Notif
 		bChanged = true;
 	}
 	ImGui::PopItemWidth();
+
+	ImGui::Spacing();
 
 	// Mix Ratio
 	float mixRatio = ShakeNotify->GetMixRatio();
@@ -265,7 +277,10 @@ bool FNotifyPropertyEditor::RenderCameraShakeNotifyProperties(UAnimNotify* Notif
 	ImGui::PopItemWidth();
 
 	ImGui::Spacing();
+
+	// Noise Mode
 	ImGui::Text("Noise Mode:");
+	ImGui::SameLine(150);
 	EShakeNoise noiseMode = ShakeNotify->GetNoiseMode();
 	const char* noiseModeNames[] = { "Sine", "Perlin", "Mixed" };
 	int currentMode = static_cast<int>(noiseMode);

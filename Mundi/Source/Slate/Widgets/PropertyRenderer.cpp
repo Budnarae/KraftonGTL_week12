@@ -1667,6 +1667,8 @@ bool UPropertyRenderer::RenderTextureSelectionCombo(const char* Label, UTexture*
 
 bool UPropertyRenderer::RenderSoundSelectionComboSimple(const char* Label, USound* CurrentSound, USound*& OutNewSound)
 {
+	CacheResources();  // 캐시 초기화
+
     if (CachedSoundItems.empty())
     {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "No Sound available in cache.");
@@ -1687,7 +1689,6 @@ bool UPropertyRenderer::RenderSoundSelectionComboSimple(const char* Label, USoun
     }
 
     const char* PreviewText = CachedSoundItems[SelectedSoundIdx];
-    ImGui::SetNextItemWidth(220.0f);
     if (ImGui::BeginCombo(Label, PreviewText))
     {
         for (int i = 0; i < (int)CachedSoundItems.size(); ++i)
