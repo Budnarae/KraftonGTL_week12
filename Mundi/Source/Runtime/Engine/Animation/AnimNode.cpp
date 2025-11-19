@@ -1,5 +1,33 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "AnimNode.h"
+
+float ApplyAnimBlendEase(float Alpha, EAnimBlendEaseType EaseType)
+{
+    Alpha = FMath::Clamp(Alpha, 0.f, 1.f);
+    switch (EaseType)
+    {
+        case EAnimBlendEaseType::EaseIn :
+                return Alpha * Alpha;
+        case EAnimBlendEaseType::EaseOut:
+            {
+                float Inv = 1.f - Alpha;
+                return 1.f - Inv * Inv;
+            }
+        case EAnimBlendEaseType::EaseInOut:
+            if (Alpha < 0.5f)
+            {
+                float Scaled = Alpha * 2.f;
+                return 0.5f * Scaled * Scaled;
+            }
+            else
+            {
+                float Scaled = (1.f - Alpha) * 2.f;
+                return 1.f - 0.5f * Scaled * Scaled;
+            }
+        default:
+            return Alpha;
+    }
+}
 
 // ====================================
 // FAnimStateTransition 구현
@@ -89,6 +117,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
                 ? FMath::Clamp(TransitionElapsed / TransitionDuration, 0.f, 1.f)
                 : 1.f;
 
+            Alpha = ApplyAnimBlendEase(Alpha, TransitionBlendNode.EaseFunction);
             TransitionBlendNode.Alpha = Alpha;
 
             if (Alpha >= 1.f)
@@ -560,7 +589,8 @@ void FAnimNode_BlendSpace2D::Update(const FAnimationUpdateContext& Context)
 
     if (bIsTimeSynchronized)
     {
-        SynchronizeSampleTimes();
+        SimpleSynchronizeSampleTimes();
+        // SynchronizeSampleTimes();
     }
 
     for (FBlendSample2D& Sample : Samples)

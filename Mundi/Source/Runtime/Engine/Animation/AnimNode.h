@@ -3,6 +3,17 @@
 #include "Delegates.h"
 #include "AnimNodeTransitionRule.h"
 
+enum class EAnimBlendEaseType : uint8
+{
+    Linear = 0,
+    EaseIn,
+    EaseOut,
+    EaseInOut
+};
+
+float ApplyAnimBlendEase(float Alpha, EAnimBlendEaseType EaseType);
+
+
 struct FAnimNode_Base {
 	virtual void Update(const FAnimationUpdateContext& Context) = 0;
 	virtual void Evaluate(FPoseContext& Output) = 0;
@@ -85,10 +96,13 @@ struct FAnimNode_Sequence : FAnimNode_Base
     }
 };
 
+
 struct FAnimNode_TwoWayBlend : FAnimNode_Base
 {
     FAnimNode_Base* From = nullptr;
     FAnimNode_Base* To = nullptr;
+
+    EAnimBlendEaseType EaseFunction = EAnimBlendEaseType::Linear;
 
     float Alpha = 0.f;        // 0 → A, 1 → B
     float BlendTime = 0.2f;
@@ -155,6 +169,8 @@ struct FBlendSample2D
 
 struct FAnimNode_BlendSpace1D : public FAnimNode_Base
 {
+    EAnimBlendEaseType EaseFunction = EAnimBlendEaseType::Linear;
+
     float BlendInput = 0.0f; // 외부 세팅 값 (ex: 이동 속도)
     float MinimumPosition = 0.0f; // BlendSpace 시작값
     float MaximumPosition = 1.0f; // BlendSpace 끝값
@@ -198,6 +214,8 @@ private:
 
 struct FAnimNode_BlendSpace2D : public FAnimNode_Base
 {
+    EAnimBlendEaseType EaseFunction = EAnimBlendEaseType::Linear;
+
     float BlendInputX = 0.0f;
     float BlendInputY = 0.0f;
 
@@ -254,6 +272,64 @@ private:
     void CalculateSampleWeights();
     void SynchronizeSampleTimes();
     void SimpleSynchronizeSampleTimes();
+};
+
+struct FAnimNode_AdditiveBlend : public FAnimNode_Base
+{
+    FAnimNode_Base* BasePose = nullptr;
+    FAnimNode_Base* AdditivePose = nullptr;
+
+    float Alpha = 1.0f;
+
+    virtual void Update(const FAnimationUpdateContext& Context) override
+    {
+        if (BasePose) BasePose->Update(Context);
+        if (AdditivePose) AdditivePose->Update(Context);
+    }
+
+    virtual void Evaluate(FPoseContext& Output) override
+    {
+        if (!BasePose)
+            return;
+
+        FPoseContext Base(Output);
+        FPoseContext Add(Output);
+
+        BasePose->Evaluate(Base);
+
+        if (!AdditivePose)
+        {
+            Output = Base;
+            return;
+        }
+
+        AdditivePose->Evaluate(Add);
+
+        ApplyAdditive(Base, Add, Alpha, Output);
+    }
+
+    void ApplyAdditive(const FPoseContext& Base, const FPoseContext& Add, float Alpha, FPoseContext& Out)
+    {
+        const int32 BoneCount = Base.EvaluatedPoses.Num();
+        Out.EvaluatedPoses.SetNum(BoneCount);
+
+        for (int i = 0; i < BoneCount;i++)
+        {
+            const FTransform& BTrans = Base.EvaluatedPoses[i];
+            const FTransform& ATrans = Add.EvaluatedPoses[i];
+
+            const FQuat DeltaRot = ATrans.Rotation * BTrans.Rotation.Inverse();
+            const FVector DeltaPos = (ATrans.Translation - BTrans.Translation);
+            const FVector DeltaScale = (ATrans.Scale3D / BTrans.Scale3D);
+
+            FQuat WeightedDelta = FQuat::Slerp(FQuat::Identity(), DeltaRot, Alpha);
+            Out.EvaluatedPoses[i].Rotation = WeightedDelta * BTrans.Rotation;
+
+            Out.EvaluatedPoses[i].Translation = BTrans.Translation + (DeltaPos * Alpha);
+
+            Out.EvaluatedPoses[i].Scale3D = BTrans.Scale3D * FVector::Lerp(FVector(1, 1, 1), DeltaScale, Alpha);
+        }
+    }
 };
 
 struct FAnimState

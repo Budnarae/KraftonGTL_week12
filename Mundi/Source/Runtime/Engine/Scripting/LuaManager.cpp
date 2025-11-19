@@ -547,11 +547,11 @@ FLuaManager::FLuaManager()
         },
         "MinimumPosition", sol::property(
             [](const FAnimNode_BlendSpace1D& Self) { return Self.MinimumPosition; },
-            [](FAnimNode_BlendSpace1D& Self, float Value) { Self.MinimumPosition = Value; }
+            [](FAnimNode_BlendSpace1D& Self, float Value) { Self.SetMinimumPosition(Value); }
         ),
         "MaximumPosition", sol::property(
             [](const FAnimNode_BlendSpace1D& Self) { return Self.MaximumPosition; },
-            [](FAnimNode_BlendSpace1D& Self, float Value) { Self.MaximumPosition = Value; }
+            [](FAnimNode_BlendSpace1D& Self, float Value) { Self.SetMaximumPosition(Value); }
         ),
         "IsTimeSynchronized", sol::property(
             [](const FAnimNode_BlendSpace1D& Self) { return Self.bIsTimeSynchronized; },
@@ -607,6 +607,15 @@ FLuaManager::FLuaManager()
         "Update", &FAnimNode_BlendSpace2D::Update,
         "Evaluate", &FAnimNode_BlendSpace2D::Evaluate
     );
+    SharedLib.new_enum<EAnimBlendEaseType>("EAnimBlendEaseType",
+        {
+            {"Linear", EAnimBlendEaseType::Linear},
+            {"EaseIn", EAnimBlendEaseType::EaseIn},
+            {"EaseOut", EAnimBlendEaseType::EaseOut},
+            {"EaseInOut", EAnimBlendEaseType::EaseInOut}
+        }
+    );
+
     // FAnimNode_StateMachine 생성자 함수 등록 (전역과 SharedLib 모두)
     auto fanimsm_constructor = []() { return FAnimNode_StateMachine(); };
     SharedLib.set_function("CreateAnimNodeStateMachine", fanimsm_constructor);
