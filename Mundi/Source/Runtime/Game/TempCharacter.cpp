@@ -112,15 +112,14 @@ void ATempCharacter::Tick(float DeltaSeconds)
             {
                 AddMovementInput(MoveDirection.GetNormalized(), 1.0f);
             }
+
+            // Jump input
+            if (Input.IsKeyPressed(VK_SPACE))
+            {
+                Jump();
+            }
         }
 
-        // Apply movement (temporary implementation until CharacterMovementComponent is added)
-        FVector InputVector = ConsumeMovementInputVector();
-        if (InputVector.SizeSquared() > 0.0f)
-        {
-            // 이동 적용
-            FVector NewLocation = GetActorLocation() + InputVector * MovementSpeed * DeltaSeconds;
-            SetActorLocation(NewLocation);
-        }
+        // Movement is now handled by CharacterMovementComponent
     }
 }

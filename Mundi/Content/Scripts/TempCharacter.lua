@@ -5,16 +5,13 @@ local AnimationStateMachine = dofile("Content/Scripts/AnimationStateMachine.lua"
 
 local ASM = nil
 local SkeletalComp = nil
+local MovementComp = nil
 local BlendSpaceNode = nil
-
--- 이동 입력 값 (-1 ~ 1)
-local InputX = 0.0  -- Left(-1) / Right(1)
-local InputY = 0.0  -- Backward(-1) / Forward(1)
 
 -- 블렌드 보간용
 local CurrentX = 0.0
 local CurrentY = 0.0
-local BlendSpeed = 3.0  -- 블렌드 속도 (낮을수록 부드러움)
+local BlendSpeed = 5.0  -- 블렌드 속도 (높을수록 빠르게 전환)
 
 -- 애니메이션 시퀀스
 local IdleAnim = nil
@@ -69,6 +66,11 @@ function BeginPlay()
         return
     end
 
+    MovementComp = GetComponent(Obj, "UCharacterMovementComponent")
+    if not MovementComp then
+        print("[TempCharacter] No CharacterMovementComponent found")
+    end
+
     ASM = AnimationStateMachine:new()
     ASM:initialize()
 
@@ -113,24 +115,31 @@ function AnimUpdate(deltaTime)
         return nil
     end
 
-    -- 목표 입력값 계산
+    -- 속도 기반 블렌드 입력 계산
     local TargetX = 0.0
     local TargetY = 0.0
 
-    if InputManager:IsKeyDown('W') then
-        TargetY = TargetY + 1.0
-    end
-    if InputManager:IsKeyDown('S') then
-        TargetY = TargetY - 1.0
-    end
-    if InputManager:IsKeyDown('D') then
-        TargetX = TargetX + 1.0
-    end
-    if InputManager:IsKeyDown('A') then
-        TargetX = TargetX - 1.0
+    if MovementComp then
+        -- 월드 속도 가져오기
+        local Velocity = MovementComp:GetVelocity()
+        local MaxSpeed = MovementComp:GetMaxWalkSpeed()
+
+        if MaxSpeed > 0.0 then
+            -- 캐릭터의 로컬 방향 벡터 가져오기
+            local Forward = GetActorForward(Obj)
+            local Right = GetActorRight(Obj)
+
+            -- 월드 속도를 로컬 공간으로 변환 (내적 사용)
+            local LocalY = Velocity.X * Forward.X + Velocity.Y * Forward.Y  -- Forward/Backward
+            local LocalX = Velocity.X * Right.X + Velocity.Y * Right.Y      -- Left/Right
+
+            -- 최대 속도로 정규화 (-1 ~ 1)
+            TargetX = math.max(-1.0, math.min(1.0, LocalX / MaxSpeed))
+            TargetY = math.max(-1.0, math.min(1.0, LocalY / MaxSpeed))
+        end
     end
 
-    -- 부드러운 보간 (BlendSpeed가 낮을수록 천천히 전환)
+    -- 부드러운 보간
     local t = math.min(1.0, deltaTime * BlendSpeed)
     CurrentX = lerp(CurrentX, TargetX, t)
     CurrentY = lerp(CurrentY, TargetY, t)
@@ -166,6 +175,7 @@ function EndPlay()
 
     ASM = nil
     SkeletalComp = nil
+    MovementComp = nil
     BlendSpaceNode = nil
     IdleAnim = nil
     ForwardAnim = nil

@@ -2,6 +2,7 @@
 #include "Pawn.h"
 #include "SkeletalMeshComponent.h"
 #include "CapsuleComponent.h"
+#include "CharacterMovementComponent.h"
 #include "ACharacter.generated.h"
 
 /**
@@ -42,6 +43,21 @@ public:
     USkeletalMeshComponent* GetMesh() const { return MeshComponent; }
 
     /**
+     * 캐릭터 무브먼트 컴포넌트 반환
+     */
+    UCharacterMovementComponent* GetCharacterMovement() const { return MovementComponent; }
+
+    /**
+     * 점프
+     */
+    virtual void Jump();
+
+    /**
+     * 점프 중지
+     */
+    virtual void StopJumping();
+
+    /**
      * 스켈레탈 메시 설정
      */
     void SetSkeletalMesh(const FString& PathFileName);
@@ -67,7 +83,6 @@ protected:
     // 스켈레탈 메시
     USkeletalMeshComponent* MeshComponent = nullptr;
 
-    // 이동 속도
-    UPROPERTY(EditAnywhere, Category="Character|Movement")
-    float MovementSpeed = 10.0f;
+    // 캐릭터 무브먼트 컴포넌트
+    UCharacterMovementComponent* MovementComponent = nullptr;
 };
