@@ -5,6 +5,7 @@
 #include "PlayerCameraManager.h"
 #include "CameraComponent.h"
 #include "SpringArmComponent.h"
+#include "BoxComponent.h"
 #include "InputManager.h"
 #include "LuaScriptComponent.h"
 
@@ -27,6 +28,11 @@ ATempCharacter::ATempCharacter()
     // 카메라 컴포넌트 생성 (스프링 암에 부착)
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
     CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
+
+    // Box 충돌 컴포넌트 생성 (RootComponent에 부착)
+    BoxCollider = CreateDefaultSubobject<UBoxComponent>("BoxCollider");
+    BoxCollider->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
+    BoxCollider->SetBoxExtent(FVector(1.0f, 1.0f, 2.0f));  // 캐릭터 크기에 맞게 설정
 
     // Lua 스크립트 컴포넌트 생성 (애니메이션 처리용)
     ULuaScriptComponent* ScriptComp = CreateDefaultSubobject<ULuaScriptComponent>("LuaScript");

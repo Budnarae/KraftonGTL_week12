@@ -22,6 +22,16 @@ local ForwardAnim = nil
 local BackwardAnim = nil
 local LeftAnim = nil
 local RightAnim = nil
+local DizzyAnim = nil
+local DizzyAnim2 = nil
+
+-- Hit State 관련
+local HitState = nil
+local bHitByObstacle = false
+local HitTimer = 0.0
+--local HitDuration = 1.33  -- Hit State 지속 시간 (초)
+local HitDuration = 0.33  -- Hit State 지속 시간 (초)
+local PreviousState = nil
 
 local function build_blend_space(state)
     BlendSpaceNode = state:CreateBlendSpace2DNode()
@@ -62,6 +72,36 @@ local function build_blend_space(state)
     return true
 end
 
+local function build_hit_state(state)
+    local BasePoseNode = state:CreateSequenceNode(DizzyAnim, true)
+    local AdditivePoseNode = state:CreateSequenceNode(DizzyAnim2, true)
+
+    if not BasePoseNode or not AdditivePoseNode then
+        return false
+    end
+
+    local AdditiveBlendNode = state:CreateAdditiveBlendNode()
+    if not AdditiveBlendNode then
+        return false
+    end
+
+    AdditiveBlendNode:SetBasePose(BasePoseNode)
+    AdditiveBlendNode:SetAdditivePose(AdditivePoseNode)
+    AdditiveBlendNode.Alpha = 0.5  -- Additive 효과 최대
+
+    state:SetEntryNode(AdditiveBlendNode)
+    return true
+end
+
+-- Transition 조건 함수들
+local function ShouldTransitionToHit()
+    return bHitByObstacle
+end
+
+local function ShouldTransitionToLocomotion()
+    return HitTimer >= HitDuration
+end
+
 function BeginPlay()
     SkeletalComp = GetComponent(Obj, "USkeletalMeshComponent")
     if not SkeletalComp then
@@ -78,12 +118,17 @@ function BeginPlay()
     BackwardAnim = LoadAnimationSequence("CactusPA_Cactus_WalkBWD")
     LeftAnim     = LoadAnimationSequence("CactusPA_Cactus_WalkLFT")
     RightAnim    = LoadAnimationSequence("CactusPA_Cactus_WalkRGT")
+    DizzyAnim    = LoadAnimationSequence("CactusPA_Cactus_Dizzy")
+    --GetHitAnim   = LoadAnimationSequence("CactusPA_Cactus_GetHit")
+    --DizzyAnim2 = LoadAnimationSequence("CactusPA_Cactus_Dizzy")
+    DizzyAnim2 = LoadAnimationSequence("CactusPA_Cactus_GetHit")
 
-    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim) then
+    if not (IdleAnim and ForwardAnim and BackwardAnim and LeftAnim and RightAnim and DizzyAnim and DizzyAnim2) then
         print("[TempCharacter] Failed to load Cactus animations")
         return
     end
 
+    -- Locomotion State 생성
     local Locomotion = ASM:add_state(FName("Locomotion"))
     if not Locomotion then
         print("[TempCharacter] Failed to create Locomotion state")
@@ -97,11 +142,45 @@ function BeginPlay()
 
     Locomotion:SetEntryNode(BlendSpaceNode)
 
+    -- Hit State 생성
+    HitState = ASM:add_state(FName("Hit"))
+    if not HitState then
+        print("[TempCharacter] Failed to create Hit state")
+        return
+    end
+
+    if not build_hit_state(HitState) then
+        print("[TempCharacter] Failed to build Hit state")
+        return
+    end
+
+    -- Transition 추가: Locomotion → Hit
+    local TransitionToHit = ASM:add_transition(FName("Locomotion"), FName("Hit"))
+    if TransitionToHit then
+        TransitionToHit:SetBlendTime(0.2)
+        TransitionToHit:SetTransitionCondition(ShouldTransitionToHit)
+    end
+
+    -- Transition 추가: Hit → Locomotion
+    local TransitionToLocomotion = ASM:add_transition(FName("Hit"), FName("Locomotion"))
+    if TransitionToLocomotion then
+        TransitionToLocomotion:SetBlendTime(0.3)
+        TransitionToLocomotion:SetTransitionCondition(ShouldTransitionToLocomotion)
+    end
+
+    -- Transition 플래그 리셋
+    if ASM.reset_transition_flags then
+        ASM:reset_transition_flags()
+    end
+
     -- 애니메이션 모드 설정 및 초기화
     SkeletalComp:SetAnimationModeInt(1)  -- AnimationBlueprint mode
     SkeletalComp:InitAnimInstance()
 
-    print("[TempCharacter] Animation initialized with BlendSpace2D")
+    -- 초기 State 저장
+    PreviousState = ASM.current_state
+
+    print("[TempCharacter] Animation initialized with BlendSpace2D and Hit state")
 end
 
 local function lerp(a, b, t)
@@ -140,6 +219,25 @@ function AnimUpdate(deltaTime)
         BlendSpaceNode:SetBlendInput(CurrentX, CurrentY)
     end
 
+    -- Hit State에 있을 때 타이머 증가
+    local CurrentState = ASM.current_state
+    if CurrentState == HitState then
+        HitTimer = HitTimer + deltaTime
+    end
+
+    -- State 변경 감지
+    if CurrentState ~= PreviousState then
+        -- State가 변경되었으므로 타이머 및 플래그 리셋
+        HitTimer = 0.0
+        bHitByObstacle = false
+        PreviousState = CurrentState
+
+        -- 모든 Transition의 CanEnterTransition 리셋
+        if ASM.reset_transition_flags then
+            ASM:reset_transition_flags()
+        end
+    end
+
     local Context = FAnimationUpdateContext()
     Context.DeltaTime = deltaTime
     ASM:update(Context)
@@ -159,6 +257,14 @@ function Tick(deltaTime)
     -- 입력 처리는 AnimUpdate에서 수행
 end
 
+function OnBeginOverlap(OtherActor)
+    if OtherActor and OtherActor.Tag == "CarObstacle" then
+        -- Hit State로 전환하기 위한 플래그 설정
+        bHitByObstacle = true
+        print("[TempCharacter] Hit by CarObstacle! Transitioning to Hit state...")
+    end
+end
+
 function EndPlay()
     if ASM then
         ASM:shutdown()
@@ -172,6 +278,12 @@ function EndPlay()
     BackwardAnim = nil
     LeftAnim = nil
     RightAnim = nil
+    DizzyAnim = nil
+    DizzyAnim2 = nil
+    HitState = nil
+    bHitByObstacle = false
+    HitTimer = 0.0
+    PreviousState = nil
     CurrentX = 0.0
     CurrentY = 0.0
 end

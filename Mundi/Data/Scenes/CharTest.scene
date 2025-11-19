@@ -1,9 +1,9 @@
 {
   "Actors" : {
-    "954" : {
+    "955" : {
       "ObjectName" : "APlayerCameraManager_2",
       "OwnedComponents" : [{
-          "Id" : 955,
+          "Id" : 956,
           "ObjectName" : "USceneComponent_3",
           "ParentId" : 0,
           "RelativeLocation" : [0.000000, 0.000000, 0.000000],
@@ -15,16 +15,16 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 955,
+      "RootComponentId" : 956,
       "Tag" : "",
       "Type" : "APlayerCameraManager",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "956" : {
+    "957" : {
       "ObjectName" : "스태틱 메시_0",
       "OwnedComponents" : [{
-          "Id" : 958,
+          "Id" : 959,
           "MaterialSlots" : [{
               "AssetPath" : "uberlit",
               "Type" : "UMaterial"
@@ -44,16 +44,16 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 958,
+      "RootComponentId" : 959,
       "Tag" : "",
       "Type" : "AStaticMeshActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "959" : {
+    "960" : {
       "ObjectName" : "앰비언트 라이트_0",
       "OwnedComponents" : [{
-          "Id" : 961,
+          "Id" : 962,
           "Intensity" : 1.000000,
           "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
           "ObjectName" : "UAmbientLightComponent_2",
@@ -73,13 +73,13 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 961,
+      "RootComponentId" : 962,
       "Tag" : "",
       "Type" : "AAmbientLightActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "962" : {
+    "963" : {
       "ObjectName" : "방향성 라이트_0",
       "OwnedComponents" : [{
           "CascadedAreaColorDebugValue" : 0.000000,
@@ -87,7 +87,7 @@
           "CascadedCount" : 4,
           "CascadedLinearBlendingValue" : 0.500000,
           "CascadedOverlapValue" : 0.200000,
-          "Id" : 964,
+          "Id" : 965,
           "Intensity" : 1.000000,
           "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
           "ObjectName" : "UDirectionalLightComponent_2",
@@ -108,16 +108,33 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 964,
+      "RootComponentId" : 965,
       "Tag" : "",
       "Type" : "ADirectionalLightActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "971" : {
-      "ObjectName" : "스태틱 메시_0",
+    "966" : {
+      "ObjectName" : "CarObstacle",
       "OwnedComponents" : [{
-          "Id" : 972,
+          "BoxExtent" : [4.823770, 1.050000, 2.403825],
+          "Id" : 970,
+          "ObjectName" : "UBoxComponent_2",
+          "ParentId" : 968,
+          "RelativeLocation" : [0.399512, 0.000000, 1.290453],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [0.483543, 1.000000, 0.330723],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 968,
           "MaterialSlots" : [{
               "AssetPath" : "Body",
               "Type" : "UMaterial"
@@ -157,21 +174,38 @@
           "bIsActive" : true,
           "bIsVisible" : true,
           "bTickEnabled" : true
+        }, {
+          "BoxExtent" : [2.332500, 1.050000, 1.255950],
+          "Id" : 969,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 968,
+          "RelativeLocation" : [0.000000, 0.000000, 0.520225],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 0.632987],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
         }],
-      "RootComponentId" : 972,
-      "Tag" : "",
+      "RootComponentId" : 968,
+      "Tag" : "CarObstacle",
       "Type" : "AStaticMeshActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     }
   },
-  "NextUUID" : 973,
+  "NextUUID" : 1089,
   "PerspectiveCamera" : {
     "FOV" : [60.000000],
     "FarClip" : [2000.000000],
-    "Location" : [-10.885192, 5.383924, 11.893973],
+    "Location" : [-3.304363, 4.437134, 2.147456],
     "NearClip" : [0.100000],
-    "Rotation" : [0.000000, 38.299984, -29.900015]
+    "Rotation" : [0.000000, 8.600001, -81.498619]
   },
   "Version" : 1
 }
