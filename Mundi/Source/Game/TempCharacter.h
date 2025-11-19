@@ -4,6 +4,7 @@
 
 class UCameraComponent;
 class USpringArmComponent;
+class UTempCharacterAnimInstance;
 
 UCLASS(DisplayName="임시 캐릭터", Description="테스트용 캐릭터")
 class ATempCharacter : public ACharacter
@@ -19,6 +20,9 @@ public:
 private:
     USpringArmComponent* SpringArm = nullptr;
     UCameraComponent* CameraComp = nullptr;
+
+    // 애니메이션 인스턴스
+    UTempCharacterAnimInstance* AnimInstancePtr = nullptr;
 
     // 카메라 회전
     float CameraYaw = 0.0f;

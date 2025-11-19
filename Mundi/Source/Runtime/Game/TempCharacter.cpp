@@ -14,7 +14,7 @@ ATempCharacter::ATempCharacter()
     // 스켈레탈 메시 설정
     if (MeshComponent)
     {
-        MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
+        MeshComponent->SetSkeletalMesh("Content/Resources/CactusPA");
     }
 
     // 스프링 암 생성

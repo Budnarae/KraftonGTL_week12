@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TempCharacter.h"
+#include "TempCharacterAnimInstance.h"
 #include "World.h"
 #include "PlayerController.h"
 #include "PlayerCameraManager.h"
@@ -28,6 +29,13 @@ ATempCharacter::ATempCharacter()
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
     CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
     CameraComp->SetFarClipPlane(10000.0f);  // 원거리 클리핑 확장
+
+    // AnimInstance 생성 및 연결
+    AnimInstancePtr = NewObject<UTempCharacterAnimInstance>();
+    if (MeshComponent && AnimInstancePtr)
+    {
+        MeshComponent->SetAnimInstance(AnimInstancePtr);
+    }
 }
 
 void ATempCharacter::BeginPlay()
@@ -116,11 +124,22 @@ void ATempCharacter::Tick(float DeltaSeconds)
 
         // Apply movement (temporary implementation until CharacterMovementComponent is added)
         FVector InputVector = ConsumeMovementInputVector();
+        float CurrentSpeedValue = 0.0f;
+
         if (InputVector.SizeSquared() > 0.0f)
         {
             // 이동 적용
             FVector NewLocation = GetActorLocation() + InputVector * MovementSpeed * DeltaSeconds;
             SetActorLocation(NewLocation);
+
+            // 현재 속도 계산 (MovementSpeed를 기반으로)
+            CurrentSpeedValue = MovementSpeed;
+        }
+
+        // AnimInstance에 속도 전달
+        if (AnimInstancePtr)
+        {
+            AnimInstancePtr->SetSpeed(CurrentSpeedValue);
         }
     }
 }
