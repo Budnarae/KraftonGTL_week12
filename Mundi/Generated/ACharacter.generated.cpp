@@ -35,8 +35,8 @@ const bool ACharacter::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(ACharacter)
     MARK_AS_SPAWNABLE("캐릭터", "스켈레탈 메시와 캡슐 충돌을 가진 캐릭터")
-    ADD_PROPERTY(float, MovementSpeed, "Character|Movement", true)
 END_PROPERTIES()
+
 
 // ===== Lua Binding =====
 

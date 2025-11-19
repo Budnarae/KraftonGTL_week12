@@ -16,8 +16,27 @@ ACharacter::ACharacter()
     MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>("MeshComponent");
     MeshComponent->SetupAttachment(CapsuleComponent);
 
+    // Create character movement component
+    MovementComponent = CreateDefaultSubobject<UCharacterMovementComponent>("CharacterMovement");
+
     // Offset mesh so feet are at capsule bottom
     // Usually mesh origin is at feet, so offset up by half height (default 100.0f)
+}
+
+void ACharacter::Jump()
+{
+    if (MovementComponent)
+    {
+        MovementComponent->Jump();
+    }
+}
+
+void ACharacter::StopJumping()
+{
+    if (MovementComponent)
+    {
+        MovementComponent->StopJumping();
+    }
 }
 
 ACharacter::~ACharacter() = default;
@@ -85,6 +104,10 @@ void ACharacter::DuplicateSubObjects()
         {
             MeshComponent = Comp;
         }
+        else if (auto* Comp = Cast<UCharacterMovementComponent>(Component))
+        {
+            MovementComponent = Comp;
+        }
     }
 }
 
@@ -102,7 +125,10 @@ void ACharacter::Serialize(const bool bInIsLoading, JSON& InOutHandle)
             if (auto* Comp = Cast<USkeletalMeshComponent>(Component))
             {
                 MeshComponent = Comp;
-                break;
+            }
+            else if (auto* Comp = Cast<UCharacterMovementComponent>(Component))
+            {
+                MovementComponent = Comp;
             }
         }
     }
