@@ -758,10 +758,12 @@ FLuaManager::FLuaManager()
         sol::no_constructor,
         "AddAnimNotify", &UAnimationSequence::AddAnimNotify,
         "RemoveAnimNotify", &UAnimationSequence::RemoveAnimNotify,
+        "ClearAnimNotifies", &UAnimationSequence::ClearAnimNotifies,
         "GetAnimNotifies", &UAnimationSequence::GetAnimNotifies,
         "GetAnimNotifyCount", &UAnimationSequence::GetAnimNotifyCount,
         "AddAnimNotifyState", &UAnimationSequence::AddAnimNotifyState,
         "RemoveAnimNotifyState", &UAnimationSequence::RemoveAnimNotifyState,
+        "ClearAnimNotifyStates", &UAnimationSequence::ClearAnimNotifyStates,
         "GetAnimNotifyStates", &UAnimationSequence::GetAnimNotifyStates,
         "GetAnimNotifyStateCount", &UAnimationSequence::GetAnimNotifyStateCount,
         "GetPlayLength", &UAnimationSequence::GetPlayLength

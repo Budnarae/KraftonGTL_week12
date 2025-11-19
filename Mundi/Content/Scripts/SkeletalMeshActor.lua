@@ -62,10 +62,18 @@ function BeginPlay()
         return
     end
 
+    -- PIE 재실행 시 Notify 중복 방지: 기존 Notify 모두 제거
+    AnimA:ClearAnimNotifies()
+    AnimA:ClearAnimNotifyStates()
+    AnimB:ClearAnimNotifies()
+    AnimB:ClearAnimNotifyStates()
+    AnimC:ClearAnimNotifies()
+    AnimC:ClearAnimNotifyStates()
+
     -- Sound 로드 (애니메이션별로 다른 사운드 사용)
-    local SoundA = LoadSound("Data/Audio/Shot.wav")
+    local SoundA = LoadSound("Data/Audio/FootWalk.wav")
     -- local SoundB = LoadSound("Data/Audio/HitFireball.wav")
-    local SoundB = LoadSound("Data/Audio/HitFireball.wav")
+    -- local SoundB = LoadSound("Data/Audio/HitFireball.wav")
 
     -- State 생성 및 애니메이션 추가
     StateA = ASM:add_state(FName("StateA"))
@@ -146,17 +154,17 @@ function BeginPlay()
     end
 
     -- StateA: Rotating NotifyState 추가
-    if AnimA then
-        local RotatingNotify = NewRotatingAnimNotifyState()
-        if RotatingNotify then
-            RotatingNotify:SetOwner(OwnerActor)
-            RotatingNotify:SetRotationPerTick(Vector(0, 0, 0.1))  -- 매 틱마다 Yaw 10도 회전 (Roll, Pitch, Yaw)
-            RotatingNotify:SetRollbackOnEnd(true)  -- 종료 시 원래 회전으로 복원
-            RotatingNotify:SetStartTime(0.5)
-            RotatingNotify:SetDurationTime(1.0)
-            AnimA:AddAnimNotifyState(RotatingNotify)
-        end
-    end
+    --if AnimA then
+    --    local RotatingNotify = NewRotatingAnimNotifyState()
+    --    if RotatingNotify then
+    --        RotatingNotify:SetOwner(OwnerActor)
+    --        RotatingNotify:SetRotationPerTick(Vector(0, 0, 0.1))  -- 매 틱마다 Yaw 10도 회전 (Roll, Pitch, Yaw)
+    --        RotatingNotify:SetRollbackOnEnd(true)  -- 종료 시 원래 회전으로 복원
+    --        RotatingNotify:SetStartTime(0.5)
+    --        RotatingNotify:SetDurationTime(1.0)
+    --        AnimA:AddAnimNotifyState(RotatingNotify)
+    --    end
+    --end
 
     -- StateB: CameraShake Notify 추가
     if AnimB then
@@ -201,18 +209,18 @@ function BeginPlay()
     --     end
     -- end
 
-    -- StateC: Sound Notify 추가
-    if AnimB and SoundB then
-        local NotifyB = NewSoundAnimNotify()
-        if NotifyB then
-            NotifyB:SetSound(SoundB)
-            NotifyB:SetTimeToNotify(1.0)
-            NotifyB:SetVolume(1.0)
-            NotifyB:SetPitch(1.0)
-            NotifyB:SetOwner(OwnerActor)
-            AnimB:AddAnimNotify(NotifyB)
-        end
-    end
+    ---- StateC: Sound Notify 추가
+    --if AnimB and SoundB then
+    --    local NotifyB = NewSoundAnimNotify()
+    --    if NotifyB then
+    --        NotifyB:SetSound(SoundB)
+    --        NotifyB:SetTimeToNotify(1.0)
+    --        NotifyB:SetVolume(1.0)
+    --        NotifyB:SetPitch(1.0)
+    --        NotifyB:SetOwner(OwnerActor)
+    --        AnimB:AddAnimNotify(NotifyB)
+    --    end
+    --end
 
     -- 초기 State 저장
     PreviousState = ASM.current_state
