@@ -448,6 +448,7 @@ GEMINI.md
 # Untracked Data Files
 /Mundi/Data/untracked/**
 /Mundi/DerivedDataCache/**
+/Mundi/Content/Resources/**
 !/Mundi/ThirdParty/**
 
 # Python Embedded (임베디드 Python을 포함하여 팀원들이 바로 사용 가능)

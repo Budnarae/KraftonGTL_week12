@@ -65,7 +65,7 @@ function BeginPlay()
     -- Sound 로드 (애니메이션별로 다른 사운드 사용)
     local SoundA = LoadSound("Data/Audio/Shot.wav")
     -- local SoundB = LoadSound("Data/Audio/HitFireball.wav")
-    local SoundC = LoadSound("Data/Audio/HitFireball.wav")
+    local SoundB = LoadSound("Data/Audio/HitFireball.wav")
 
     -- State 생성 및 애니메이션 추가
     StateA = ASM:add_state(FName("StateA"))
@@ -202,15 +202,15 @@ function BeginPlay()
     -- end
 
     -- StateC: Sound Notify 추가
-    if AnimC and SoundC then
-        local NotifyC = NewSoundAnimNotify()
-        if NotifyC then
-            NotifyC:SetSound(SoundC)
-            NotifyC:SetTimeToNotify(0.1)
-            NotifyC:SetVolume(1.0)
-            NotifyC:SetPitch(1.0)
-            NotifyC:SetOwner(OwnerActor)
-            AnimC:AddAnimNotify(NotifyC)
+    if AnimB and SoundB then
+        local NotifyB = NewSoundAnimNotify()
+        if NotifyB then
+            NotifyB:SetSound(SoundB)
+            NotifyB:SetTimeToNotify(1.0)
+            NotifyB:SetVolume(1.0)
+            NotifyB:SetPitch(1.0)
+            NotifyB:SetOwner(OwnerActor)
+            AnimB:AddAnimNotify(NotifyB)
         end
     end
 
@@ -284,6 +284,7 @@ end
 function EndPlay()
     if ASM then
         ASM:shutdown()
+        
     end
 
     -- 모든 전역 변수 정리
