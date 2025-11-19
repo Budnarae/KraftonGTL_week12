@@ -132,11 +132,7 @@ void UAnimInstance::ClearPreviousAnimNotifyState()
         FAnimNode_Sequence* AnimNode_Sequence = dynamic_cast<FAnimNode_Sequence*>(AnimNode);
         if (!AnimNode_Sequence) continue;
 
-        const TArray<UAnimNotifyState*>& AnimNotifyStates =
-            AnimNode_Sequence->Sequence->GetAnimNotifyStates();
-
-        for (UAnimNotifyState* AnimNotifyState : AnimNotifyStates)
-            AnimNotifyState->NotifyEnd();
+        AnimNode_Sequence->EndPlay();
     }
 }
 
@@ -150,11 +146,13 @@ void UAnimInstance::PostUpdateAnimation()
     {
         FAnimNode_Sequence* AnimNode_Sequence = dynamic_cast<FAnimNode_Sequence*>(AnimNode);
         if (!AnimNode_Sequence) continue;
-        
+
         // 현재 애니메이션의 AnimNotify 목록 가져오기
         const TArray<UAnimNotify*>& AnimNotifies = AnimNode_Sequence->Sequence->GetAnimNotifies();
         float CurrentTime = AnimNode_Sequence->CurrentTime;
         float LastTime = AnimNode_Sequence->LastTime;
+        float PlayRate = AnimNode_Sequence->PlayRate;
+        bool bIsReversing = (PlayRate < 0.0f);
 
         // LastTime과 CurrentTime 사이에 있는 AnimNotify 실행
         for (UAnimNotify* Notify : AnimNotifies)
@@ -163,26 +161,46 @@ void UAnimInstance::PostUpdateAnimation()
                 continue;
 
             float NotifyTime = Notify->GetTimeToNotify();
-
-            // 시간 범위 체크: LastTime < NotifyTime <= CurrentTime
-            // 루프 애니메이션 고려
             bool bShouldTrigger = false;
 
-            if (LastTime <= CurrentTime)
+            if (bIsReversing)
             {
-                // 일반 경우: 시간이 순방향으로 진행
-                if (NotifyTime > LastTime && NotifyTime <= CurrentTime)
+                // 역재생: 시간이 역방향으로 진행 (CurrentTime < LastTime)
+                if (LastTime > CurrentTime)
                 {
-                    bShouldTrigger = true;
+                    // 역재생 중: CurrentTime < NotifyTime <= LastTime
+                    if (NotifyTime > CurrentTime && NotifyTime <= LastTime)
+                    {
+                        bShouldTrigger = true;
+                    }
+                }
+                else
+                {
+                    // 역재생 + 루프: 애니메이션이 처음에서 끝으로 돌아감
+                    if (NotifyTime > CurrentTime || NotifyTime <= LastTime)
+                    {
+                        bShouldTrigger = true;
+                    }
                 }
             }
             else
             {
-                // 루프 경우: 애니메이션이 끝에서 처음으로 돌아감
-                // LastTime이 CurrentTime보다 크다는 것은 루프가 발생했다는 의미
-                if (NotifyTime > LastTime || NotifyTime <= CurrentTime)
+                // 정방향 재생
+                if (LastTime <= CurrentTime)
                 {
-                    bShouldTrigger = true;
+                    // 일반 경우: 시간이 순방향으로 진행
+                    if (NotifyTime > LastTime && NotifyTime <= CurrentTime)
+                    {
+                        bShouldTrigger = true;
+                    }
+                }
+                else
+                {
+                    // 루프 경우: 애니메이션이 끝에서 처음으로 돌아감
+                    if (NotifyTime > LastTime || NotifyTime <= CurrentTime)
+                    {
+                        bShouldTrigger = true;
+                    }
                 }
             }
 
@@ -196,10 +214,8 @@ void UAnimInstance::PostUpdateAnimation()
         // 현재 애니메이션의 AnimNotifyState 목록 가져오기
         const TArray<UAnimNotifyState*>& AnimNotifyStates =
             AnimNode_Sequence->Sequence->GetAnimNotifyStates();
-        float CurrentAnimationPlayLength =
-            AnimNode_Sequence->Sequence->GetPlayLength();
 
-        // LastTime과 CurrentTime 사이에 있는 AnimNotify 실행
+        // LastTime과 CurrentTime 사이에 있는 AnimNotifyState 실행
         for (UAnimNotifyState* NotifyState : AnimNotifyStates)
         {
             if (!NotifyState)
@@ -207,72 +223,123 @@ void UAnimInstance::PostUpdateAnimation()
 
             float StartTime = NotifyState->GetStartTime();
             float DurationTime = NotifyState->GetDurationTime();
+            float EndTime = StartTime + DurationTime;
+            bool bEndAlreadyCalled = NotifyState->GetEndAlreadyCalled();
 
-            // 시간 범위 체크: LastTime < NotifyTime <= CurrentTime
-            // 루프 애니메이션 고려
             bool bBeginTrigger = false;
             bool bTickTrigger = false;
             bool bEndTrigger = false;
-            bool bEndAlreadyCalled = NotifyState->GetEndAlreadtCalled();
 
-            if (LastTime <= CurrentTime)
+            if (bIsReversing)
             {
-                // 일반 경우: 시간이 순방향으로 진행
-                if (StartTime > LastTime && StartTime <= CurrentTime)
+                // 역재생: End → Tick → Begin 순서
+                bool bReverseLooped = (LastTime < CurrentTime); // 역재생 루프 (0 → Length)
+                bool bIsInRange = (CurrentTime >= StartTime && CurrentTime <= EndTime);
+
+                // Begin: EndTime 통과 (역방향으로) 또는 루프 발생
+                // 조건1: 정상적으로 EndTime을 통과 (LastTime >= EndTime > CurrentTime)
+                // 조건2: 루프 발생 시 (범위 체크 없이 무조건)
+                if ((LastTime >= EndTime && CurrentTime < EndTime) || bReverseLooped)
                 {
                     bBeginTrigger = true;
                 }
-                if (StartTime + DurationTime > CurrentTime &&
-                    StartTime <= CurrentTime)
+
+                // Tick: 범위 내에 있음
+                if (bIsInRange)
                 {
                     bTickTrigger = true;
                 }
-                if (StartTime + DurationTime > LastTime &&
-                    StartTime + DurationTime <= CurrentTime &&
-                    !bEndAlreadyCalled)
+
+                // End: StartTime 통과 (역방향으로) 또는 루프 발생
+                if (!bEndAlreadyCalled)
                 {
+                    // 조건1: 정상적으로 StartTime을 통과
+                    // 조건2: 루프 발생 시 무조건
+                    if ((LastTime >= StartTime && CurrentTime < StartTime) || bReverseLooped)
+                    {
+                        bEndTrigger = true;
+                    }
+                }
+                else if (bReverseLooped && bBeginTrigger)
+                {
+                    // 역재생 루프 시 Begin이 트리거되면 End도 호출
+                    // (Begin 실행으로 bEndAlreadyCalled가 false로 리셋될 예정)
                     bEndTrigger = true;
                 }
             }
             else
             {
-                // 루프 경우: LastTime > CurrentTime (애니메이션이 끝에서 처음으로 돌아감)
-                if (StartTime > LastTime || StartTime <= CurrentTime)
+                // 정방향 재생: Begin → Tick → End 순서
+                bool bForwardLooped = (LastTime > CurrentTime); // 정방향 루프 (Length → 0)
+                bool bIsInRange = (CurrentTime >= StartTime && CurrentTime < EndTime);
+
+                // Begin: StartTime 통과 또는 루프 발생
+                // 조건1: 정상적으로 StartTime을 통과 (LastTime <= StartTime <= CurrentTime)
+                // 조건2: 루프 발생 시 (범위 체크 없이 무조건)
+                if ((LastTime <= StartTime && CurrentTime >= StartTime) || bForwardLooped)
                 {
                     bBeginTrigger = true;
                 }
 
-                float EndTime = fmod(StartTime + DurationTime, CurrentAnimationPlayLength);
-
-                if (StartTime <= CurrentTime && EndTime > CurrentTime)
+                // Tick: 범위 내에 있음
+                if (bIsInRange)
                 {
                     bTickTrigger = true;
                 }
 
-                // EndTime이 [LastTime, CurrentTime] 구간을 통과했는지 체크
-                // 루프 시: LastTime > CurrentTime이므로, EndTime이 LastTime보다 작거나 CurrentTime 이하
-                if ((EndTime <= LastTime || EndTime <= CurrentTime) && !bEndAlreadyCalled)
+                // End: EndTime 통과 또는 루프 발생
+                if (!bEndAlreadyCalled)
                 {
+                    // 조건1: 정상적으로 EndTime을 통과
+                    // 조건2: 루프 발생 시 무조건
+                    if ((LastTime < EndTime && CurrentTime >= EndTime) || bForwardLooped)
+                    {
+                        bEndTrigger = true;
+                    }
+                }
+                else if (bForwardLooped && bBeginTrigger)
+                {
+                    // 루프 시 Begin이 트리거되면 End도 호출
+                    // (Begin 실행으로 bEndAlreadyCalled가 false로 리셋될 예정)
                     bEndTrigger = true;
                 }
             }
 
-            // Notify 실행 (조건이 맞으면 실행)
-            if (bBeginTrigger)
+            // Notify 실행
+            // 역재생 시: End → Tick → Begin 순서
+            // 정방향 시: Begin → Tick → End 순서
+            if (bIsReversing)
             {
-                NotifyState->NotifyBegin();
+                if (bEndTrigger)
+                {
+                    NotifyState->NotifyEnd();
+                }
+                if (bTickTrigger)
+                {
+                    NotifyState->NotifyTick();
+                }
+                if (bBeginTrigger)
+                {
+                    NotifyState->NotifyBegin();
+                }
             }
-            if (bTickTrigger)
+            else
             {
-                NotifyState->NotifyTick();
-            }
-            if (bEndTrigger)
-            {
-                NotifyState->NotifyEnd();
+                if (bBeginTrigger)
+                {
+                    NotifyState->NotifyBegin();
+                }
+                if (bTickTrigger)
+                {
+                    NotifyState->NotifyTick();
+                }
+                if (bEndTrigger)
+                {
+                    NotifyState->NotifyEnd();
+                }
             }
         }
     }
-
     PreviousAnimState = CurrentAnimState;
 }
 

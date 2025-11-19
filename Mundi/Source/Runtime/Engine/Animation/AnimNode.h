@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include "AnimationSequence.h"
-#include "Delegates.h"
-#include "AnimNodeTransitionRule.h"
+#include "AnimNotify/AnimNotifyState.h"
 
 enum class EAnimBlendEaseType : uint8
 {
@@ -26,6 +25,18 @@ struct FAnimNode_Sequence : FAnimNode_Base
     float LastTime = 0.0f;
     float PlayRate = 1.0f;
     bool bLooping = true;
+
+    void EndPlay()
+    {
+        CurrentTime = 0.f;
+        LastTime = 0.f;
+
+        for (UAnimNotifyState* AnimNotifyState : Sequence->GetAnimNotifyStates())
+        {
+            if (!AnimNotifyState->GetEndAlreadyCalled())
+                AnimNotifyState->NotifyEnd();
+        }
+    }
 
     void SetSequence(UAnimationSequence* InSeq, bool bInLoop = true)
     {
