@@ -78,28 +78,10 @@ void APlayerController::SetupInputComponent()
 
 void APlayerController::AddYawInput(float DeltaYaw)
 {
-    if (PlayerCameraManager && PlayerCameraManager->GetViewCamera())
-    {
-        UCameraComponent* Camera = PlayerCameraManager->GetViewCamera();
-        float ScaledYaw = DeltaYaw * MouseSensitivity;
-        FVector CurrentRotation = Camera->GetWorldRotation().ToEulerZYXDeg();
-        CurrentRotation.Z += ScaledYaw;
-        Camera->SetWorldRotation(FQuat::MakeFromEulerZYX(CurrentRotation));
-    }
+    // 카메라 회전은 Pawn에서 직접 처리
 }
 
 void APlayerController::AddPitchInput(float DeltaPitch)
 {
-    if (PlayerCameraManager && PlayerCameraManager->GetViewCamera())
-    {
-        UCameraComponent* Camera = PlayerCameraManager->GetViewCamera();
-        float ScaledPitch = DeltaPitch * MouseSensitivity * (bInvertMouseY ? 1.0f : -1.0f);
-        FVector CurrentRotation = Camera->GetWorldRotation().ToEulerZYXDeg();
-        CurrentRotation.X += ScaledPitch;
-
-        // Clamp pitch to prevent camera flip
-        CurrentRotation.X = FMath::Clamp(CurrentRotation.X, -89.0f, 89.0f);
-
-        Camera->SetWorldRotation(FQuat::MakeFromEulerZYX(CurrentRotation));
-    }
+    // 카메라 회전은 Pawn에서 직접 처리
 }
