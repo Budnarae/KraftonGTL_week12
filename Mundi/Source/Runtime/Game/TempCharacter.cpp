@@ -16,7 +16,7 @@ ATempCharacter::ATempCharacter()
 
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
     CameraComp->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
-    CameraComp->SetRelativeLocation({-10, 0, 5});
+    CameraComp->SetRelativeLocation({-5, 0, 2});
 }
 
 void ATempCharacter::BeginPlay()

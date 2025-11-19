@@ -1,9 +1,9 @@
 {
   "Actors" : {
-    "938" : {
+    "954" : {
       "ObjectName" : "APlayerCameraManager_2",
       "OwnedComponents" : [{
-          "Id" : 939,
+          "Id" : 955,
           "ObjectName" : "USceneComponent_3",
           "ParentId" : 0,
           "RelativeLocation" : [0.000000, 0.000000, 0.000000],
@@ -15,23 +15,23 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 939,
+      "RootComponentId" : 955,
       "Tag" : "",
       "Type" : "APlayerCameraManager",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "940" : {
+    "956" : {
       "ObjectName" : "스태틱 메시_0",
       "OwnedComponents" : [{
-          "Id" : 942,
+          "Id" : 958,
           "MaterialSlots" : [{
               "AssetPath" : "uberlit",
               "Type" : "UMaterial"
             }],
           "ObjectName" : "UStaticMeshComponent_1",
           "ParentId" : 0,
-          "RelativeLocation" : [1.532815, -1.532815, 1.173166],
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
           "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
           "RelativeScale" : [1.000000, 1.000000, 1.000000],
           "StaticMesh" : "Content/Resources/Model\\Plane",
@@ -44,16 +44,16 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 942,
+      "RootComponentId" : 958,
       "Tag" : "",
       "Type" : "AStaticMeshActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "944" : {
+    "959" : {
       "ObjectName" : "앰비언트 라이트_0",
       "OwnedComponents" : [{
-          "Id" : 946,
+          "Id" : 961,
           "Intensity" : 1.000000,
           "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
           "ObjectName" : "UAmbientLightComponent_2",
@@ -73,13 +73,13 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 946,
+      "RootComponentId" : 961,
       "Tag" : "",
       "Type" : "AAmbientLightActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     },
-    "947" : {
+    "962" : {
       "ObjectName" : "방향성 라이트_0",
       "OwnedComponents" : [{
           "CascadedAreaColorDebugValue" : 0.000000,
@@ -87,7 +87,7 @@
           "CascadedCount" : 4,
           "CascadedLinearBlendingValue" : 0.500000,
           "CascadedOverlapValue" : 0.200000,
-          "Id" : 949,
+          "Id" : 964,
           "Intensity" : 1.000000,
           "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
           "ObjectName" : "UDirectionalLightComponent_2",
@@ -108,20 +108,20 @@
           "bIsVisible" : true,
           "bTickEnabled" : true
         }],
-      "RootComponentId" : 949,
+      "RootComponentId" : 964,
       "Tag" : "",
       "Type" : "ADirectionalLightActor",
       "bActorHiddenInGame" : false,
       "bActorIsActive" : true
     }
   },
-  "NextUUID" : 956,
+  "NextUUID" : 991,
   "PerspectiveCamera" : {
     "FOV" : [60.000000],
     "FarClip" : [2000.000000],
-    "Location" : [-5.000000, 5.000000, 5.000000],
+    "Location" : [-4.704973, 1.158240, 4.904280],
     "NearClip" : [0.100000],
-    "Rotation" : [0.000000, 22.500000, -45.000000]
+    "Rotation" : [0.000000, 59.799774, -57.599800]
   },
   "Version" : 1
 }

@@ -1983,7 +1983,7 @@ void UFbxLoader::LoadFromCacheToMemory(const FString& FbxPath)
 		FString AnimStackName = (AnimIndex < AnimationNames.Num())
 			? AnimationNames[AnimIndex]
 			: ("Anim" + std::to_string(AnimIndex));
-		FString AnimName = FileName + "_" + AnimStackName;
+		FString AnimName = CachePathWithoutExt + "_" + AnimStackName;
 		RESOURCE.Add<UAnimationSequence>(AnimName, AnimSeq);
 		UE_LOG("UAnimationSequence(name: '%s') loaded from cache!", AnimName.c_str());
 	}

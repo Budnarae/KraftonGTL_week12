@@ -145,6 +145,6 @@ FTransform AGameModeBase::FindPlayerStart()
     // TODO: PlayerStart 액터를 찾아서 위치 반환
     // 현재는 원점에서 약간 위에 스폰 (지면 충돌 방지)
     FTransform SpawnTransform;
-    SpawnTransform.Translation = FVector(0.0f, 0.0f, 100.0f);
+    SpawnTransform.Translation = FVector(0.0f, 0.0f, 0.0f);
     return SpawnTransform;
 }
