@@ -14,5 +14,6 @@ public:
     virtual void Tick(float DeltaSeconds) override;
 
 private:
+    class USpringArmComponent* SpringArm{};
     class UCameraComponent* CameraComp{};
 };

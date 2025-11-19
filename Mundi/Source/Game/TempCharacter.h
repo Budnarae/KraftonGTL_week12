@@ -3,6 +3,7 @@
 #include "ATempCharacter.generated.h"
 
 class UCameraComponent;
+class USpringArmComponent;
 
 UCLASS(DisplayName="임시 캐릭터", Description="테스트용 캐릭터")
 class ATempCharacter : public ACharacter
@@ -16,5 +17,6 @@ public:
     virtual void Tick(float DeltaSeconds) override;
 
 private:
+    USpringArmComponent* SpringArm = nullptr;
     UCameraComponent* CameraComp = nullptr;
 };

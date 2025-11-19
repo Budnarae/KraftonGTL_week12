@@ -4,6 +4,7 @@
 #include "PlayerController.h"
 #include "PlayerCameraManager.h"
 #include "CameraComponent.h"
+#include "SpringArmComponent.h"
 #include "InputManager.h"
 
 ATempCharacter::ATempCharacter()
@@ -16,10 +17,17 @@ ATempCharacter::ATempCharacter()
         MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
     }
 
-    // 카메라 컴포넌트 생성
+    // 스프링 암 생성
+    SpringArm = CreateDefaultSubobject<USpringArmComponent>("SpringArm");
+    SpringArm->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
+    SpringArm->TargetArmLength = 300.0f;
+    SpringArm->SocketOffset = FVector(0, 0, 50);  // 약간 위로 오프셋
+    SpringArm->SetRelativeLocation(FVector(0, 0, 80));  // 캐릭터 머리 높이
+
+    // 카메라 컴포넌트 생성 (스프링 암에 부착)
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
-    CameraComp->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
-    CameraComp->SetRelativeLocation({-10, 0, 5});
+    CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
+    CameraComp->SetFarClipPlane(10000.0f);  // 원거리 클리핑 확장
 }
 
 void ATempCharacter::BeginPlay()

@@ -2,6 +2,7 @@
 #include "TempCharacter.h"
 #include "PlayerController.h"
 #include "PlayerCameraManager.h"
+#include "SpringArmComponent.h"
 #include "InputManager.h"
 
 ATempCharacter::ATempCharacter()
@@ -14,9 +15,12 @@ ATempCharacter::ATempCharacter()
         MeshComponent->SetSkeletalMesh("Content/Resources/James/James");
     }
 
+    SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
+    SpringArm->SetRelativeLocation({0, 0, 1.5f});
+    SpringArm->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
+    
     CameraComp = CreateDefaultSubobject<UCameraComponent>("DefaultCamera");
-    CameraComp->SetupAttachment(RootComponent, EAttachmentRule::KeepRelative);
-    CameraComp->SetRelativeLocation({-5, 0, 2});
+    CameraComp->SetupAttachment(SpringArm, EAttachmentRule::KeepRelative);
 }
 
 void ATempCharacter::BeginPlay()
