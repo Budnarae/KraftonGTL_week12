@@ -35,7 +35,7 @@ local HitState = nil
 local bHitByObstacle = false
 local HitTimer = 0.0
 --local HitDuration = 1.33  -- Hit State 지속 시간 (초)
-local HitDuration = 0.33  -- Hit State 지속 시간 (초)
+local HitDuration = 3.33  -- Hit State 지속 시간 (초)
 local PreviousState = nil
 
 local function build_blend_space(state)
@@ -78,8 +78,8 @@ local function build_blend_space(state)
 end
 
 local function build_hit_state(state)
-    local BasePoseNode = state:CreateSequenceNode(DizzyAnim, true)
-    local AdditivePoseNode = state:CreateSequenceNode(DizzyAnim2, true)
+    local BasePoseNode = state:CreateSequenceNode(DizzyAnim, false)
+    local AdditivePoseNode = state:CreateSequenceNode(DizzyAnim2, false)
 
     if not BasePoseNode or not AdditivePoseNode then
         return false
