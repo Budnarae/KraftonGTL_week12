@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
     <FxCompile Include="Shaders\Materials\Fireball.hlsl">
@@ -706,7 +706,42 @@
     <ClCompile Include="Generated\UCameraShakeAnimNotify.generated.cpp">
       <Filter>Generated</Filter>
     </ClCompile>
-  <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\USpringArmComponent.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UCharacterMovementComponent.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
+    <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\USpringArmComponent.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UCharacterMovementComponent.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerBootstrap.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\RotatingAnimNotifyState.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\ScalingAnimNotifyState.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotifyState.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Components\CharacterMovementComponent.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Components\SpringArmComponent.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\Character.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\GameModeBase.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\Pawn.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\PlayerController.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerBootstrap.cpp" />
+    <ClCompile Include="Source\Runtime\Game\TempCharacter.cpp" />
+    <ClCompile Include="Source\Runtime\Renderer\StatManagement\SkinningStatManager.cpp" />
+    <ClCompile Include="Source\Slate\Widgets\AssetBrowserWidget.cpp" />
+    <ClCompile Include="Source\Slate\Widgets\BoneHierarchyWidget.cpp" />
+    <ClCompile Include="Source\Slate\Widgets\BonePropertyEditor.cpp" />
+    <ClCompile Include="Source\Slate\Widgets\NotifyPropertyEditor.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SStaticMeshViewerWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SMaterialEditorWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SAnimationViewerWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SViewerWindowBase.cpp" />
+  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Source\Editor\Clipboard\ClipboardManager.h">
@@ -1156,9 +1191,6 @@
     <ClInclude Include="Source\Runtime\InputCore\InputManager.h">
       <Filter>Source\Runtime\InputCore</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Runtime\Renderer\DecalStatManager.h">
-      <Filter>Source\Runtime\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Runtime\Renderer\SceneRenderer.h">
       <Filter>Source\Runtime\Renderer</Filter>
     </ClInclude>
@@ -1470,8 +1502,24 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimSingleNodeInstance.h">
       <Filter>Source\Runtime\Engine\Animation</Filter>
     </ClInclude>
-  <ClInclude Include="Generated\APawn.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\APlayerController.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ACharacter.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\AGameModeBase.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ATempCharacter.generated.h"><Filter>Generated</Filter></ClInclude>
-  <ClInclude Include="Generated\USoundAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude>
+    <ClInclude Include="Generated\APawn.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\APlayerController.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\ACharacter.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\AGameModeBase.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\ATempCharacter.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\USoundAnimNotify.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotify.h">
       <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
     </ClInclude>
@@ -1481,7 +1529,53 @@
     <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\SoundAnimNotify.h">
       <Filter>Source\Runtime\Engine\Animation\AnimNotify</Filter>
     </ClInclude>
-  <ClInclude Include="Generated\USoundAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UCameraShakeAnimNotify.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\URotatingAnimNotifyState.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UScalingAnimNotifyState.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\USpringArmComponent.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UCharacterMovementComponent.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
+    <ClInclude Include="Generated\USoundAnimNotify.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UCameraShakeAnimNotify.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UScalingAnimNotifyState.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\USpringArmComponent.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UCharacterMovementComponent.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerState.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\RotatingAnimNotifyState.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\ScalingAnimNotifyState.h" />
+    <ClInclude Include="Source\Runtime\Engine\Animation\AnimNotify\AnimNotifyState.h" />
+    <ClInclude Include="Source\Runtime\Engine\Components\CharacterMovementComponent.h" />
+    <ClInclude Include="Source\Runtime\Engine\Components\SpringArmComponent.h" />
+    <ClInclude Include="Source\Runtime\Engine\Components\TestAutoBindComponent.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\Character.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\GameModeBase.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\Pawn.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\PlayerController.h" />
+    <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorState.h" />
+    <ClInclude Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerState.h" />
+    <ClInclude Include="Source\Runtime\Game\TempCharacter.h" />
+    <ClInclude Include="Source\Runtime\Renderer\StatManagement\DecalStatManager.h" />
+    <ClInclude Include="Source\Runtime\Renderer\StatManagement\SkinningStatManager.h" />
+    <ClInclude Include="Source\Slate\Widgets\AssetBrowserWidget.h" />
+    <ClInclude Include="Source\Slate\Widgets\BoneHierarchyWidget.h" />
+    <ClInclude Include="Source\Slate\Widgets\BonePropertyEditor.h" />
+    <ClInclude Include="Source\Slate\Widgets\NotifyPropertyEditor.h" />
+    <ClInclude Include="Source\Slate\Windows\SStaticMeshViewerWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SMaterialEditorWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SAnimationViewerWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SViewerWindowBase.h" />
+  </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
       <UniqueIdentifier>{5795df92-1510-45f1-8bda-7ed2d162568b}</UniqueIdentifier>
