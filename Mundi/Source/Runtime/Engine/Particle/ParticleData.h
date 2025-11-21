@@ -1,0 +1,289 @@
+﻿#pragma once
+
+struct FBaseParticle
+{
+public:
+    // -------------------------------------------
+    // 1. 공간 및 운동 (Spatial and Kinematics)
+    // -------------------------------------------
+
+    // 80 bytes
+    
+    FVector		OldLocation;			// Last frame's location, used for collision
+    FVector    Location;                // 현재 파티클의 월드 공간 위치 (Update 함수에서 Velocity를 이용해 매 프레임 갱신됨)
+    
+    FVector    BaseVelocity;            // 파티클이 처음 생성될 때 설정된 초기 속도 (재계산 방지 또는 참조용)
+    FVector    Velocity;                // 현재 파티클의 속도 벡터 (Update 함수에서 Gravity, Drag 등에 의해 갱신됨)
+
+    FVector		BaseSize;				// Size = BaseSize at the start of each frame
+    FVector		Size;					// Current size, gets reset to BaseSize each frame
+    
+    // 파티클의 회전 속도 (매 프레임 Rotation에 더해짐)
+    float		BaseRotationRate;		// Initial angular velocity of particle (in Radians per second)
+    // 파티클의 현재 회전 각도 (스프라이트 회전에 사용)
+    float		Rotation;				// Rotation of particle (in Radians)
+
+    // 48 bytes
+    
+    float		RotationRate;			// Current rotation rate, gets reset to BaseRotationRate each frame
+    
+    FLinearColor	Color;					// Current color of particle.
+    FLinearColor	BaseColor;				// Base color of the particle
+
+    // 파티클의 전체 수명 (Lifetime) 중 경과된 시간의 비율 (0.0 ~ 1.0).
+    // ColorOverLife, SizeOverLife 등의 모듈에서 보간(Interpolation)을 위해 사용됨.
+    float       RelativeTime; 
+    float	    OneOverMaxLifetime;		// Reciprocal of lifetime
+
+    int32      Flags;					// Flags indicating various particle states
+    
+    // -------------------------------------------
+    // 4. ... (선택적 페이로드 메모리 시작 지점)
+    // -------------------------------------------
+    // 이 뒤에 Payload 및 Padding 영역이 이어지지만, 구조체 선언에는 포함되지 않습니다.
+};
+
+// FParticleDataContainer는 파티클 시스템의 런타임 메모리 블록을 관리합니다.
+struct FParticleDataContainer
+{
+public:
+    // -------------------------------------------
+    // 1. 데이터 멤버 (Core Data Members)
+    // -------------------------------------------
+
+    // 할당된 전체 메모리 블록의 총 크기 (바이트). (Base 데이터 + Indices 공간 포함)
+    int32 MemBlockSize; 
+
+    // 모든 파티클의 실제 데이터(AoS)가 차지하는 공간 크기 (바이트).
+    int32 ParticleDataNumBytes; 
+
+    // ParticleIndices 배열에 저장된 uint16(2바이트) 요소의 개수 (활성 파티클 개수)
+    int32 ParticleIndicesNumShorts;
+
+    // 할당된 메모리 블록의 시작 주소. 파티클 데이터 배열의 시작점과 동일합니다.
+    uint8* ParticleData; 
+
+    // [핵심] ParticleData 블록의 끝에 위치하는 인덱스 배열의 포인터.
+    // ParticleData 뒤에 메모리가 이어지므로 별도 할당(new/malloc)이 필요 없습니다.
+    uint16* ParticleIndices; 
+
+public:
+    // -------------------------------------------
+    // 2. 핵심 인터페이스 (Core Functions)
+    // -------------------------------------------
+
+    // 필요한 총 메모리 크기를 계산하여 할당하고 ParticleData 및 ParticleIndices 포인터를 설정합니다.
+    void AllocateMemory(int32 MaxParticleCount, int32 ParticleStride);
+
+    // 할당된 메모리를 해제하고 포인터를 초기화합니다.
+    void FreeMemory();
+
+    // ParticleData 포인터를 기반으로 인덱스 배열의 시작 주소를 계산하여 ParticleIndices에 설정합니다.
+    void SetupIndicesPtr();
+};
+
+// 에미터 타입 정의 (최소 구현)
+enum EDynamicEmitterType : int32
+{
+    EDET_Sprite,
+    EDET_Mesh,
+    EDET_Beam,
+    EDET_Ribbon
+};
+
+struct FDynamicEmitterReplayDataBase
+{
+public:
+    // -------------------------------------------
+    // 1. 최소 데이터 멤버 (Core Data Members)
+    // -------------------------------------------
+
+    // 에미터의 종류를 나타내는 타입
+    EDynamicEmitterType eEmitterType;
+
+    // 스냅샷이 찍힌 시점에 활성화된 파티클의 개수
+    int32 ActiveParticleCount;
+
+    // 파티클 하나당 메모리 크기 (Base + Payload + Padding)
+    // 수신 측에서 DataContainer의 바이트를 해석하는 데 필수적임
+    int32 ParticleStride; 
+    
+    // 파티클 데이터 및 인덱스 배열의 메모리 관리 구조체
+    // (여기에는 raw data 포인터와 크기가 포함됨)
+    FParticleDataContainer DataContainer;
+
+    // 이 에미터에 적용된 스케일 값
+    FVector Scale;
+
+    // 파티클 렌더링 시 사용되는 정렬 방식
+    int32 SortMode; 
+
+public:
+    // -------------------------------------------
+    // 2. 핵심 인터페이스 (Core Functions - Serialization)
+    // -------------------------------------------
+    
+    // 이 구조체의 내용을 직렬화/역직렬화하는 함수 (네트워크 전송이나 저장/불러오기에 사용)
+    // (FArchive는 Unreal의 직렬화 스트림 클래스라고 가정)
+    bool Serialize(FArchive& Ar); 
+
+    // 이 데이터가 재현 가능한 유효한 상태인지 검증합니다.
+    bool IsValid() const;
+};
+
+// 전방 선언
+class UMaterialInterface;
+struct FParticleRequiredModule; 
+
+// 스프라이트 에미터의 시각적 재생 상태를 위한 데이터 구조체
+struct FDynamicSpriteEmitterReplayDataBase : public FDynamicEmitterReplayDataBase
+{
+public:
+    // -------------------------------------------
+    // 1. 핵심 데이터 멤버 (Rendering Specific)
+    // -------------------------------------------
+
+    // 이 스프라이트 에미터가 사용하는 재질 템플릿
+    UMaterialInterface* MaterialInterface;
+
+    // 파티클의 렌더링 방식(정렬, LOD 등)을 정의하는 필수 모듈 데이터 포인터
+    FParticleRequiredModule* RequiredModule;
+
+public:
+    // -------------------------------------------
+    // 2. 생성자/소멸자 (Minimal)
+    // -------------------------------------------
+    
+    FDynamicSpriteEmitterReplayDataBase();
+    virtual ~FDynamicSpriteEmitterReplayDataBase() {}
+
+    // -------------------------------------------
+    // 3. 인터페이스 (Inherited/Override)
+    // -------------------------------------------
+
+    // 상위 클래스에서 상속받은 Serialize 함수를 재정의하여 
+    // MaterialInterface와 RequiredModule을 직렬화합니다.
+    // virtual bool Serialize(FArchive& Ar) override; 
+};
+
+class UParticleEmitter;
+struct FDynamicEmitterDataBase
+{
+public:
+    // -------------------------------------------
+    // 1. 최소 데이터 멤버 (Core Data Members)
+    // -------------------------------------------
+
+    // UParticleSystem::Emitters 배열 내에서 이 인스턴스의 템플릿이 위치한 인덱스
+    int32 EmitterIndex;
+
+    // 이 인스턴스를 정의하는 템플릿 에미터(UParticleEmitter)에 대한 포인터
+    UParticleEmitter* SourceEmitter; 
+    
+    // 이 인스턴스가 생성된 시점의 시간
+    float SpawnTime;
+
+public:
+    // -------------------------------------------
+    // 2. 순수 가상 핵심 인터페이스 (Pure Virtual Core Interface)
+    // -------------------------------------------
+
+    // **[핵심]** 이 에미터의 현재 상태를 직렬화(Serialization) 데이터 구조체로 반환합니다.
+    // '= 0' 이 붙어 이 함수는 반드시 파생 클래스에서 구현되어야 합니다.
+    virtual const FDynamicEmitterReplayDataBase& GetSource() const = 0;
+
+    // 에미터 인스턴스의 시뮬레이션 메인 루프 (파티클 생성 및 업데이트 관리)
+    virtual void Tick(float DeltaTime) = 0;
+    
+    // 이 에미터 인스턴스가 할당한 모든 메모리 및 리소스를 해제합니다.
+    virtual void FreeData() = 0;
+
+    // 파생 클래스의 메모리 누수 방지를 위한 가상 소멸자 (상속 시 필수)
+    virtual ~FDynamicEmitterDataBase() {}
+};
+
+// 외부 UObject 클래스들에 대한 전방 선언
+class UParticleEmitter;
+class UParticleSystemComponent;
+class UParticleLODLevel;
+struct FParticleEventInstancePayload;
+enum class ERHIFeatureLevel : int32; // 렌더링 피처 레벨 정의
+
+// 렌더링에 필요한 Vertex 구조체 (실제 크기는 엔진에 정의됨)
+struct FParticleSpriteVertex;
+struct FMeshParticleInstanceVertex;
+
+// ----------------------------------------------------
+// [A] 렌더링 타입별 다형성 데이터 (Dynamic Data Hierarchy)
+// ----------------------------------------------------
+//
+// // 1. Sprite 에미터의 기본 타입별 데이터 (추상)
+// struct FDynamicSpriteEmitterDataBase : public FDynamicEmitterDataBase
+// {
+//     void SortSpriteParticles(...) {}
+//     
+//     // Vertex Stride (Vertex 데이터 크기)를 반환하는 순수 가상 함수
+//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type /*InFeatureLevel*/) const = 0;
+// };
+//
+// // 2. 일반 Sprite 에미터의 구체적인 구현
+// struct FDynamicSpriteEmitterData : public FDynamicSpriteEmitterDataBase
+// {
+//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type InFeatureLevel) const override
+//     {
+//         return sizeof(FParticleSpriteVertex);
+//     }
+//     // ... 추가적인 스프라이트 전용 데이터
+// };
+//
+// // 3. Mesh 에미터의 구체적인 구현 (Vertex Stride 재정의)
+// struct FDynamicMeshEmitterData : public FDynamicSpriteEmitterData
+// {
+//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type /*InFeatureLevel*/) const override
+//     {
+//         return sizeof(FMeshParticleInstanceVertex);
+//     }
+//     // ... 추가적인 메시 전용 데이터
+// };
+
+// ----------------------------------------------------
+// [B] 런타임 에미터 코어 (FParticleEmitterInstance)
+// ----------------------------------------------------
+
+// 특정 UParticleEmitter 템플릿의 활성 시뮬레이션 상태를 담는 구조체
+struct FParticleEmitterInstance
+{
+public:
+    // 템플릿 및 소유자 참조
+    UParticleEmitter* SpriteTemplate;
+    UParticleSystemComponent* Component;
+
+    // LOD 및 모듈 참조
+    int32 CurrentLODLevelIndex;
+    UParticleLODLevel* CurrentLODLevel;
+
+    // 메모리 관리 및 상태 변수
+    uint8* ParticleData;
+    uint16* ParticleIndices;
+    uint8* InstanceData;
+    int32 InstancePayloadSize;
+    int32 PayloadOffset;
+    int32 ParticleSize;
+    int32 ParticleStride;
+    int32 ActiveParticles;
+    uint32 ParticleCounter;
+    int32 MaxActiveParticles;
+
+public:
+    // 파티클 생성 및 모듈 호출 로직
+    void SpawnParticles( int32 Count, float StartTime, float Increment, const FVector& InitialLocation, const FVector& InitialVelocity, FParticleEventInstancePayload* EventPayload )
+    {
+        // For 루프와 모듈 디스패치 로직은 구현(.cpp) 파일에 포함됩니다.
+    }
+
+    // 파티클 소멸 함수
+    void KillParticle(int32 Index);
+
+    // 파티클 갱신 함수 (Update 모듈 호출)
+    void Update(float DeltaTime);
+};
