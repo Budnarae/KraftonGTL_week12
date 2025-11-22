@@ -295,7 +295,7 @@ void UContentBrowserWindow::RenderPathBar()
 {
 	if (ImGui::Button("Particle Window Test"))
 	{
-		SParticleEditWindow::CreateParticleEditor("TestPath");
+		SParticleEditWindow::CreateParticleEditor("TestParticle.uasset");
 	}
 	ImGui::Text("Path: ");
 	ImGui::SameLine();

@@ -49,6 +49,7 @@ void UResourceManager::Initialize(ID3D11Device* InDevice, ID3D11DeviceContext* I
     CreateTextBillboardTexture();
     CreateDefaultShader();
     CreateDefaultMaterial();
+    UParticleAsset::LoadAllDatas();
 }
 
 // 전체 해제

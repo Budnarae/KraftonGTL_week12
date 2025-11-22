@@ -3,6 +3,7 @@
 #include "Source/Slate/Widgets/AssetBrowserWidget.h"
 #include "Source/Runtime/Engine/ParticleEditor/ParticleViewerState.h"
 
+class UParticleModuleRequired;
 class FViewport;
 class FViewportClient;
 struct ID3D11Device;
@@ -11,6 +12,8 @@ class SParticleEditWindow : public SViewerWindowBase
 {
 public:
     static void CreateParticleEditor(const FString& Path);
+    static void CreateParticleEditor(const UParticleModuleRequired* ParticleModule);
+
 public:
     SParticleEditWindow();
     virtual ~SParticleEditWindow();

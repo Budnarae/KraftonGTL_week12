@@ -4,12 +4,26 @@
 #include "FViewportClient.h"
 #include "Source/Runtime/Engine/ParticleEditor/ParticleViewerBootstrap.h"
 #include "USlateManager.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleRequired.h"
+#include "Source/Slate/Widgets/PropertyRenderer.h"
+#include "Source/Runtime/Engine/Particle/ParticleAsset.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystem.h"
+#include "Source/Runtime/AssetManagement/ResourceManager.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
 
+
+//enum, bool, int, float, vector2,3,4, TArray 정도 적용 필요
+//어처피 프로퍼티는 생성되어 있음 그 프로퍼티정보를 가져와서 만들자
+//근데 enum은 범위 정보가 없다 일단 제외
+
+
 void SParticleEditWindow::CreateParticleEditor(const FString& Path)
 {
+    std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
+    UParticleAsset::Create(FolderPath.string());
+
     auto* Viewer = USlateManager::GetInstance().FindViewer<SParticleEditWindow>();
     if (!Viewer || !Viewer->IsOpen())
     {
@@ -17,7 +31,15 @@ void SParticleEditWindow::CreateParticleEditor(const FString& Path)
         USlateManager::GetInstance().OpenViewer<SParticleEditWindow>(Path);
     }
 }
-
+void SParticleEditWindow::CreateParticleEditor(const UParticleModuleRequired* ParticleModule)
+{
+    auto* Viewer = USlateManager::GetInstance().FindViewer<SParticleEditWindow>();
+    if (!Viewer || !Viewer->IsOpen())
+    {
+        // Open viewer with the currently selected skeletal mesh if available
+        USlateManager::GetInstance().OpenViewer<SParticleEditWindow>();
+    }
+}
 SParticleEditWindow::SParticleEditWindow()
 {
     CenterRect = FRect(0, 0, 0, 0);
@@ -102,13 +124,18 @@ void SParticleEditWindow::OnRender()
 
         ImVec2 ChildSize = Size * 0.5f;
         ImGui::BeginChild("Viewport", ChildSize);
-
+        //World Rendering
         ImGui::EndChild();
         ImGui::SameLine();
+
         ImGui::BeginChild("Emitter", ChildSize);
+        //
         ImGui::EndChild();
 
         ImGui::BeginChild("Detail", ChildSize);
+        /*UPropertyRenderer::RenderAllProperties();
+        UClass* Class = UParticleModuleRequired::StaticClass();
+        const TArray<FProperty>& Properties = Class->GetAllProperties();*/
         ImGui::EndChild();
         ImGui::SameLine();
         ImGui::BeginChild("CurveEditor", ChildSize);

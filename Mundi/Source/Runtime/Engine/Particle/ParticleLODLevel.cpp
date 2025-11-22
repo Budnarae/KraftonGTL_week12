@@ -59,3 +59,7 @@ bool UParticleLODLevel::IsValid() const
     
     return true;
 }
+void UParticleLODLevel::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+}

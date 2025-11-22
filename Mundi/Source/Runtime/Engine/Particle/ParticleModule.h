@@ -46,6 +46,9 @@ public:
     //
     // UPROPERTY(EditAnywhere, Category="Basic")
     // float Value_Max;
+
+    void Serialize(const bool bInIsLoading, JSON& InOutHandle);
+
 protected:
     // 계산된 페이로드 오프셋을 저장하는 변수 (Payload 접근 시 사용됨)
     int32 PayloadOffset{};

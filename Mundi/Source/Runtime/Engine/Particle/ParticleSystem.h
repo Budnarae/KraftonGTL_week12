@@ -29,6 +29,7 @@ public:
     
     // // 시스템의 전체 Duration을 Emitters의 설정에 기반하여 계산합니다.
     // float GetCalculatedDuration() const;
+    void Serialize(const bool bInIsLoading, JSON& InOutHandle);
 
 public:
     // -------------------------------------------
@@ -42,7 +43,7 @@ public:
 
     // 이 시스템이 한 번 재생될 때의 총 재생 시간 (0이면 무한 루프)
     UPROPERTY(EditAnywhere, Category="Basic");
-    float Duration; 
+    float Duration = 0; 
 
     // // 이 시스템의 경계 상자 (Bounding Box) 크기. 컬링(Culling) 최적화에 사용됩니다.
     // UPROPERTY(EditAnywhere, Category="Basic");
@@ -51,4 +52,5 @@ public:
     // // 시스템 전체에 적용되는 크기 및 속도 배율
     // UPROPERTY(EditAnywhere, Category="Basic");
     // float SystemScale;
+private:
 };

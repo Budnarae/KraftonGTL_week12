@@ -108,3 +108,7 @@ bool UParticleEmitter::IsValid() const
     }
     return true;
 }
+void UParticleEmitter::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+}

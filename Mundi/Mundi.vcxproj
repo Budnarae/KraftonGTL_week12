@@ -388,6 +388,7 @@
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SpotLightActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleData.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEmitter.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleLODLevel.cpp" />
@@ -582,9 +583,9 @@
     <ClCompile Include="Generated\UParticleEmitter.generated.cpp" />
     <ClCompile Include="Generated\UParticleLODLevel.generated.cpp" />
     <ClCompile Include="Generated\UParticleModule.generated.cpp" />
-    <ClCompile Include="Generated\UParticleSystem.generated.cpp" />
     <ClCompile Include="Generated\UParticleSystemComponent.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleRequired.generated.cpp" />
+    <ClCompile Include="Generated\UParticleSystem.generated.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
@@ -815,6 +816,7 @@
     <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorState.h" />
     <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerState.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleAsset.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleData.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEmitter.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleLODLevel.h" />
@@ -1031,9 +1033,9 @@
     <ClInclude Include="Generated\UParticleEmitter.generated.h" />
     <ClInclude Include="Generated\UParticleLODLevel.generated.h" />
     <ClInclude Include="Generated\UParticleModule.generated.h" />
-    <ClInclude Include="Generated\UParticleSystem.generated.h" />
     <ClInclude Include="Generated\UParticleSystemComponent.generated.h" />
     <ClInclude Include="Generated\UParticleModuleRequired.generated.h" />
+    <ClInclude Include="Generated\UParticleSystem.generated.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
