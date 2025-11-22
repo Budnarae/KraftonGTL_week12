@@ -4,6 +4,18 @@
 #include "ParticleData.h"
 #include "ParticleLODLevel.h"
 
+UParticleEmitter::UParticleEmitter()
+{
+    // LODLevel의 최대치만큼 미리 LOD Level을 저장한다.
+    LODLevels.clear();
+    LODLevels.resize(MAX_PARTICLE_LODLEVEL);
+    
+    for (int i = MIN_PARTICLE_LODLEVEL; i < MAX_PARTICLE_LODLEVEL; i++)
+    {
+        LODLevels[i] = NewObject<UParticleLODLevel>();
+    }
+}
+
 // [셋업 단계] 모든 모듈을 순회하며 파티클 크기(ParticleSize) 및 페이로드 오프셋을 계산하고 캐시합니다.
 void UParticleEmitter::CacheEmitterModuleInfo()
 {
@@ -14,7 +26,7 @@ void UParticleEmitter::CacheEmitterModuleInfo()
 
     int32 AccumulatedPayload = 0;
     
-    for (UParticleModule* ParticleModule : LODLevel->GetModule())
+    for (UParticleModule* ParticleModule : LODLevel->GetUpdateModule())
     {
         int32 PayloadSize = ParticleModule->GetRequiredPayloadSize();
         if (PayloadSize == 0)
@@ -44,38 +56,53 @@ uint32 UParticleEmitter::GetCurrentLODLevel()
 
 void UParticleEmitter::SetCurrentLODLevel(const uint32 InCurrentLODLevel)
 {
-    if (InCurrentLODLevel > LODLevels.Num())
+    if (InCurrentLODLevel < MIN_PARTICLE_LODLEVEL || InCurrentLODLevel >= MAX_PARTICLE_LODLEVEL)
     {
-        UE_LOG("[UParticleEmitter::SetCurrentLODLevel][Warninig] There's no such LODLevel.");
+        UE_LOG("[UParticleEmitter::SetCurrentLODLevel][Warninig]There's no such LODLevel.");
         return;
     }
     
     CurrentLODLevel = InCurrentLODLevel;
 }
 
-// 에디터에서 새 LOD 레벨을 추가합니다.
-void UParticleEmitter::AddLODLevel()
-{
-    LODLevels.Add(NewObject<UParticleLODLevel>());
-}
+// // 에디터에서 새 LOD 레벨을 추가합니다.
+// void UParticleEmitter::AddLODLevel()
+// {
+//     LODLevels.Add(NewObject<UParticleLODLevel>());
+// }
+//
+// // 참조로 LOD 레벨을 제거한다.
+// bool UParticleEmitter::RemoveLODLevel(UParticleLODLevel* Target)
+// {
+//     bool result = LODLevels.Remove(Target);
+//     if (result && LODLevels.Num() <= CurrentLODLevel)
+//     {
+//         // 삭제로 LODLevel이 유효성을 잃으면 강제로 재지정한다.
+//         CurrentLODLevel = LODLevels.Num() - 1;
+//     }
+//
+//     return result;
+// }
+//     
+// // index로 LOD 레벨을 제거한다.
+// void UParticleEmitter::RemoveLODLevel(uint32 index)
+// {
+//     return LODLevels.RemoveAt(index);
+// }
 
-// 참조로 LOD 레벨을 제거한다.
-bool UParticleEmitter::RemoveLODLevel(UParticleLODLevel* Target)
+UParticleLODLevel* UParticleEmitter::GetParticleLODLevelWithIndex(int32 Index)
 {
-    bool result = LODLevels.Remove(Target);
-    if (result && LODLevels.Num() <= CurrentLODLevel)
+    if (Index < MIN_PARTICLE_LODLEVEL || Index >= MAX_PARTICLE_LODLEVEL)
     {
-        // 삭제로 LODLevel이 유효성을 잃으면 강제로 재지정한다.
-        CurrentLODLevel = LODLevels.Num() - 1;
+        UE_LOG("[UParticleEmitter::GetParticleLODLevelWithIndex][Warning]Invalid Index");
+        return nullptr;
     }
-
-    return result;
+    return LODLevels[Index];
 }
-    
-// index로 LOD 레벨을 제거한다.
-void UParticleEmitter::RemoveLODLevel(uint32 index)
+
+UParticleLODLevel* UParticleEmitter::GetCurrentLODLevelInstance()
 {
-    return LODLevels.RemoveAt(index);
+    return GetParticleLODLevelWithIndex(CurrentLODLevel);
 }
 
 int32 UParticleEmitter::GetMaxParticleCount()

@@ -256,25 +256,26 @@ struct FParticleEmitterInstance
 {
 public:
     // 템플릿 및 소유자 참조
-    UParticleEmitter* SpriteTemplate;
-    UParticleSystemComponent* Component;
+    UParticleEmitter* SpriteTemplate{};
+    UParticleSystemComponent* OwnerComponent{};
 
     // LOD 및 모듈 참조
-    int32 CurrentLODLevelIndex;
-    UParticleLODLevel* CurrentLODLevel;
+    int32 CurrentLODLevelIndex{};
+    UParticleLODLevel* CurrentLODLevel{};
 
     // 메모리 관리 및 상태 변수
-    uint8* ParticleData;
-    uint16* ParticleIndices;
-    uint8* InstanceData;
-    int32 InstancePayloadSize;
-    int32 PayloadOffset;
-    int32 ParticleSize;
-    int32 ParticleStride;
-    int32 ActiveParticles;
-    uint32 ParticleCounter;
-    int32 MaxActiveParticles;
+    uint8* ParticleData{};          // 모든 파티클의 데이터가 저장된 로우 메모리 블록의 시작 주소.
+    int32 MaxActiveParticles{};     // ParticleData 블록의 최대 크기를 결정하는 파티클 수 (메모리 할당 기준)
 
+    int32 ParticleStride{};         // 단일 파티클의 메모리 크기이자, 다음 파티클의 시작 주소로 점프하기 위한 $16$ 바이트 정렬이 적용된 최종 크기 (포인터 연산 기준).
+    // int32 PayloadOffset;         // 파티클 데이터 내에서 고정 필드가 끝나고 가변 페이로드 데이터가 시작되는 지점을 표시하는 오프셋 (메모리 분할 기준).
+    
+    // uint8* InstanceData;
+    // int32 InstancePayloadSize;
+
+    // 런타임 파티클 생성 관리
+    int32 SpawnRate{};              // 파티클 스폰 레이트
+    int32 ActiveParticles{};        // 현재 시뮬레이션 루프에서 실제 활성화된 파티클의 수 (현재 카운트).
 public:
     // 파티클 생성 및 모듈 호출 로직
     void SpawnParticles( int32 Count, float StartTime, float Increment, const FVector& InitialLocation, const FVector& InitialVelocity, FParticleEventInstancePayload* EventPayload )

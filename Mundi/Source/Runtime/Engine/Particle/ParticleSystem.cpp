@@ -19,6 +19,11 @@ bool UParticleSystem::RemoveEmitter(UParticleEmitter* TargetEmitter)
     return Emitters.Remove(TargetEmitter);
 }
 
+TArray<UParticleEmitter*>& UParticleSystem::GetEmitters()
+{
+    return Emitters;
+}
+
 // 시스템의 전체 Duration을 Emitters의 설정에 기반하여 계산합니다.
 float UParticleSystem::GetCalculatedDuration() const
 {

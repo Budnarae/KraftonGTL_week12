@@ -2,6 +2,7 @@
 
 #include "ParticleLODLevel.h"
 #include "ParticleModuleRequired.h"
+#include "ParticleVariable.h"
 #include "UParticleEmitter.generated.h"
 
 class UParticleLODLevel;
@@ -9,7 +10,7 @@ UCLASS(DisplayName="파티클 에미터", Description="파티클 LOD 레벨을 �
 class UParticleEmitter : public UObject
 {
 public:
-    UParticleEmitter() = default;
+    UParticleEmitter();
     ~UParticleEmitter() = default;
     
     GENERATED_REFLECTION_BODY()
@@ -23,15 +24,18 @@ public:
     uint32 GetCurrentLODLevel();
     void SetCurrentLODLevel(const uint32 InCurrentLODLevel);
     
-    // 에디터에서 새 LOD 레벨을 추가합니다.
-    void AddLODLevel();
+    // // 에디터에서 새 LOD 레벨을 추가합니다.
+    // void AddLODLevel();
+    //
+    // // 참조로 LOD 레벨을 제거한다.
+    // bool RemoveLODLevel(UParticleLODLevel* Target);
+    //
+    // // index로 LOD 레벨을 제거한다.
+    // void RemoveLODLevel(uint32 index);
 
-    // 참조로 LOD 레벨을 제거한다.
-    bool RemoveLODLevel(UParticleLODLevel* Target);
+    UParticleLODLevel* GetParticleLODLevelWithIndex(int32 Index);
+    UParticleLODLevel* GetCurrentLODLevelInstance();
     
-    // index로 LOD 레벨을 제거한다.
-    void RemoveLODLevel(uint32 index);
-
     int32 GetMaxParticleCount();
     void SetMaxParticleCount(const int32 InMaxParticleCount);
 
