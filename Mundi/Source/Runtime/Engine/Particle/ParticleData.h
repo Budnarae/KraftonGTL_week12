@@ -209,7 +209,6 @@ public:
 };
 
 // 외부 UObject 클래스들에 대한 전방 선언
-class UParticleEmitter;
 class UParticleSystemComponent;
 class UParticleLODLevel;
 struct FParticleEventInstancePayload;

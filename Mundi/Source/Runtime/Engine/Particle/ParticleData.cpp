@@ -43,6 +43,12 @@ void FParticleEmitterInstance::SpawnParticles
 {
     for (int32 Index = 0; Index < SpawnNum; Index++)
     {
+        if (ActiveParticles >= MaxActiveParticles)
+        {
+            UE_LOG("[FParticleEmitterInstance::SpawnParticles][Warning] Reached max particle count.");
+            break;
+        }
+
         DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ActiveParticles);
         ActiveParticles++;
         
@@ -70,8 +76,19 @@ void FParticleEmitterInstance::SpawnParticles
 
 void FParticleEmitterInstance::KillParticle(int32 Index)
 {
-    DECLARE_PARTICLE_PTR(Target, ParticleData + ParticleStride * Index);
-    memcpy(Target, ParticleData + ParticleStride * ActiveParticles, ParticleStride);
+    if (Index >= ActiveParticles || Index < 0)
+    {
+        UE_LOG("[FParticleEmitterInstance::KillParticle][Warning] Invalid Index.");
+        return;
+    }
 
     ActiveParticles--;
+
+    // 마지막 요소가 아니면 swap-and-pop
+    if (Index != ActiveParticles)
+    {
+        DECLARE_PARTICLE_PTR(Target, ParticleData + ParticleStride * Index);
+        DECLARE_PARTICLE_PTR(Last, ParticleData + ParticleStride * ActiveParticles);
+        memcpy(Target, Last, ParticleStride);
+    }
 }

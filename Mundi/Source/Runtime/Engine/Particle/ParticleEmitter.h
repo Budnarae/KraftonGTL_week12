@@ -58,7 +58,7 @@ private:
 
     // // 파티클 하나당 차지하는 총 메모리 크기 (Base + Payload + Padding)
     // UPROPERTY(EditAnywhere, Category="Basic")
-    int32 ParticleSize;
+    int32 ParticleSize{};
     
     // 이 에미터가 가질 수 있는 파티클의 최대 개수 (메모리 Precache를 위한 값)
     UPROPERTY(EditAnywhere, Category="Basic")

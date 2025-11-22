@@ -55,7 +55,7 @@ void UParticleSystemComponent::SetElapsedTime(float InElapsedTime)
 
 void UParticleSystemComponent::SetCurrentLODLevel(const int32 InCurrentLODLevel)
 {
-    if (InCurrentLODLevel < MIN_PARTICLE_LODLEVEL && InCurrentLODLevel >= MIN_PARTICLE_LODLEVEL)
+    if (InCurrentLODLevel < MIN_PARTICLE_LODLEVEL || InCurrentLODLevel >= MAX_PARTICLE_LODLEVEL)
     {
         UE_LOG("[UParticleSystemComponent::SetCurrentLODLevel][Warning] There's no such LOD Level.");
         return;
@@ -159,7 +159,15 @@ void UParticleSystemComponent::Deactivate()
 {
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
-        delete Instance;
+        if (Instance)
+        {
+            if (Instance->ParticleData)
+            {
+                free(Instance->ParticleData);
+                Instance->ParticleData = nullptr;
+            }
+            delete Instance;
+        }
     }
     EmitterInstances.clear();
 }
@@ -167,7 +175,7 @@ void UParticleSystemComponent::Deactivate()
 // [Tick Phase] 매 프레임 호출되어 DeltaTime만큼 시뮬레이션을 전진시킵니다. (가장 중요)
 void UParticleSystemComponent::TickComponent(float DeltaTime)
 {
-    ;
+    
 }
     
 // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)

@@ -3,5 +3,5 @@
 
 // payload size를 고정된 값으로 지정
 UParticleModuleRequired::UParticleModuleRequired() :
-    UParticleModule(48)
+    UParticleModule(REQUIRED_MODULE_PAYLOAD_SIZE)
 {}
