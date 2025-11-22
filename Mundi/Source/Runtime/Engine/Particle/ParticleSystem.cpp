@@ -19,8 +19,28 @@ bool UParticleSystem::RemoveEmitter(UParticleEmitter* TargetEmitter)
     return Emitters.Remove(TargetEmitter);
 }
 
-// // 시스템 전체의 상태가 유효한지 검증합니다.
-// bool UParticleSystem::IsValid() const;
-    
-// // 시스템의 전체 Duration을 Emitters의 설정에 기반하여 계산합니다.
-// float UParticleSystem::GetCalculatedDuration() const;
+// 시스템의 전체 Duration을 Emitters의 설정에 기반하여 계산합니다.
+float UParticleSystem::GetCalculatedDuration() const
+{
+    float MaxDuration = 0.f;
+
+    for (UParticleEmitter* Emitter : Emitters)
+    {
+        MaxDuration = std::max(Emitter->GetCalculatedDuration(), MaxDuration);
+    }
+
+    return MaxDuration;
+}
+
+// 시스템 전체의 상태가 유효한지 검증합니다.
+bool UParticleSystem::IsValid() const
+{
+    for (UParticleEmitter* Emitter : Emitters)
+    {
+        if (!Emitter->IsValid())
+        {
+            return false;
+        }
+    }
+    return true;
+}

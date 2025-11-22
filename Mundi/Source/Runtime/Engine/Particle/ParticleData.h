@@ -6,36 +6,37 @@ public:
     // -------------------------------------------
     // 1. 공간 및 운동 (Spatial and Kinematics)
     // -------------------------------------------
-
-    // 80 bytes
     
+    // 16 bytes
     FVector		OldLocation;			// Last frame's location, used for collision
-    FVector    Location;                // 현재 파티클의 월드 공간 위치 (Update 함수에서 Velocity를 이용해 매 프레임 갱신됨)
-    
-    FVector    BaseVelocity;            // 파티클이 처음 생성될 때 설정된 초기 속도 (재계산 방지 또는 참조용)
-    FVector    Velocity;                // 현재 파티클의 속도 벡터 (Update 함수에서 Gravity, Drag 등에 의해 갱신됨)
-
-    FVector		BaseSize;				// Size = BaseSize at the start of each frame
-    FVector		Size;					// Current size, gets reset to BaseSize each frame
-    
     // 파티클의 회전 속도 (매 프레임 Rotation에 더해짐)
     float		BaseRotationRate;		// Initial angular velocity of particle (in Radians per second)
-    // 파티클의 현재 회전 각도 (스프라이트 회전에 사용)
-    float		Rotation;				// Rotation of particle (in Radians)
 
-    // 48 bytes
-    
-    float		RotationRate;			// Current rotation rate, gets reset to BaseRotationRate each frame
-    
-    FLinearColor	Color;					// Current color of particle.
-    FLinearColor	BaseColor;				// Base color of the particle
+    // 16 bytes
+    FVector     Location;                // 현재 파티클의 월드 공간 위치 (Update 함수에서 Velocity를 이용해 매 프레임 갱신됨)
+    float		Rotation;				// 파티클의 현재 회전 각도 (스프라이트 회전에 사용)
 
-    // 파티클의 전체 수명 (Lifetime) 중 경과된 시간의 비율 (0.0 ~ 1.0).
-    // ColorOverLife, SizeOverLife 등의 모듈에서 보간(Interpolation)을 위해 사용됨.
-    float       RelativeTime; 
+    // 16 bytes
+    FVector     BaseVelocity;            // 파티클이 처음 생성될 때 설정된 초기 속도 (재계산 방지 또는 참조용)
+    float	    RotationRate;			// Current rotation rate, gets reset to BaseRotationRate each frame
+
+    // 16 bytes
+    FVector     Velocity;                // 현재 파티클의 속도 벡터 (Update 함수에서 Gravity, Drag 등에 의해 갱신됨)
+    float       RelativeTime;           // 파티클의 전체 수명 (Lifetime) 중 경과된 시간의 비율 (0.0 ~ 1.0). ColorOverLife, SizeOverLife 등의 모듈에서 보간(Interpolation)을 위해 사용됨.
+
+    // 16 bytes
+    FVector		BaseSize;				// Size = BaseSize at the start of each frame
     float	    OneOverMaxLifetime;		// Reciprocal of lifetime
 
-    int32      Flags;					// Flags indicating various particle states
+    // 16 bytes
+    FVector		Size;					// Current size, gets reset to BaseSize each frame
+    int32       Flags;					// Flags indicating various particle states
+    
+    
+    FLinearColor	Color;					// Current color of particle.
+
+    // 16 bytes
+    FLinearColor	BaseColor;				// Base color of the particle
     
     // -------------------------------------------
     // 4. ... (선택적 페이로드 메모리 시작 지점)

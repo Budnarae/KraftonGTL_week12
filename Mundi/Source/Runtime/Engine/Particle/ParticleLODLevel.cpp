@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "ParticleLODLevel.h"
+#include "ParticleModuleRequired.h"
 
 #include "Keyboard.h"
 
@@ -20,11 +21,41 @@ bool UParticleLODLevel::RemoveModule(UParticleModule* TargetModule)
 {
     return Modules.Remove(TargetModule);
 }
+
+UParticleModuleRequired* UParticleLODLevel::GetRequiredModule()
+{
+    return RequiredModule;
+}
+
+void UParticleLODLevel::CreateRequiredModule()
+{
+    if (RequiredModule)
+    {
+        UE_LOG("[UParticleLODLevel::CreateRequiredModule][Warning]There's already Required Module.");
+        return;
+    }
+    RequiredModule = NewObject<UParticleModuleRequired>();
+}
+
+void UParticleLODLevel::DeleteRequiredModule()
+{
+    if (!RequiredModule)
+    {
+        UE_LOG("[UParticleLODLevel::DeleteRequiredModule][Warning]Required Module is already null.");
+        return;
+    }
+    DeleteObject(RequiredModule);
+}
+
+TArray<UParticleModule*>& UParticleLODLevel::GetModule()
+{
+    return Modules;
+}
     
-// // 이 LOD 레벨의 설정이 유효한지 확인 (예: RequiredModule이 null인지 체크)
-// bool UParticleLODLevel::IsValidConfiguration() const
-// {
-//     if (!RequiredModule) return false;
-//     
-//     return true;
-// }
+// 이 LOD 레벨의 설정이 유효한지 확인
+bool UParticleLODLevel::IsValid() const
+{
+    if (!RequiredModule) return false;
+    
+    return true;
+}

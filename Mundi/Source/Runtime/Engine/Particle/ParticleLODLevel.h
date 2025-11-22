@@ -21,9 +21,15 @@ public:
     
     // 모듈 배열에서 특정 모듈을 제거
     bool RemoveModule(UParticleModule* TargetModule);
+
+    UParticleModuleRequired* GetRequiredModule();
+    void CreateRequiredModule();
+    void DeleteRequiredModule();
+
+    TArray<UParticleModule*>& GetModule();
     
-    // // 이 LOD 레벨의 설정이 유효한지 확인 (예: RequiredModule이 null인지 체크)
-    // bool IsValidConfiguration() const;
+    // 이 LOD 레벨의 설정이 유효한지 확인
+    bool IsValid() const;
 private:
     // -------------------------------------------
     // 데이터 멤버 (Data Members)

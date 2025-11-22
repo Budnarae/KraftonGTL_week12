@@ -8,10 +8,26 @@ UCLASS(DisplayName="필수 파티클 모듈", Description="파티클 렌더링�
 class UParticleModuleRequired : public UParticleModule
 {
 public:
-    UParticleModuleRequired() = default;
+    UParticleModuleRequired();
     ~UParticleModuleRequired() = default;
 
     GENERATED_REFLECTION_BODY()
+
+    // Getters
+    UMaterial* GetMaterial() const { return Material; }
+    FVector GetEmitterOrigin() const { return EmitterOrigin; }
+    FQuat GetEmitterRotation() const { return EmitterRotation; }
+    float GetEmitterDuration() const { return EmitterDuration; }
+    float GetSpawnRate() const { return SpawnRate; }
+    float GetEmitterDelay() const { return EmitterDelay; }
+
+    // Setters
+    void SetMaterial(UMaterial* InMaterial) { Material = InMaterial; }
+    void SetEmitterOrigin(const FVector& InOrigin) { EmitterOrigin = InOrigin; }
+    void SetEmitterRotation(const FQuat& InRotation) { EmitterRotation = InRotation; }
+    void SetEmitterDuration(float InDuration) { EmitterDuration = InDuration; }
+    void SetSpawnRate(float InSpawnRate) { SpawnRate = InSpawnRate; }
+    void SetEmitterDelay(float InDelay) { EmitterDelay = InDelay; }
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")

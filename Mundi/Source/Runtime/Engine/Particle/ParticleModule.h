@@ -10,6 +10,7 @@ class UParticleModule : public UObject
 {
 public:
     UParticleModule() = default;
+    UParticleModule(int32 InPayloadSize);
     ~UParticleModule() = default;
     
     GENERATED_REFLECTION_BODY()
@@ -47,5 +48,6 @@ public:
     // float Value_Max;
 protected:
     // 계산된 페이로드 오프셋을 저장하는 변수 (Payload 접근 시 사용됨)
-    int32 MyPayloadOffset;
+    int32 PayloadOffset{};
+    int32 PayloadSize{};
 };

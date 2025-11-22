@@ -21,9 +21,11 @@ public:
 
     // Emitter 리스트에서 특정 Emitter를 제거합니다.
     bool RemoveEmitter(UParticleEmitter* TargetEmitter);
-
-    // // 시스템 전체의 상태가 유효한지 검증합니다.
-    // bool IsValid() const;
+    
+    float GetCalculatedDuration() const;
+    
+    // 시스템 전체의 상태가 유효한지 검증합니다.
+    bool IsValid() const;
     
     // // 시스템의 전체 Duration을 Emitters의 설정에 기반하여 계산합니다.
     // float GetCalculatedDuration() const;
