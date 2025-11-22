@@ -1,5 +1,5 @@
 ﻿#include "ParticleSystem.h"           // 템플릿 정의
-#include "SceneComponent.h"
+#include "PrimitiveComponent.h"
 #include "UParticleSystemComponent.generated.h"
 
 // 전방 선언: 실제 파티클 데이터를 담는 런타임 인스턴스 구조체
@@ -8,10 +8,10 @@
 struct FParticleEmitterInstance; 
 
 UCLASS(DisplayName="파티클 시스템 컴포넌트", Description="씬에 배치할 수 있는 파티클 컴포넌트입니다.")
-class UParticleSystemComponent : public USceneComponent
+class UParticleSystemComponent : public UPrimitiveComponent
 {
 public:
-    UParticleSystemComponent() = default;
+    UParticleSystemComponent();
     ~UParticleSystemComponent() = default;
 
     GENERATED_REFLECTION_BODY()

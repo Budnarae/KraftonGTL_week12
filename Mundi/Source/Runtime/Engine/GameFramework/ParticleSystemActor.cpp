@@ -40,8 +40,8 @@ AParticleSystemActor::AParticleSystemActor()
 			UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
 			if (RequiredModule)
 			{
-				// 머티리얼 설정 (기본 파티클 머티리얼 사용)
-				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Get<UMaterial>("M_Particle");
+				// 머티리얼 설정 (Billboard 셰이더 사용)
+				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>("Shaders/UI/Billboard.hlsl");
 				if (ParticleMaterial)
 				{
 					RequiredModule->SetMaterial(ParticleMaterial);

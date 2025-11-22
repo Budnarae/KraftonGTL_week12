@@ -302,7 +302,7 @@ public:
     // int32 InstancePayloadSize;
 
     // 런타임 파티클 생성 관리
-    int32 SpawnRate{};              // 파티클 스폰 레이트
+    float SpawnRate{};              // 파티클 스폰 레이트 (초당 개수)
     int32 SpawnNum{};               // 이번 프레임에 스폰할 파티클의 개수
     float SpawnFraction{};          // 다음 프레임에 합산할 소수부 나머지
 

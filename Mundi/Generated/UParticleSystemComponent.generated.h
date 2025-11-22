@@ -10,11 +10,11 @@
 #endif
 #define CURRENT_CLASS_GENERATED_BODY \
 public: \
-    using Super = USceneComponent; \
+    using Super = UPrimitiveComponent; \
     using ThisClass_t = UParticleSystemComponent; \
     static UClass* StaticClass() \
     { \
-        static UClass Cls{ "UParticleSystemComponent", USceneComponent::StaticClass(), sizeof(UParticleSystemComponent) }; \
+        static UClass Cls{ "UParticleSystemComponent", UPrimitiveComponent::StaticClass(), sizeof(UParticleSystemComponent) }; \
         static bool bRegistered = (UClass::SignUpClass(&Cls), true); \
         return &Cls; \
     } \

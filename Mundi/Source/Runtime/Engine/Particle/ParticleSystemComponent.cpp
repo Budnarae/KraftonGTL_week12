@@ -12,6 +12,11 @@
 #include "Quad.h"
 #include "Texture.h"
 
+UParticleSystemComponent::UParticleSystemComponent()
+{
+    bCanEverTick = true;
+}
+
 // Getters
 UParticleSystem* UParticleSystemComponent::GetTemplate() const
 {
@@ -128,8 +133,9 @@ void UParticleSystemComponent::Activate(bool bReset)
         UE_LOG("[UParticleSystemComponent::Activate][Warning] Particle template isn't valid.");
         return;
     }
-    
+
     // TODO: 현재는 최소 구현으로 무조건 LOD == 0이라고 설정한다. 추후 추가 구현 필요
+    // SetCurrentLODLevel을 호출하여 모든 Emitter의 CurrentLODLevel도 함께 설정
     SetCurrentLODLevel(0);
     for (UParticleEmitter* Emitter : Template->GetEmitters())
     {
@@ -188,11 +194,15 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
     const static FVector Velocity = FVector(0, 0, 0);
 
     ElapsedTime += DeltaTime;
-    
+
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
         if (Instance)
         {
+            // 1. Update 함수를 먼저 호출하여 SpawnNum 계산 및 기존 파티클 업데이트
+            Instance->Update(DeltaTime);
+
+            // 2. 계산된 SpawnNum만큼 새 파티클 생성
             Instance->SpawnParticles(
                 ElapsedTime,
                 0.01f,
@@ -284,26 +294,31 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
             // --- 인스턴스 데이터 ---
-            // 파티클 위치에 World Matrix 설정
+            // 파티클 위치 = 로컬 파티클 위치 + 컴포넌트 월드 위치
+            FVector WorldParticleLocation = Particle->Location + GetWorldLocation();
             FMatrix ScaleMatrix = FMatrix::MakeScale(Particle->Size);
-            FMatrix TranslationMatrix = FMatrix::MakeTranslation(Particle->Location);
+            FMatrix TranslationMatrix = FMatrix::MakeTranslation(WorldParticleLocation);
             BatchElement.WorldMatrix = ScaleMatrix * TranslationMatrix;
 
             // 파티클 색상
             BatchElement.InstanceColor = Particle->Color;
 
             // Material의 텍스처 가져오기 (Diffuse 텍스처)
+            UTexture* DiffuseTexture = nullptr;
             if (ParticleMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
             {
-                UTexture* DiffuseTexture = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
-                if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
-                {
-                    BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
-                }
-                else
-                {
-                    BatchElement.InstanceShaderResourceView = nullptr;
-                }
+                DiffuseTexture = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
+            }
+
+            // 텍스처가 없으면 기본 텍스처 사용 (테스트용)
+            if (!DiffuseTexture)
+            {
+                DiffuseTexture = UResourceManager::GetInstance().Load<UTexture>(GDataDir + "/Textures/grass.jpg");
+            }
+
+            if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
+            {
+                BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
             }
             else
             {

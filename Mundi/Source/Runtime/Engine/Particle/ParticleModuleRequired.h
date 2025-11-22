@@ -18,6 +18,10 @@ public:
 
     GENERATED_REFLECTION_BODY()
 
+    // 파티클 모듈 가상 함수 오버라이드
+    virtual void Spawn(FBaseParticle* Particle, float EmitterTime) override;
+    virtual void Update(FBaseParticle* Particle, float DeltaTime) override;
+
     // Getters
     UMaterial* GetMaterial() const { return Material; }
     FVector GetEmitterOrigin() const { return EmitterOrigin; }

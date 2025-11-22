@@ -67,6 +67,14 @@ void FParticleEmitterInstance::SpawnParticles
         ParticleBase.Velocity = InitialVelocity;
         ParticleBase.BaseVelocity = InitialVelocity; // BaseVelocity는 초기 속도 참조용
 
+        // RequiredModule의 Spawn 호출 (필수)
+        UParticleModuleRequired* RequiredModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
+        if (RequiredModule)
+        {
+            RequiredModule->Spawn(&ParticleBase, StartTime);
+        }
+
+        // 추가 SpawnModules 호출
         for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
         {
             Module->Spawn(&ParticleBase, StartTime);
