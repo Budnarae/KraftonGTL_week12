@@ -36,7 +36,7 @@ public:
     bool RemoveEmitterInstanceAt(int32 Index);
 
     // 렌더링 관련 함수
-    void CollectMeshBatches(TArray<struct FMeshBatchElement>& OutMeshBatchElements, const struct FSceneView* View);
+    void CollectMeshBatches(TArray<struct FMeshBatchElement>& OutMeshBatchElements, const struct FSceneView* View) override;
 
     // 시뮬레이션 시작 명령 (파티클 생성 및 타이머 시작)
     void Activate(bool bReset = false);
