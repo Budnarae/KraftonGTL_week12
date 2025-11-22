@@ -351,11 +351,15 @@ public:
 		return ListJson;
 	}
 
+	template<typename T>
 	static void AddUObject(const bool bInIsLoading, JSON& InOutHandle, UObject* InObject)
 	{
 		JSON ObjectJson = json::Object();
-		InObject->Serialize(bInIsLoading, ObjectJson);
-		InOutHandle[InObject->GetClass()->Name] = ObjectJson;
+		if (InObject != nullptr) 
+		{
+			InObject->Serialize(bInIsLoading, ObjectJson);
+		}
+		InOutHandle[T::StaticClass()->Name] = ObjectJson;
 	}
 
 	//====================================================================================

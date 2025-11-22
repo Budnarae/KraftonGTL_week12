@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "ParticleEmitter.h"
 
 struct FBaseParticle
 {
@@ -8,35 +9,39 @@ public:
     // -------------------------------------------
     
     // 16 bytes
-    FVector		OldLocation;			// Last frame's location, used for collision
+    FVector		OldLocation{};			// Last frame's location, used for collision
     // 파티클의 회전 속도 (매 프레임 Rotation에 더해짐)
-    float		BaseRotationRate;		// Initial angular velocity of particle (in Radians per second)
+    float		BaseRotationRate{};		// Initial angular velocity of particle (in Radians per second)
 
     // 16 bytes
-    FVector     Location;                // 현재 파티클의 월드 공간 위치 (Update 함수에서 Velocity를 이용해 매 프레임 갱신됨)
-    float		Rotation;				// 파티클의 현재 회전 각도 (스프라이트 회전에 사용)
+    FVector     Location{};             // 현재 파티클의 월드 공간 위치 (Update 함수에서 Velocity를 이용해 매 프레임 갱신됨)
+    float		Rotation{};				// 파티클의 현재 회전 각도 (스프라이트 회전에 사용)
 
     // 16 bytes
-    FVector     BaseVelocity;            // 파티클이 처음 생성될 때 설정된 초기 속도 (재계산 방지 또는 참조용)
-    float	    RotationRate;			// Current rotation rate, gets reset to BaseRotationRate each frame
+    FVector     BaseVelocity{};         // 파티클이 처음 생성될 때 설정된 초기 속도 (재계산 방지 또는 참조용)
+    float	    RotationRate{};			// Current rotation rate, gets reset to BaseRotationRate each frame
 
     // 16 bytes
-    FVector     Velocity;                // 현재 파티클의 속도 벡터 (Update 함수에서 Gravity, Drag 등에 의해 갱신됨)
-    float       RelativeTime;           // 파티클의 전체 수명 (Lifetime) 중 경과된 시간의 비율 (0.0 ~ 1.0). ColorOverLife, SizeOverLife 등의 모듈에서 보간(Interpolation)을 위해 사용됨.
+    FVector     Velocity{};             // 현재 파티클의 속도 벡터 (Update 함수에서 Gravity, Drag 등에 의해 갱신됨)
+    float       RelativeTime{};         // 파티클의 전체 수명 (Lifetime) 중 경과된 시간의 비율 (0.0 ~ 1.0). ColorOverLife, SizeOverLife 등의 모듈에서 보간(Interpolation)을 위해 사용됨.
 
     // 16 bytes
-    FVector		BaseSize;				// Size = BaseSize at the start of each frame
-    float	    OneOverMaxLifetime;		// Reciprocal of lifetime
+    FVector		BaseSize{};				// Size = BaseSize at the start of each frame
+    float       LifeTime{};             // 파티클의 총 수명
 
     // 16 bytes
-    FVector		Size;					// Current size, gets reset to BaseSize each frame
-    int32       Flags;					// Flags indicating various particle states
+    FVector		Size{};					// Current size, gets reset to BaseSize each frame
+    int32       Flags{};				// Flags indicating various particle states
     
-    
-    FLinearColor	Color;					// Current color of particle.
+    // 16 bytes
+    FLinearColor	Color{};			// Current color of particle.
 
     // 16 bytes
-    FLinearColor	BaseColor;				// Base color of the particle
+    FLinearColor	BaseColor{};		// Base color of the particle
+
+    // 16 bytes
+    float	    OneOverMaxLifetime{};	// Reciprocal of lifetime
+    float       Padding[3];
     
     // -------------------------------------------
     // 4. ... (선택적 페이로드 메모리 시작 지점)
@@ -204,14 +209,37 @@ public:
 };
 
 // 외부 UObject 클래스들에 대한 전방 선언
-class UParticleEmitter;
 class UParticleSystemComponent;
 class UParticleLODLevel;
 struct FParticleEventInstancePayload;
 enum class ERHIFeatureLevel : int32; // 렌더링 피처 레벨 정의
 
-// 렌더링에 필요한 Vertex 구조체 (실제 크기는 엔진에 정의됨)
-struct FParticleSpriteVertex;
+// 렌더링에 필요한 Vertex 구조체
+struct FParticleSpriteVertex
+{
+    FVector WorldPosition;  // 파티클 월드 위치
+    FVector2D UV;           // 텍스처 좌표 (0~1)
+    FVector2D Size;         // 파티클 크기 (Width, Height)
+    FLinearColor Color;     // 파티클 색상
+    float Rotation;         // 회전 각도 (Radians)
+    float Padding[3];       // 16바이트 정렬을 위한 패딩
+
+    // FBaseParticle로부터 데이터 채우기
+    void FillFromParticle(const FBaseParticle* Particle, const FVector2D& InUV)
+    {
+        WorldPosition = Particle->Location;
+        UV = InUV;
+        Size = FVector2D(Particle->Size.X, Particle->Size.Y);
+        Color = Particle->Color;
+        Rotation = Particle->Rotation;
+
+        // 패딩 초기화
+        Padding[0] = 0.0f;
+        Padding[1] = 0.0f;
+        Padding[2] = 0.0f;
+    }
+};
+
 struct FMeshParticleInstanceVertex;
 
 // ----------------------------------------------------
@@ -256,35 +284,53 @@ struct FParticleEmitterInstance
 {
 public:
     // 템플릿 및 소유자 참조
-    UParticleEmitter* SpriteTemplate;
-    UParticleSystemComponent* Component;
+    UParticleEmitter* SpriteTemplate{};
+    UParticleSystemComponent* OwnerComponent{};
 
     // LOD 및 모듈 참조
-    int32 CurrentLODLevelIndex;
-    UParticleLODLevel* CurrentLODLevel;
+    int32 CurrentLODLevelIndex{};
+    UParticleLODLevel* CurrentLODLevel{};
 
     // 메모리 관리 및 상태 변수
-    uint8* ParticleData;
-    uint16* ParticleIndices;
-    uint8* InstanceData;
-    int32 InstancePayloadSize;
-    int32 PayloadOffset;
-    int32 ParticleSize;
-    int32 ParticleStride;
-    int32 ActiveParticles;
-    uint32 ParticleCounter;
-    int32 MaxActiveParticles;
+    uint8* ParticleData{};          // 모든 파티클의 데이터가 저장된 로우 메모리 블록의 시작 주소.
+    int32 MaxActiveParticles{};     // ParticleData 블록의 최대 크기를 결정하는 파티클 수 (메모리 할당 기준)
 
+    int32 ParticleStride{};         // 단일 파티클의 메모리 크기이자, 다음 파티클의 시작 주소로 점프하기 위한 $16$ 바이트 정렬이 적용된 최종 크기 (포인터 연산 기준).
+    // int32 PayloadOffset;         // 파티클 데이터 내에서 고정 필드가 끝나고 가변 페이로드 데이터가 시작되는 지점을 표시하는 오프셋 (메모리 분할 기준).
+    
+    // uint8* InstanceData;
+    // int32 InstancePayloadSize;
+
+    // 런타임 파티클 생성 관리
+    float SpawnRate{};              // 파티클 스폰 레이트 (초당 개수)
+    int32 SpawnNum{};               // 이번 프레임에 스폰할 파티클의 개수
+    float SpawnFraction{};          // 다음 프레임에 합산할 소수부 나머지
+
+    float Duration{};
+    
+    int32 ActiveParticles{};        // 현재 시뮬레이션 루프에서 실제 활성화된 파티클의 수 (현재 카운트).
 public:
+    // 파티클 갱신 함수 (Update 모듈 호출)
+    void Update(float DeltaTime);
+    
     // 파티클 생성 및 모듈 호출 로직
-    void SpawnParticles( int32 Count, float StartTime, float Increment, const FVector& InitialLocation, const FVector& InitialVelocity, FParticleEventInstancePayload* EventPayload )
-    {
-        // For 루프와 모듈 디스패치 로직은 구현(.cpp) 파일에 포함됩니다.
-    }
+    void SpawnParticles
+    (
+        float StartTime,
+        float Increment,
+        const FVector& InitialLocation, // 충돌 처리 등을 위해 별도의 인자로 받으나 보통 사용되지 않음
+        const FVector& InitialVelocity,
+        FParticleEventInstancePayload* EventPayload
+    );
 
     // 파티클 소멸 함수
     void KillParticle(int32 Index);
 
-    // 파티클 갱신 함수 (Update 모듈 호출)
-    void Update(float DeltaTime);
+    float GetLifeTimeValue()
+    {
+        return SpriteTemplate->
+            GetCurrentLODLevelInstance()->
+            GetRequiredModule()->
+            GetLifeTime();
+    }
 };

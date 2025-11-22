@@ -10,19 +10,19 @@
 #endif
 #define CURRENT_CLASS_GENERATED_BODY \
 public: \
-    using Super = UPrimitiveComponent; \
-    using ThisClass_t = UParticleSystemComponent; \
+    using Super = AActor; \
+    using ThisClass_t = AParticleSystemActor; \
     static UClass* StaticClass() \
     { \
-        static UClass Cls{ "UParticleSystemComponent", UPrimitiveComponent::StaticClass(), sizeof(UParticleSystemComponent) }; \
+        static UClass Cls{ "AParticleSystemActor", AActor::StaticClass(), sizeof(AParticleSystemActor) }; \
         static bool bRegistered = (UClass::SignUpClass(&Cls), true); \
         return &Cls; \
     } \
-    virtual UClass* GetClass() const override { return UParticleSystemComponent::StaticClass(); } \
-    UParticleSystemComponent(const UParticleSystemComponent&) = default; \
-    UParticleSystemComponent* Duplicate() const override \
+    virtual UClass* GetClass() const override { return AParticleSystemActor::StaticClass(); } \
+    AParticleSystemActor(const AParticleSystemActor&) = default; \
+    AParticleSystemActor* Duplicate() const override \
     { \
-        UParticleSystemComponent* NewObject = ObjectFactory::DuplicateObject<UParticleSystemComponent>(this); \
+        AParticleSystemActor* NewObject = ObjectFactory::DuplicateObject<AParticleSystemActor>(this); \
         NewObject->DuplicateSubObjects(); \
         NewObject->PostDuplicate(); \
         return NewObject; \

@@ -8,10 +8,19 @@ UCLASS(DisplayName="필수 파티클 모듈", Description="파티클 렌더링�
 class UParticleModuleRequired : public UParticleModule
 {
 public:
+    // RequiredModule이 사용하는 페이로드 크기
+    // EmitterOrigin(12) + EmitterRotation(16) + EmitterDuration(4) + SpawnRate(4) + EmitterDelay(4) + LifeTime(4) = 44 바이트
+    // 16바이트 정렬을 위해 48바이트로 설정
+    static constexpr int32 REQUIRED_MODULE_PAYLOAD_SIZE = 48;
+
     UParticleModuleRequired();
     ~UParticleModuleRequired() = default;
 
     GENERATED_REFLECTION_BODY()
+
+    // 파티클 모듈 가상 함수 오버라이드
+    virtual void Spawn(FBaseParticle* Particle, float EmitterTime) override;
+    virtual void Update(FBaseParticle* Particle, float DeltaTime) override;
 
     // Getters
     UMaterial* GetMaterial() const { return Material; }
@@ -20,6 +29,7 @@ public:
     float GetEmitterDuration() const { return EmitterDuration; }
     float GetSpawnRate() const { return SpawnRate; }
     float GetEmitterDelay() const { return EmitterDelay; }
+    float GetLifeTime() const { return LifeTime; }
 
     // Setters
     void SetMaterial(UMaterial* InMaterial) { Material = InMaterial; }
@@ -28,6 +38,7 @@ public:
     void SetEmitterDuration(float InDuration) { EmitterDuration = InDuration; }
     void SetSpawnRate(float InSpawnRate) { SpawnRate = InSpawnRate; }
     void SetEmitterDelay(float InDelay) { EmitterDelay = InDelay; }
+    void SetLifeTime(float InLifeTime) { LifeTime = InLifeTime; }
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")
@@ -53,6 +64,6 @@ private:
     float EmitterDelay{};
 
 public:
-    UPROPERTY(EditAnywhere, Category = "Basic")
-    float Test = 0;
+    UPROPERTY(EditAnywhere, Category="Basic")
+    float LifeTime = 3.f;
 };

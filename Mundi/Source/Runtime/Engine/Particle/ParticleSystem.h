@@ -20,6 +20,8 @@ public:
 
     // Emitter 리스트에서 특정 Emitter를 제거합니다.
     bool RemoveEmitter(UParticleEmitter* TargetEmitter);
+
+    TArray<UParticleEmitter*>& GetEmitters();
     
     float GetCalculatedDuration() const;
     
