@@ -20,6 +20,7 @@ public:
     float GetEmitterDuration() const { return EmitterDuration; }
     float GetSpawnRate() const { return SpawnRate; }
     float GetEmitterDelay() const { return EmitterDelay; }
+    float GetLifeTime() const { return LifeTime; }
 
     // Setters
     void SetMaterial(UMaterial* InMaterial) { Material = InMaterial; }
@@ -28,6 +29,7 @@ public:
     void SetEmitterDuration(float InDuration) { EmitterDuration = InDuration; }
     void SetSpawnRate(float InSpawnRate) { SpawnRate = InSpawnRate; }
     void SetEmitterDelay(float InDelay) { EmitterDelay = InDelay; }
+    void SetLifeTime(float InLifeTime) { LifeTime = InLifeTime; }
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")
@@ -51,4 +53,7 @@ private:
 
     UPROPERTY(EditAnywhere, Category="Basic")
     float EmitterDelay{};
+
+    UPROPERTY(EditAnywhere, Category="Basic")
+    float LifeTime = 3.f;
 };

@@ -148,7 +148,8 @@ void UParticleSystemComponent::Activate(bool bReset)
         // 런타입 파티클 생성 관리
         Instance->SpawnRate =
             Emitter->GetCurrentLODLevelInstance()->GetRequiredModule()->GetSpawnRate();
-
+        Instance->Duration = Emitter->GetCalculatedDuration();
+        
         EmitterInstances.Add(Instance);
     }
 }
