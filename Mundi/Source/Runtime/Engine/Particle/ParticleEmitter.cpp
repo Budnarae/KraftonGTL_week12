@@ -4,6 +4,7 @@
 #include "ParticleData.h"
 #include "ParticleLODLevel.h"
 
+IMPLEMENT_CLASS(UParticleEmitter)
 // [셋업 단계] 모든 모듈을 순회하며 파티클 크기(ParticleSize) 및 페이로드 오프셋을 계산하고 캐시합니다.
 void UParticleEmitter::CacheEmitterModuleInfo()
 {
@@ -111,4 +112,13 @@ bool UParticleEmitter::IsValid() const
 void UParticleEmitter::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 {
     Super::Serialize(bInIsLoading, InOutHandle);
+
+    if (bInIsLoading)
+    {
+
+    }
+    else
+    {
+        InOutHandle["LODLevels"] = FJsonSerializer::UObjectArrayToJson(bInIsLoading, LODLevels);
+    }
 }

@@ -62,4 +62,15 @@ bool UParticleLODLevel::IsValid() const
 void UParticleLODLevel::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 {
     Super::Serialize(bInIsLoading, InOutHandle);
+
+    if (bInIsLoading)
+    {
+
+    }
+    else
+    {
+        FJsonSerializer::AddUObject(bInIsLoading, InOutHandle, RequiredModule);
+        InOutHandle["Modules"] = FJsonSerializer::UObjectArrayToJson(bInIsLoading, Modules);
+        //FJsonSerializer::AddUObject(bInIsLoading, InOutHandle, TypeDataModule);
+    }
 }

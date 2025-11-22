@@ -36,7 +36,7 @@ void UParticleAsset::LoadAllDatas()
         }
     }
 }
-void UParticleAsset::Create(const FString& FolderPath)
+UParticleAsset* UParticleAsset::Create(const FString& FolderPath)
 {
     UParticleAsset* ParticleAsset = NewObject<UParticleAsset>();
 	std::filesystem::path TotalPath = FolderPath + "/NewParticle.uasset";
@@ -53,7 +53,7 @@ void UParticleAsset::Create(const FString& FolderPath)
 			TotalPath = FolderPath + "/NewParticle" + std::to_string(idx++) + ".uasset";
 			if (idx == 100)
 			{
-				return;
+				return nullptr;
 			}
 		}
 	}
@@ -61,6 +61,7 @@ void UParticleAsset::Create(const FString& FolderPath)
 	FString PathStr = TotalPath.string();
 	UResourceManager::GetInstance().Add<UParticleAsset>(PathStr, ParticleAsset);
     ParticleAsset->Save();
+	return ParticleAsset;
 }
 
 void UParticleAsset::Load(const FString& InFilePath, ID3D11Device* InDevice)

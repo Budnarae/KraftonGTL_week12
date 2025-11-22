@@ -51,4 +51,8 @@ private:
 
     UPROPERTY(EditAnywhere, Category="Basic")
     float EmitterDelay{};
+
+public:
+    UPROPERTY(EditAnywhere, Category = "Basic")
+    float Test = 0;
 };

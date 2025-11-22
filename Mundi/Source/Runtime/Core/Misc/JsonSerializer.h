@@ -338,6 +338,25 @@ public:
 		return VectorArray;
 	}
 
+	template<typename T>
+	static JSON UObjectArrayToJson(const bool bInIsLoading, TArray<T*> UObjectList)
+	{
+		JSON ListJson = json::Object();
+		for (T* object : UObjectList)
+		{
+			JSON ElementJson = json::Object();
+			object->Serialize(bInIsLoading, ElementJson);
+			ListJson.append(ElementJson);
+		}
+		return ListJson;
+	}
+
+	static void AddUObject(const bool bInIsLoading, JSON& InOutHandle, UObject* InObject)
+	{
+		JSON ObjectJson = json::Object();
+		InObject->Serialize(bInIsLoading, ObjectJson);
+		InOutHandle[InObject->GetClass()->Name] = ObjectJson;
+	}
 
 	//====================================================================================
 	// File I/O

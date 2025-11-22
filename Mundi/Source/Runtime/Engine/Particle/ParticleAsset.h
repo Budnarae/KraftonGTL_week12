@@ -10,7 +10,7 @@ class UParticleAsset : public UResourceBase
 {
     DECLARE_CLASS(UParticleAsset, UResourceBase)
 public:
-    static void Create(const FString& InFilePath);
+    static UParticleAsset* Create(const FString& InFilePath);
     static void LoadAllDatas();
     UParticleAsset() = default;
     virtual ~UParticleAsset() override = default;
@@ -21,7 +21,8 @@ public:
 
     virtual void Load(const FString& InFilePath, ID3D11Device* InDevice);
     virtual bool Save(const FString& InFilePath = "") override;
-private:
+
     UParticleSystem ParticleSystem;
+private:
 
 };

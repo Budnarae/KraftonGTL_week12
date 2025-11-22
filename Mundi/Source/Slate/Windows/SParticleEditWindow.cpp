@@ -22,8 +22,11 @@ ImVec2 TopMenuBarSize = ImVec2(-1, 40);
 void SParticleEditWindow::CreateParticleEditor(const FString& Path)
 {
     std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
-    UParticleAsset::Create(FolderPath.string());
-
+    UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
+    ParticleAsset->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
+    ParticleAsset->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
+    ParticleAsset->ParticleSystem.Emitters[1]->SetMaxParticleCount(3);
+    ParticleAsset->Save();
     auto* Viewer = USlateManager::GetInstance().FindViewer<SParticleEditWindow>();
     if (!Viewer || !Viewer->IsOpen())
     {

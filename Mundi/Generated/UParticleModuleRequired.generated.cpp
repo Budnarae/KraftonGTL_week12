@@ -41,6 +41,7 @@ BEGIN_PROPERTIES(UParticleModuleRequired)
     ADD_PROPERTY(float, EmitterDuration, "Basic", true)
     ADD_PROPERTY(float, SpawnRate, "Basic", true)
     ADD_PROPERTY(float, EmitterDelay, "Basic", true)
+    ADD_PROPERTY(float, Test, "Basic", true)
 END_PROPERTIES()
 
 // ===== Lua Binding =====

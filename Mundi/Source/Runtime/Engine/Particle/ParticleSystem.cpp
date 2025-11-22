@@ -48,8 +48,12 @@ bool UParticleSystem::IsValid() const
 void UParticleSystem::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 {
     Super::Serialize(bInIsLoading, InOutHandle);
-    for (UParticleEmitter* Emitter : Emitters)
+    if (bInIsLoading)
     {
-        Emitter->Serialize(bInIsLoading, InOutHandle);
+
+    }
+    else 
+    {
+        InOutHandle["Emitters"] = FJsonSerializer::UObjectArrayToJson(bInIsLoading, Emitters);
     }
 }
