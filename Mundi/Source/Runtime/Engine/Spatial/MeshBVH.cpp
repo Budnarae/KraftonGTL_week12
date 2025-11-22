@@ -97,6 +97,93 @@ bool FMeshBVH::IntersectRay(const FRay& InLocalRay,
 
 	return false;
 }
+
+bool FMeshBVH::IntersectRayWithNormal(const FRay& InLocalRay,
+	const TArray<FNormalVertex>& InVertices,
+	const TArray<uint32>& InIndices,
+	float& OutHitDistance,
+	FVector& OutHitNormal)
+{
+	if (Nodes.Num() == 0)
+	{
+		return false;
+	}
+
+	float RootEntry, RootExit;
+	if (!Nodes[0].Bounds.IntersectsRay(InLocalRay, RootEntry, RootExit))
+	{
+		return false;
+	}
+
+	struct FHeapItem
+	{
+		int NodeIndex;
+		float EntryDistance;
+
+		bool operator>(const FHeapItem& Other) const
+		{
+			return EntryDistance > Other.EntryDistance;
+		}
+	};
+
+	std::priority_queue<FHeapItem, TArray<FHeapItem>, std::greater<FHeapItem>> Heap;
+	Heap.push({ 0, RootEntry });
+
+	while (!Heap.empty())
+	{
+		FHeapItem Current = Heap.top();
+		Heap.pop();
+
+		const FMeshBVHNode& Node = Nodes[Current.NodeIndex];
+		if (Node.IsLeaf())
+		{
+			for (uint32 TriOffset = 0; TriOffset < Node.Count; ++TriOffset)
+			{
+				const uint32 TriangleID = TriIndices[Node.Start + TriOffset];
+				const uint32 V0 = InIndices[3 * TriangleID + 0];
+				const uint32 V1 = InIndices[3 * TriangleID + 1];
+				const uint32 V2 = InIndices[3 * TriangleID + 2];
+
+				const FVector& A = InVertices[V0].pos;
+				const FVector& B = InVertices[V1].pos;
+				const FVector& C = InVertices[V2].pos;
+
+				float HitT = 0.0f;
+				if (IntersectRayTriangleMT(InLocalRay, A, B, C, HitT))
+				{
+					OutHitDistance = HitT;
+					// 삼각형 노멀 계산
+					FVector Edge1 = B - A;
+					FVector Edge2 = C - A;
+					OutHitNormal = FVector::Cross(Edge1, Edge2).GetNormalized();
+					return true;
+				}
+			}
+		}
+		else
+		{
+			if (Node.Left >= 0)
+			{
+				float ChildEntry, ChildExit;
+				if (Nodes[Node.Left].Bounds.IntersectsRay(InLocalRay, ChildEntry, ChildExit))
+				{
+					Heap.push({ Node.Left, ChildEntry });
+				}
+			}
+			if (Node.Right >= 0)
+			{
+				float ChildEntry, ChildExit;
+				if (Nodes[Node.Right].Bounds.IntersectsRay(InLocalRay, ChildEntry, ChildExit))
+				{
+					Heap.push({ Node.Right, ChildEntry });
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 //bool FMeshBVH::IntersectRay(const FRay& InLocalRay, const TArray<FNormalVertex>& InVertices, const TArray<uint32>& InIndices, float& OutHitDistance)
 //{
 //	if (Nodes.Num() == 0)

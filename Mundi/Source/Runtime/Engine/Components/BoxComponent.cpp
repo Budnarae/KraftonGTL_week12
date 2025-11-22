@@ -14,8 +14,15 @@ UBoxComponent::UBoxComponent()
 }
 
 void UBoxComponent::OnRegister(UWorld* InWorld)
-{ 
+{
 	Super::OnRegister(InWorld);
+
+	// 이미 명시적으로 설정된 경우 (기본값 0.5가 아닌 경우) 자동 계산 스킵
+	const FVector DefaultExtent(0.5f, 0.5f, 0.5f);
+	if (BoxExtent != DefaultExtent)
+	{
+		return;
+	}
 
 	// Owner의 실제 바운드를 가져옴
 	if (AActor* Owner = GetOwner())

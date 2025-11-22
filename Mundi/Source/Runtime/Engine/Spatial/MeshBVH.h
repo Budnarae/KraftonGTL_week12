@@ -25,6 +25,9 @@ public:
 
 	bool IntersectRay(const FRay& InLocalRay, const TArray<FNormalVertex>& InVertices, const TArray<uint32>& InIndices, float& OutHitDistance);
 
+	// 히트 노멀도 함께 반환하는 버전
+	bool IntersectRayWithNormal(const FRay& InLocalRay, const TArray<FNormalVertex>& InVertices, const TArray<uint32>& InIndices, float& OutHitDistance, FVector& OutHitNormal);
+
 
 private:
 	// Helper 함수들

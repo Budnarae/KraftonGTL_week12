@@ -43,4 +43,7 @@ private:
     // 프레임당 누적 시간
     double AccumulatedCPUTime = 0.0;
     double CachedGPUTime = 0.0;
+
+    // 프레임당 한 번만 GPU 쿼리 기록하기 위한 플래그
+    bool bRecordedThisFrame = false;
 };

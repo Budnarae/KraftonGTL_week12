@@ -29,6 +29,7 @@
 #include "EditorEngine.h"
 #include "DecalComponent.h"
 #include "StatManagement/DecalStatManager.h"
+#include "StatManagement/SkinningStatManager.h"
 #include "SceneRenderer.h"
 #include "SceneView.h"
 
@@ -55,6 +56,9 @@ void URenderer::BeginFrame()
 
 	// 프레임별 데칼 통계를 추적하기 위해 초기화
 	FDecalStatManager::GetInstance().ResetFrameStats();
+
+	// 스키닝 GPU 쿼리 결과 읽기 (다음 RecordStart/End 전에 호출 필요)
+	FSkinningStatManager::GetInstance().BeginFrame();
 
 	RHIDevice->ClearAllBuffer();
 }

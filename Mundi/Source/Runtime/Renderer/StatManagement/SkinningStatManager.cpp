@@ -76,6 +76,10 @@ void FSkinningStatManager::Shutdown()
 
 void FSkinningStatManager::RecordStart()
 {
+    // 이미 이번 프레임에 기록했으면 스킵 (여러 뷰포트 대응)
+    if (bRecordedThisFrame)
+        return;
+
     // 현재 프레임용 쿼리 사용
     pContext->Begin(g_QueryDisjoint[g_WriteIndex]);
     pContext->End(g_QueryStart[g_WriteIndex]);
@@ -83,6 +87,10 @@ void FSkinningStatManager::RecordStart()
 
 void FSkinningStatManager::RecordEnd()
 {
+    // 이미 이번 프레임에 기록했으면 스킵
+    if (bRecordedThisFrame)
+        return;
+
     // 현재 프레임용 쿼리 종료
     pContext->End(g_QueryEnd[g_WriteIndex]);
     pContext->End(g_QueryDisjoint[g_WriteIndex]);
@@ -92,6 +100,9 @@ void FSkinningStatManager::RecordEnd()
 
     // Read Index 업데이트 (Write보다 3프레임 뒤)
     g_ReadIndex = (g_WriteIndex + 1) % NUM_QUERY_SETS;
+
+    // 이번 프레임 기록 완료
+    bRecordedThisFrame = true;
 }
 
 double FSkinningStatManager::GetRecordTime()
@@ -155,6 +166,9 @@ void FSkinningStatManager::BeginFrame()
 
     // CPU 시간 초기화
     AccumulatedCPUTime = 0.0;
+
+    // 이번 프레임 기록 플래그 초기화
+    bRecordedThisFrame = false;
 }
 
 double FSkinningStatManager::GetCPURecordTime()

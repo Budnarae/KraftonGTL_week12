@@ -7,6 +7,7 @@
 class UBoxComponent;
 class UStaticMeshComponent;
 class UStaticMesh;
+class UBillboardComponent;
 
 UCLASS(DisplayName="Procedural Placement Volume", Description="Procedurally places meshes within the volume")
 class AProceduralPlacementVolume : public AActor
@@ -31,8 +32,11 @@ public:
 protected:
     TArray<FVector> GeneratePoints();
     void SpawnMeshAtPoint(const FVector& LocalPosition);
+    void SpawnMeshAtSurfacePoint(const FVector& WorldPosition, const FVector& SurfaceNormal);
     FTransform GenerateRandomTransform(const FVector& Position);
+    FTransform GenerateRandomTransformWithNormal(const FVector& Position, const FVector& Normal);
     bool PassesDensityCheck(const FVector& Position);
+    bool RaycastToSurface(const FVector& Origin, const FVector& Direction, FVector& OutHitPoint, FVector& OutHitNormal);
 
 protected:
     UBoxComponent* VolumeComponent = nullptr;
@@ -84,12 +88,24 @@ protected:
     UPROPERTY(EditAnywhere, Category="Placement|Seed", Tooltip="Use random seed each time")
     bool bUseRandomSeed = false;
 
+    // Surface placement
+    UPROPERTY(EditAnywhere, Category="Placement|Surface", Tooltip="Place on mesh surfaces instead of volume")
+    bool bPlaceOnSurface = false;
+
+    UPROPERTY(EditAnywhere, Category="Placement|Surface", Tooltip="Align mesh rotation to surface normal")
+    bool bAlignToNormal = true;
+
+    UPROPERTY(EditAnywhere, Category="Placement|Surface", Tooltip="Raycast start height offset")
+    float RaycastHeightOffset = 100.0f;
+
     // Control
     UPROPERTY(EditAnywhere, Category="Placement", Tooltip="Auto generate on BeginPlay")
     bool bGenerateOnBeginPlay = true;
 
     TArray<AActor*> SpawnedActors;
     FPlacementDistribution Distribution;
+
+    UBillboardComponent* SpriteComponent = nullptr;
 
 private:
     EDistributionType GetDistributionType() const;
