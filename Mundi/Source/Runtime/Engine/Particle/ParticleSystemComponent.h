@@ -44,11 +44,11 @@ public:
     // [Tick Phase] 매 프레임 호출되어 DeltaTime만큼 시뮬레이션을 전진시킵니다. (가장 중요)
     void TickComponent(float DeltaTime) override;
     
-    // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)
-    void KillParticlesAndCleanUp();
-    
-    // 이 컴포넌트가 현재 재생 중인 이펙트를 멈추고 메모리를 해제합니다. (소멸자 등에서 호출)
-    void BeginDestroy();
+    // // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)
+    // void KillParticlesAndCleanUp();
+    //
+    // // 이 컴포넌트가 현재 재생 중인 이펙트를 멈추고 메모리를 해제합니다. (소멸자 등에서 호출)
+    // void BeginDestroy();
     
 private:
     // [Template] 이 컴포넌트가 재생할 파티클 시스템의 마스터 설계도 (Asset)
