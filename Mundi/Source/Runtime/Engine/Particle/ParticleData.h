@@ -214,8 +214,32 @@ class UParticleLODLevel;
 struct FParticleEventInstancePayload;
 enum class ERHIFeatureLevel : int32; // 렌더링 피처 레벨 정의
 
-// 렌더링에 필요한 Vertex 구조체 (실제 크기는 엔진에 정의됨)
-struct FParticleSpriteVertex;
+// 렌더링에 필요한 Vertex 구조체
+struct FParticleSpriteVertex
+{
+    FVector WorldPosition;  // 파티클 월드 위치
+    FVector2D UV;           // 텍스처 좌표 (0~1)
+    FVector2D Size;         // 파티클 크기 (Width, Height)
+    FLinearColor Color;     // 파티클 색상
+    float Rotation;         // 회전 각도 (Radians)
+    float Padding[3];       // 16바이트 정렬을 위한 패딩
+
+    // FBaseParticle로부터 데이터 채우기
+    void FillFromParticle(const FBaseParticle* Particle, const FVector2D& InUV)
+    {
+        WorldPosition = Particle->Location;
+        UV = InUV;
+        Size = FVector2D(Particle->Size.X, Particle->Size.Y);
+        Color = Particle->Color;
+        Rotation = Particle->Rotation;
+
+        // 패딩 초기화
+        Padding[0] = 0.0f;
+        Padding[1] = 0.0f;
+        Padding[2] = 0.0f;
+    }
+};
+
 struct FMeshParticleInstanceVertex;
 
 // ----------------------------------------------------

@@ -18,7 +18,7 @@ public:
 
     // Getters
     UParticleSystem* GetTemplate() const;
-    bool GetIsActive() const;
+    // bool GetIsActive() const;
     float GetElapsedTime() const;
     TArray<FParticleEmitterInstance*>& GetSystemInstance();
     const TArray<FParticleEmitterInstance*>& GetSystemInstance() const;
@@ -26,7 +26,7 @@ public:
 
     // Setters
     void SetTemplate(UParticleSystem* InTemplate);
-    void SetIsActive(bool bInIsActive);
+    // void SetIsActive(bool bInIsActive);
     void SetElapsedTime(float InElapsedTime);
     void SetCurrentLODLevel(const int32 InCurrentLODLevel);
 
@@ -34,6 +34,9 @@ public:
     void AddEmitterInstance(FParticleEmitterInstance* Instance);
     bool RemoveEmitterInstance(FParticleEmitterInstance* Instance);
     bool RemoveEmitterInstanceAt(int32 Index);
+
+    // 렌더링 관련 함수
+    void CollectMeshBatches(TArray<struct FMeshBatchElement>& OutMeshBatchElements, const struct FSceneView* View);
 
     // 시뮬레이션 시작 명령 (파티클 생성 및 타이머 시작)
     void Activate(bool bReset = false);
@@ -56,8 +59,8 @@ private:
     UParticleSystem* Template{}; 
 
     // 이펙트가 현재 재생/시뮬레이션 중인지 여부
-    UPROPERTY(EditAnywhere, Category="Basic")
-    bool bIsActive{};
+    // UPROPERTY(EditAnywhere, Category="Basic")
+    // bool bIsActive{};
 
     // 이펙트가 시작된 후 경과된 시간 (Looping, Duration 체크에 사용)
     UPROPERTY(EditAnywhere, Category="Basic")

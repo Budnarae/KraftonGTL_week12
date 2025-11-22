@@ -23,6 +23,7 @@
 #include "StatManagement/DecalStatManager.h"
 #include "BillboardComponent.h"
 #include "TextRenderComponent.h"
+#include "../Engine/Particle/ParticleSystemComponent.h"
 #include "OBB.h"
 #include "BoundingSphere.h"
 #include "HeightFogComponent.h"
@@ -745,6 +746,10 @@ void FSceneRenderer::GatherVisibleProxies()
 					{
 						Proxies.Billboards.Add(BillboardComponent);
 					}
+					else if (UParticleSystemComponent* ParticleSystemComponent = Cast<UParticleSystemComponent>(PrimitiveComponent))
+					{
+						Proxies.Particles.Add(ParticleSystemComponent);
+					}
 					else if (UDecalComponent* DecalComponent = Cast<UDecalComponent>(PrimitiveComponent); DecalComponent && bDrawDecals)
 					{
 						Proxies.Decals.Add(DecalComponent);
@@ -937,6 +942,11 @@ void FSceneRenderer::RenderOpaquePass(EViewMode InRenderViewMode)
 	for (UBillboardComponent* BillboardComponent : Proxies.Billboards)
 	{
 		BillboardComponent->CollectMeshBatches(MeshBatchElements, View);
+	}
+
+	for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
+	{
+		ParticleSystemComponent->CollectMeshBatches(MeshBatchElements, View);
 	}
 
 	for (UTextRenderComponent* TextRenderComponent : Proxies.Texts)

@@ -28,6 +28,7 @@ class UGizmoArrowComponent;
 class FSceneView;
 class FTileLightCuller;
 class ULineComponent;
+class UParticleSystemComponent;
 
 struct FCandidateDrawable;
 
@@ -37,6 +38,7 @@ struct FVisibleRenderProxySet
 	// --- Type 1: Main Scene (PP O, Depth-Test O) ---
 	TArray<UMeshComponent*> Meshes;
 	TArray<UBillboardComponent*> Billboards; // 인게임 빌보드 (파티클, 잔디 등)
+	TArray<UParticleSystemComponent*> Particles; // 파티클 시스템
 	TArray<UDecalComponent*> Decals;
 	TArray<UTextRenderComponent*> Texts;
 

@@ -3,6 +3,14 @@
 
 #include "Keyboard.h"
 #include "ParticleData.h"
+#include "ParticleHelper.h"
+#include "MeshBatchElement.h"
+#include "SceneView.h"
+#include "ResourceManager.h"
+#include "Material.h"
+#include "Shader.h"
+#include "Quad.h"
+#include "Texture.h"
 
 // Getters
 UParticleSystem* UParticleSystemComponent::GetTemplate() const
@@ -10,10 +18,10 @@ UParticleSystem* UParticleSystemComponent::GetTemplate() const
     return Template;
 }
 
-bool UParticleSystemComponent::GetIsActive() const
-{
-    return bIsActive;
-}
+// bool UParticleSystemComponent::GetIsActive() const
+// {
+//     return bIsActive;
+// }
 
 float UParticleSystemComponent::GetElapsedTime() const
 {
@@ -43,10 +51,10 @@ void UParticleSystemComponent::SetTemplate(UParticleSystem* InTemplate)
     SetCurrentLODLevel(CurrentLODLevel);
 }
 
-void UParticleSystemComponent::SetIsActive(bool bInIsActive)
-{
-    bIsActive = bInIsActive;
-}
+// void UParticleSystemComponent::SetIsActive(bool bInIsActive)
+// {
+//     bIsActive = bInIsActive;
+// }
 
 void UParticleSystemComponent::SetElapsedTime(float InElapsedTime)
 {
@@ -195,13 +203,127 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
         }
     }
 }
-    
+
+// 렌더링 관련 함수
+void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& OutMeshBatchElements, const FSceneView* View)
+{
+    // 1. 유효성 검사
+    if (!Template || EmitterInstances.empty())
+    {
+        return;
+    }
+
+    // 2. 각 에미터 인스턴스를 순회
+    for (FParticleEmitterInstance* Instance : EmitterInstances)
+    {
+        if (!Instance || Instance->ActiveParticles == 0)
+        {
+            continue;
+        }
+
+        // 3. 렌더링에 필요한 리소스 준비
+        UParticleModuleRequired* RequiredModule = Instance->SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
+        if (!RequiredModule)
+        {
+            continue;
+        }
+
+        UMaterial* ParticleMaterial = RequiredModule->GetMaterial();
+        if (!ParticleMaterial)
+        {
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No material found.");
+            continue;
+        }
+
+        UShader* ShaderToUse = ParticleMaterial->GetShader();
+        if (!ShaderToUse)
+        {
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No shader found.");
+            continue;
+        }
+
+        // 4. 공유 리소스 준비 (Billboard Quad)
+        UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
+        if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
+        {
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Billboard quad not found.");
+            continue;
+        }
+
+        // 5. 셰이더 컴파일
+        FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ParticleMaterial->GetShaderMacros());
+        if (!ShaderVariant)
+        {
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Shader compilation failed.");
+            continue;
+        }
+
+        // 6. 각 파티클에 대해 FMeshBatchElement 생성
+        // TODO: 현재는 각 파티클마다 별도의 Draw Call을 생성 (최소 구현)
+        // 추후 인스턴싱이나 동적 버퍼로 최적화 필요
+        for (int32 ParticleIndex = 0; ParticleIndex < Instance->ActiveParticles; ParticleIndex++)
+        {
+            DECLARE_PARTICLE_PTR(Particle, Instance->ParticleData + Instance->ParticleStride * ParticleIndex);
+
+            // 7. FMeshBatchElement 생성
+            FMeshBatchElement BatchElement;
+
+            // --- 정렬 키 ---
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
+            BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
+            BatchElement.VertexStride = ParticleQuad->GetVertexStride();
+
+            // --- 드로우 데이터 ---
+            BatchElement.IndexCount = ParticleQuad->GetIndexCount();
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+            // --- 인스턴스 데이터 ---
+            // 파티클 위치에 World Matrix 설정
+            FMatrix ScaleMatrix = FMatrix::MakeScale(Particle->Size);
+            FMatrix TranslationMatrix = FMatrix::MakeTranslation(Particle->Location);
+            BatchElement.WorldMatrix = ScaleMatrix * TranslationMatrix;
+
+            // 파티클 색상
+            BatchElement.InstanceColor = Particle->Color;
+
+            // Material의 텍스처 가져오기 (Diffuse 텍스처)
+            if (ParticleMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
+            {
+                UTexture* DiffuseTexture = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
+                if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
+                {
+                    BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            // 오브젝트 ID (선택 시스템용)
+            BatchElement.ObjectID = InternalIndex;
+
+            OutMeshBatchElements.Add(BatchElement);
+        }
+    }
+}
+
 // // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)
 // void UParticleSystemComponent::KillParticlesAndCleanUp()
 // {
 //     ;
 // }
-//     
+//
 // // 이 컴포넌트가 현재 재생 중인 이펙트를 멈추고 메모리를 해제합니다. (소멸자 등에서 호출)
 // void UParticleSystemComponent::BeginDestroy()
 // {

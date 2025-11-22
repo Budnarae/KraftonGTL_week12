@@ -36,7 +36,6 @@ const bool UParticleSystemComponent::bPropertiesRegistered = []() {
 BEGIN_PROPERTIES(UParticleSystemComponent)
     MARK_AS_COMPONENT("파티클 시스템 컴포넌트", "씬에 배치할 수 있는 파티클 컴포넌트입니다.")
     ADD_PROPERTY(UParticleSystem*, Template, "Assets", true)
-    ADD_PROPERTY(bool, bIsActive, "Basic", true)
     ADD_PROPERTY(float, ElapsedTime, "Basic", true)
 END_PROPERTIES()
 

@@ -285,6 +285,7 @@
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Character.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\GameModeBase.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Pawn.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\PlayerController.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.cpp" />
@@ -574,7 +575,7 @@
     <ClCompile Include="Generated\ATempCharacter.generated.cpp" />
     <ClCompile Include="Generated\USoundAnimNotify.generated.cpp" />
     <ClCompile Include="Generated\UCameraShakeAnimNotify.generated.cpp" />
-  <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\USpringArmComponent.generated.cpp" /><ClCompile Include="Generated\UCharacterMovementComponent.generated.cpp" /><ClCompile Include="Generated\UParticleLODLevel.generated.cpp" /><ClCompile Include="Generated\UParticleModule.generated.cpp" /><ClCompile Include="Generated\UParticleEmitter.generated.cpp" /><ClCompile Include="Generated\UParticleModuleRequired.generated.cpp" /><ClCompile Include="Generated\UParticleSystem.generated.cpp" /><ClCompile Include="Generated\UParticleSystemComponent.generated.cpp" /></ItemGroup>
+  <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\USpringArmComponent.generated.cpp" /><ClCompile Include="Generated\UCharacterMovementComponent.generated.cpp" /><ClCompile Include="Generated\UParticleLODLevel.generated.cpp" /><ClCompile Include="Generated\UParticleModule.generated.cpp" /><ClCompile Include="Generated\UParticleEmitter.generated.cpp" /><ClCompile Include="Generated\UParticleModuleRequired.generated.cpp" /><ClCompile Include="Generated\UParticleSystem.generated.cpp" /><ClCompile Include="Generated\UParticleSystemComponent.generated.cpp" /><ClCompile Include="Generated\AParticleSystemActor.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -790,6 +791,7 @@
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Shake.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\GameEngine.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\GameModeBase.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Pawn.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\PlayerCameraManager.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\DirectionalLightActor.h" />
@@ -1011,7 +1013,7 @@
     <ClInclude Include="Generated\ATempCharacter.generated.h" />
     <ClInclude Include="Generated\USoundAnimNotify.generated.h" />
     <ClInclude Include="Generated\UCameraShakeAnimNotify.generated.h" />
-  <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h" /><ClInclude Include="Generated\UScalingAnimNotifyState.generated.h" /><ClInclude Include="Generated\USpringArmComponent.generated.h" /><ClInclude Include="Generated\UCharacterMovementComponent.generated.h" /><ClInclude Include="Generated\UParticleLODLevel.generated.h" /><ClInclude Include="Generated\UParticleModule.generated.h" /><ClInclude Include="Generated\UParticleEmitter.generated.h" /><ClInclude Include="Generated\UParticleModuleRequired.generated.h" /><ClInclude Include="Generated\UParticleSystem.generated.h" /><ClInclude Include="Generated\UParticleSystemComponent.generated.h" /></ItemGroup>
+  <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h" /><ClInclude Include="Generated\UScalingAnimNotifyState.generated.h" /><ClInclude Include="Generated\USpringArmComponent.generated.h" /><ClInclude Include="Generated\UCharacterMovementComponent.generated.h" /><ClInclude Include="Generated\UParticleLODLevel.generated.h" /><ClInclude Include="Generated\UParticleModule.generated.h" /><ClInclude Include="Generated\UParticleEmitter.generated.h" /><ClInclude Include="Generated\UParticleModuleRequired.generated.h" /><ClInclude Include="Generated\UParticleSystem.generated.h" /><ClInclude Include="Generated\UParticleSystemComponent.generated.h" /><ClInclude Include="Generated\AParticleSystemActor.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />
