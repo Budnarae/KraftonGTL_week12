@@ -398,6 +398,7 @@
     <ClCompile Include="Source\Runtime\Engine\SkeletalViewer\ViewerState.cpp" />
     <ClCompile Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Game\TempCharacter.cpp" />
+    <ClCompile Include="Source\Runtime\Renderer\FParticleViewerViewportClient.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\FSkeletalViewerViewportClient.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\LightManager.cpp" />
     <ClCompile Include="Source\Runtime\Renderer\PostProcessing\GammaPass.cpp" />
@@ -812,6 +813,7 @@
     <ClInclude Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\StaticMeshViewer\StaticMeshViewerState.h" />
     <ClInclude Include="Source\Runtime\Game\TempCharacter.h" />
+    <ClInclude Include="Source\Runtime\Renderer\FParticleViewerViewportClient.h" />
     <ClInclude Include="Source\Runtime\Renderer\FSkeletalViewerViewportClient.h" />
     <ClInclude Include="Source\Runtime\Renderer\LightManager.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\AmbientLightComponent.h" />

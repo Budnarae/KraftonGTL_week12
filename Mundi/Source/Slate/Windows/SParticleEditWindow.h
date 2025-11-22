@@ -49,4 +49,6 @@ private:
 
 
 private:
+    void Save();
+    void ReStart();
 };

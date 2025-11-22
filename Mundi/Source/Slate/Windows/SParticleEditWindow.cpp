@@ -5,6 +5,9 @@
 #include "Source/Runtime/Engine/ParticleEditor/ParticleViewerBootstrap.h"
 #include "USlateManager.h"
 
+ImVec2 TopMenuBarOffset = ImVec2(0, 30);
+ImVec2 TopMenuBarSize = ImVec2(-1, 40);
+
 void SParticleEditWindow::CreateParticleEditor(const FString& Path)
 {
     auto* Viewer = USlateManager::GetInstance().FindViewer<SParticleEditWindow>();
@@ -66,12 +69,52 @@ void SParticleEditWindow::OnRender()
     {
         return;
     }
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoSavedSettings;
+    ImGuiWindowFlags ParentFlag = ImGuiWindowFlags_NoSavedSettings;
+    ImGuiWindowFlags ChildFlag = ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoCollapse;
 
-    if (ImGui::Begin("Particle Editor", &bIsOpen, flags))
+    if (!bInitialPlacementDone)
     {
-        ImGui::Text("ParticleEdit");
-        
+        ImGui::SetNextWindowPos(ImVec2(Rect.Left, Rect.Top));
+        ImGui::SetNextWindowSize(ImVec2(Rect.GetWidth(), Rect.GetHeight()));
+        bInitialPlacementDone = true;
+    }
+
+    ImVec2 Size = ImVec2(Rect.GetWidth(), Rect.GetHeight() - 70);
+    ImVec2 LTop = ImVec2(Rect.Left, Rect.Top + 70);
+
+    if (ImGui::Begin("Particle Editor", &bIsOpen, ParentFlag))
+    {
+        ImVec2 pos = ImGui::GetWindowPos();
+        ImVec2 size = ImGui::GetWindowSize();
+        Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
+        if (ImGui::Button("Save"))
+        {
+
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Restart"))
+        {
+
+        }
+
+
+        ImVec2 ChildSize = Size * 0.5f;
+        ImGui::BeginChild("Viewport", ChildSize);
+
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::BeginChild("Emitter", ChildSize);
+        ImGui::EndChild();
+
+        ImGui::BeginChild("Detail", ChildSize);
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::BeginChild("CurveEditor", ChildSize);
+        ImGui::EndChild();
+
+      
         ImGui::End();
     }
 
