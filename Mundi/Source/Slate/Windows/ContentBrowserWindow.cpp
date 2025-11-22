@@ -6,6 +6,7 @@
 #include "ImGui/imgui_internal.h"
 #include "USlateManager.h"
 #include "ThumbnailManager.h"
+#include "SParticleEditWindow.h"
 #include <algorithm>
 
 IMPLEMENT_CLASS(UContentBrowserWindow)
@@ -292,6 +293,10 @@ void UContentBrowserWindow::RenderFolderTreeNode(const std::filesystem::path& Fo
 
 void UContentBrowserWindow::RenderPathBar()
 {
+	if (ImGui::Button("Particle Window Test"))
+	{
+		SParticleEditWindow::CreateParticleEditor("TestPath");
+	}
 	ImGui::Text("Path: ");
 	ImGui::SameLine();
 
@@ -502,6 +507,10 @@ void UContentBrowserWindow::HandleDoubleClick(FFileEntry& Entry)
 	{
 		// 텍스처 뷰어 (향후 구현)
 		UE_LOG("Texture file clicked: %s (Texture viewer not implemented yet)", Entry.FileName.c_str());
+	}
+	else if (ext == ".uasset")
+	{
+		UE_LOG("UAsset DoubleClick");
 	}
 	else
 	{

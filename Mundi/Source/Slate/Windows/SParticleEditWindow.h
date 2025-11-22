@@ -1,20 +1,19 @@
 ﻿#pragma once
 #include "SViewerWindowBase.h"
-#include "Source/Runtime/Engine/SkeletalViewer/ViewerState.h"
-#include "Source/Slate/Widgets/BoneHierarchyWidget.h"
-#include "Source/Slate/Widgets/BonePropertyEditor.h"
 #include "Source/Slate/Widgets/AssetBrowserWidget.h"
+#include "Source/Runtime/Engine/ParticleEditor/ParticleViewerState.h"
 
 class FViewport;
 class FViewportClient;
-class UWorld;
 struct ID3D11Device;
 
-class SSkeletalMeshViewerWindow : public SViewerWindowBase
+class SParticleEditWindow : public SViewerWindowBase
 {
 public:
-    SSkeletalMeshViewerWindow();
-    virtual ~SSkeletalMeshViewerWindow();
+    static void CreateParticleEditor(const FString& Path);
+public:
+    SParticleEditWindow();
+    virtual ~SParticleEditWindow();
 
     // 베이스 클래스의 Initialize 오버라이드 (통합 API용)
     virtual bool Initialize(ID3D11Device* InDevice, UWorld* InWorld) override;
@@ -34,21 +33,9 @@ public:
 
     void OnRenderViewport();
 
-    // Accessors
-    FViewport* GetViewport() const
-    {
-        return State ? State->Viewport : nullptr;
-    }
-    FViewportClient* GetViewportClient() const
-    {
-        return State ? State->Client : nullptr;
-    }
-
-    // Load a skeletal mesh
-    void LoadSkeletalMesh(const FString& Path);
-
 private:
-    ViewerState* State = nullptr;
+
+    ParticleViewerState* State = nullptr;
 
     // Layout state
     float LeftPanelRatio = 0.25f;   // 25% of width
@@ -59,12 +46,7 @@ private:
 
     // UI Widgets (재사용 가능)
     FAssetBrowserWidget AssetBrowser;
-    FBoneHierarchyWidget BoneHierarchy;
-    FBonePropertyEditor PropertyEditor;
+
 
 private:
-    void UpdateBoneTransformFromSkeleton(ViewerState* State);
-    void ApplyBoneTransform(ViewerState* State);
-
-    void ExpandToSelectedBone(ViewerState* State, int32 BoneIndex);
 };

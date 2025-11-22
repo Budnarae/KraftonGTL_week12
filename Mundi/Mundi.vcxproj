@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug_StandAlone|x64">
@@ -387,6 +387,7 @@
     <ClCompile Include="Source\Runtime\Engine\GameFramework\PointLightActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SpotLightActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Scripting\GameObject.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Scripting\LuaBindHelpers.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Scripting\LuaBindingRegistry.cpp" />
@@ -413,6 +414,7 @@
     <ClCompile Include="Source\Slate\Widgets\NotifyPropertyEditor.cpp" />
     <ClCompile Include="Source\Slate\Widgets\PropertyRenderer.cpp" />
     <ClCompile Include="Source\Slate\Windows\ContentBrowserWindow.cpp" />
+    <ClCompile Include="Source\Slate\Windows\SParticleEditWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\SSkeletalMeshViewerWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\SStaticMeshViewerWindow.cpp" />
     <ClCompile Include="Source\Slate\Windows\SMaterialEditorWindow.cpp" />
@@ -565,7 +567,11 @@
     <ClCompile Include="Generated\ATempCharacter.generated.cpp" />
     <ClCompile Include="Generated\USoundAnimNotify.generated.cpp" />
     <ClCompile Include="Generated\UCameraShakeAnimNotify.generated.cpp" />
-  <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp" /><ClCompile Include="Generated\USpringArmComponent.generated.cpp" /><ClCompile Include="Generated\UCharacterMovementComponent.generated.cpp" /></ItemGroup>
+    <ClCompile Include="Generated\URotatingAnimNotifyState.generated.cpp" />
+    <ClCompile Include="Generated\UScalingAnimNotifyState.generated.cpp" />
+    <ClCompile Include="Generated\USpringArmComponent.generated.cpp" />
+    <ClCompile Include="Generated\UCharacterMovementComponent.generated.cpp" />
+  </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -793,6 +799,8 @@
     <ClInclude Include="Source\Runtime\Engine\GameFramework\SpotLightActor.h" />
     <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorState.h" />
+    <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.h" />
+    <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerState.h" />
     <ClInclude Include="Source\Runtime\Engine\Scripting\GameObject.h" />
     <ClInclude Include="Source\Runtime\Engine\Scripting\LuaBindHelpers.h" />
     <ClInclude Include="Source\Runtime\Engine\Scripting\LuaBindingRegistry.h" />
@@ -832,6 +840,7 @@
     <ClInclude Include="Source\Slate\Widgets\NotifyPropertyEditor.h" />
     <ClInclude Include="Source\Slate\Widgets\PropertyRenderer.h" />
     <ClInclude Include="Source\Slate\Windows\ContentBrowserWindow.h" />
+    <ClInclude Include="Source\Slate\Windows\SParticleEditWindow.h" />
     <ClInclude Include="Source\Slate\Windows\SSkeletalMeshViewerWindow.h" />
     <ClInclude Include="Source\Slate\Windows\SStaticMeshViewerWindow.h" />
     <ClInclude Include="Source\Slate\Windows\SMaterialEditorWindow.h" />
@@ -993,7 +1002,11 @@
     <ClInclude Include="Generated\ATempCharacter.generated.h" />
     <ClInclude Include="Generated\USoundAnimNotify.generated.h" />
     <ClInclude Include="Generated\UCameraShakeAnimNotify.generated.h" />
-  <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h" /><ClInclude Include="Generated\UScalingAnimNotifyState.generated.h" /><ClInclude Include="Generated\USpringArmComponent.generated.h" /><ClInclude Include="Generated\UCharacterMovementComponent.generated.h" /></ItemGroup>
+    <ClInclude Include="Generated\URotatingAnimNotifyState.generated.h" />
+    <ClInclude Include="Generated\UScalingAnimNotifyState.generated.h" />
+    <ClInclude Include="Generated\USpringArmComponent.generated.h" />
+    <ClInclude Include="Generated\UCharacterMovementComponent.generated.h" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />
