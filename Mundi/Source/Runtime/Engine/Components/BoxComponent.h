@@ -13,6 +13,7 @@ public:
 	void OnRegister(UWorld* InWorld) override;
 
 	void SetBoxExtent(const FVector& InExtent) { BoxExtent = InExtent; }
+	FVector GetBoxExtent() const { return BoxExtent; }
 
 	// Duplication
 	virtual void DuplicateSubObjects() override;
