@@ -191,7 +191,7 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
 {
     // 임시 상수
     const static FVector Location = FVector(0, 0, 0);
-    const static FVector Velocity = FVector(0, 0, 0);
+    const static FVector Velocity = FVector(0, 0, 0.1f);
 
     ElapsedTime += DeltaTime;
 
