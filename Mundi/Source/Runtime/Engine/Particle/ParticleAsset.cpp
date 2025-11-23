@@ -14,7 +14,8 @@
 //if (SelectedPath.empty())
 //return false;
 
-IMPLEMENT_CLASS(UParticleAsset)
+IMPLEMENT_ASSET_CLASS(UParticleAsset)
+
 void UParticleAsset::LoadAllDatas()
 {
     // ========== Phase 1: 캐시 생성 ==========

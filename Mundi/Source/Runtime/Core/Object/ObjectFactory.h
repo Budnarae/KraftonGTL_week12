@@ -72,4 +72,34 @@ namespace ObjectFactory
         /* 즉시 실행 람다를 사용하여 정적 초기화 시점에 클래스를 자동 등록합니다. */ \
         static bool bIsRegistered_##ThisClass = [](){ ThisClass::StaticClass(); return true; }(); \
     }
+
+
+#define IMPLEMENT_ASSET_CLASS(ThisClass)                                      \
+ namespace {                                                               \
+        struct ThisClass##FactoryRegister                                     \
+        {                                                                     \
+            ThisClass##FactoryRegister()                                      \
+            {                                                                 \
+                ObjectFactory::RegisterClassType(                             \
+                    ThisClass::StaticClass(),                                 \
+                    []() -> UObject* { return new ThisClass(); }              \
+                );                                                            \
+            }                                                                 \
+        };                                                                    \
+        static ThisClass##FactoryRegister GRegister_##ThisClass;              \
+        /* 즉시 실행 람다를 사용하여 정적 초기화 시점에 클래스를 자동 등록합니다. */ \
+        static bool bIsRegistered_##ThisClass = [](){ ThisClass::StaticClass();     \
+        UResourceBase::RegisterLoadAssetFunc(#ThisClass,                    \
+        [](const FString& FilePath)->ThisClass*                             \
+        {                                                                   \
+            return UResourceManager::GetInstance().Load<ThisClass>(FilePath);   \
+        });                                                                     \
+        return true; }(); \
+    }
+
+
+
+
+
+
 using namespace ObjectFactory;

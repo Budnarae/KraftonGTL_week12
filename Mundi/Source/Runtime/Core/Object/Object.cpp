@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 
+
 FString UObject::GetName()
 {
     return ObjectName.ToString();
@@ -289,29 +290,51 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 		{
 			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
 			UObject** object = reinterpret_cast<UObject**>(pValue);
-			JSON Json = json::Object();
-
-			if (*object != nullptr)
+			if (bInIsLoading)
 			{
+				JSON Json = InOutHandle[Prop.Name];
+				
 				if (UResourceBase* Resource = Cast<UResourceBase>(*object))
 				{
-					if (bInIsLoading)
+					FString ResourceTypeName;
+					FString Path;
+					FJsonSerializer::ReadString(Json, "ResourceType", ResourceTypeName);
+					FJsonSerializer::ReadString(Json, "Path", Path);
+					if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
 					{
-
-					}
-					else
-					{
-						
-						Json["ResourceType"] = Prop.ClassName;
-						Json["Path"] = Resource->GetFilePath();
+						UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
 					}
 				}
 				else
 				{
-					(*object)->Serialize(bInIsLoading, Json);
+					UClass* TypeClass = UClass::FindClass(Prop.ClassName);
+					if (TypeClass) 
+					{
+						(*object) = NewObject(TypeClass);
+						(*object)->Serialize(bInIsLoading, Json);
+					}
 				}
 			}
-			InOutHandle[Prop.Name] = Json;
+			else
+			{
+			
+				JSON Json = json::Object();
+
+				if (*object != nullptr)
+				{
+					if (UResourceBase* Resource = Cast<UResourceBase>(*object))
+					{
+						Json["ResourceType"] = Prop.ClassName;
+						Json["Path"] = Resource->GetFilePath();
+					}
+					else
+					{
+						(*object)->Serialize(bInIsLoading, Json);
+					}
+				}
+				InOutHandle[Prop.Name] = Json;
+			}
+			
 			break;
 		}
 		case EPropertyType::Array:
@@ -397,40 +420,53 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			{
 				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
 				TArray<UObject*> pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
-				JSON Json = json::Object();
-				
-				for (UObject* Obj : pArray)
+				if (bInIsLoading)
 				{
-					JSON ElementJson = json::Object();
-					if (Obj != nullptr)
+					JSON Json = InOutHandle[Prop.Name];
+					int idx = 0;
+					for (auto ElementJson : Json.ArrayRange())
 					{
-						if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
+						pArray.emplace_back();
+						if (UResourceBase* Resource = Cast<UResourceBase>(pArray[idx]))
 						{
-							if (bInIsLoading)
+							FString ResourceTypeName;
+							FString Path;
+							FJsonSerializer::ReadString(Json, "ResourceType", ResourceTypeName);
+							FJsonSerializer::ReadString(Json, "Path", Path);
+							if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
 							{
-
-							}
-							else
-							{
-								for (UObject* Obj : pArray)
-								{
-									ElementJson["ResourceType"] = Prop.ClassName;
-									ElementJson["Path"] = Resource->GetFilePath();
-								}
+								UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
 							}
 						}
 						else
 						{
-							for (UObject* Obj : pArray)
+							UClass* TypeClass = UClass::FindClass(Prop.ClassName);
+							if (TypeClass) 
 							{
-								Obj->Serialize(bInIsLoading, ElementJson);
+								pArray[idx] = NewObject(TypeClass);
+								pArray[idx]->Serialize(bInIsLoading, ElementJson);
 							}
 						}
+						idx++;
 					}
-					Json.append(ElementJson);
 				}
-				
-				InOutHandle[Prop.Name] = Json;
+				else
+				{
+					for (UObject* Obj : pArray)
+					{
+						JSON ElementJson = json::Object();
+						if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
+						{
+							ElementJson["ResourceType"] = Prop.ClassName;
+							ElementJson["Path"] = Resource->GetFilePath();
+						}
+						else
+						{
+							Obj->Serialize(bInIsLoading, ElementJson);
+						}
+						ArrayJson.append(ElementJson);
+					}
+				}
 				break;
 			}
 			default:
@@ -466,8 +502,3 @@ UObject* UObject::Duplicate() const
 	NewObject->PostDuplicate();
     return NewObject;
 }
-
-
-
-
-

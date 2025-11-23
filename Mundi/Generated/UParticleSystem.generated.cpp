@@ -35,6 +35,7 @@ const bool UParticleSystem::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleSystem)
     MARK_AS_COMPONENT("파티클 시스템", "파티클 데이터 저장의 중추입니다.")
+    ADD_PROPERTY_ARRAY(TArray<UParticleEmitter*>, EPropertyType::ObjectPtr, Emitters, "Array", true)
     ADD_PROPERTY(float, Duration, "Basic", true)
 END_PROPERTIES()
 

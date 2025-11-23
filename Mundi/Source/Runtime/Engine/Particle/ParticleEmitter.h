@@ -50,31 +50,14 @@ private:
     // 1. 데이터 멤버 (Data Members)
     // -------------------------------------------
 
-    int a = 0;
-    int b = 0;
-
     inline static constexpr int32 INVALID = -1;
     
     // 처음에는 에미터가 비어있으므로 유효하지 않은 값을 가리킨다.
     int32 CurrentLODLevel = INVALID;
-    
-    UPROPERTY(EditAnywhere, Category="Basic")
-    UParticleAsset* TestAsset;
-
-    // 이 에미터가 지원하는 모든 LOD 레벨 리스트 (필수)
-    UPROPERTY(EditAnywhere, Category = "Array")
-    TArray<UParticleLODLevel*> TestSizeZeroArray;
-
-    // 이 에미터가 지원하는 모든 LOD 레벨 리스트 (필수)
-    UPROPERTY(EditAnywhere, Category = "Array")
-    TArray<UParticleLODLevel*> TestSizeArray;
 
     // 이 에미터가 지원하는 모든 LOD 레벨 리스트 (필수)
     UPROPERTY(EditAnywhere, Category = "Array")
     TArray<UParticleLODLevel*> LODLevels;
-
-    UPROPERTY(EditAnywhere, Category = "Basic")
-    UParticleLODLevel* TestNotAsset;
 
     // // 파티클 하나당 차지하는 총 메모리 크기 (Base + Payload + Padding)
     // UPROPERTY(EditAnywhere, Category="Basic")
