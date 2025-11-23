@@ -6,6 +6,7 @@
 #include "../Particle/ParticleLODLevel.h"
 #include "../Particle/ParticleModuleRequired.h"
 #include "../Particle/ParticleModuleLocation.h"
+#include "../Particle/ParticleModuleVelocity.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -62,6 +63,23 @@ AParticleSystemActor::AParticleSystemActor()
 				// 박스 형태로 스폰 영역 설정 (중심: 0, 반경: 50)
 				LocationModule->SetDistributionBox(FVector::Zero(), FVector(2.0f, 2.0f, 2.0f));
 				TestLODLevel->AddSpawnModule(LocationModule);
+			}
+
+			// 6. Velocity Module 설정 (초기 속도)
+			UParticleModuleVelocity* VelocityModule = NewObject<UParticleModuleVelocity>();
+			if (VelocityModule)
+			{
+				// 위쪽으로 솟아오르는 속도 설정 (Z축: 1~3 범위)
+				VelocityModule->SetVelocityRange(
+					FVector(-0.5f, -0.5f, 1.0f),  // Min: 약간의 수평 분산 + 위로
+					FVector(0.5f, 0.5f, 3.0f)     // Max: 약간의 수평 분산 + 위로
+				);
+
+				// 방사형 속도 추가 (바깥으로 퍼지는 효과)
+				VelocityModule->SetStartVelocityRadialMin(0.5f);
+				VelocityModule->SetStartVelocityRadialMax(1.5f);
+
+				TestLODLevel->AddSpawnModule(VelocityModule);
 			}
 		}
 

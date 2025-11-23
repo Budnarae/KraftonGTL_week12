@@ -398,6 +398,7 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleLocation.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleRequired.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystemComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleVariable.cpp" />
@@ -592,7 +593,7 @@
     <ClCompile Include="Generated\UParticleModuleRequired.generated.cpp" />
     <ClCompile Include="Generated\UParticleSystem.generated.cpp" />
     <ClCompile Include="Generated\AParticleSystemActor.generated.cpp" />
-  <ClCompile Include="Generated\UParticleModuleLocation.generated.cpp" /></ItemGroup>
+  <ClCompile Include="Generated\UParticleModuleLocation.generated.cpp" /><ClCompile Include="Generated\UParticleModuleVelocity.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -832,6 +833,7 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModule.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleLocation.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleRequired.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystem.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystemComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleVariable.h" />
@@ -1048,7 +1050,7 @@
     <ClInclude Include="Generated\UParticleModuleRequired.generated.h" />
     <ClInclude Include="Generated\UParticleSystem.generated.h" />
     <ClInclude Include="Generated\AParticleSystemActor.generated.h" />
-  <ClInclude Include="Generated\UParticleModuleLocation.generated.h" /></ItemGroup>
+  <ClInclude Include="Generated\UParticleModuleLocation.generated.h" /><ClInclude Include="Generated\UParticleModuleVelocity.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />
