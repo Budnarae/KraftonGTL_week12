@@ -9,6 +9,8 @@
 #include "../Particle/ParticleModuleVelocity.h"
 #include "../Particle/ParticleModuleSpawn.h"
 #include "../Particle/ParticleModuleLifetime.h"
+#include "../Particle/ParticleModuleColor.h"
+#include "../Particle/ParticleModuleSize.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -109,6 +111,32 @@ AParticleSystemActor::AParticleSystemActor()
 				LifetimeModule->SetLifetimeRange(2.0f, 4.0f);
 
 				TestLODLevel->AddSpawnModule(LifetimeModule);
+			}
+
+			// 9. Color Module 설정 (초기 색상)
+			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
+			if (ColorModule)
+			{
+				// 주황~노랑 색상 범위 (불꽃 느낌)
+				ColorModule->SetColorRange(
+					FVector(1.0f, 0.3f, 0.0f),   // Min: 주황
+					FVector(1.0f, 0.8f, 0.2f)    // Max: 노랑
+				);
+
+				// 알파: 0.8~1.0 (약간 반투명~불투명)
+				ColorModule->SetAlphaRange(0.8f, 1.0f);
+
+				TestLODLevel->AddSpawnModule(ColorModule);
+			}
+
+			// 10. Size Module 설정 (초기 크기)
+			UParticleModuleSize* SizeModule = NewObject<UParticleModuleSize>();
+			if (SizeModule)
+			{
+				// 파티클 크기: 0.1~0.3 유닛 (작은 파티클)
+				SizeModule->SetUniformSize(0.1f, 0.3f);
+
+				TestLODLevel->AddSpawnModule(SizeModule);
 			}
 		}
 
