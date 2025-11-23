@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "ParticleSystem.h"
 
+
 // 새 Emitter를 시스템에 추가합니다. (에디터 기능)
 void UParticleSystem::AddEmitter(UParticleEmitter* NewEmitter)
 {
@@ -48,4 +49,16 @@ bool UParticleSystem::IsValid() const
         }
     }
     return true;
+}
+void UParticleSystem::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+    if (bInIsLoading)
+    {
+
+    }
+    else 
+    {
+        InOutHandle["Emitters"] = FJsonSerializer::UObjectArrayToJson(bInIsLoading, Emitters);
+    }
 }

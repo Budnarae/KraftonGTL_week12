@@ -18,3 +18,7 @@ void UParticleModule::SetPayloadOffset(int32 NewOffset)
 {
     PayloadOffset = NewOffset;
 }
+void UParticleModule::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+}

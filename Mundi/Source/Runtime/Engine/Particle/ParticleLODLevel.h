@@ -33,6 +33,9 @@ public:
     
     // 이 LOD 레벨의 설정이 유효한지 확인
     bool IsValid() const;
+
+    void Serialize(const bool bInIsLoading, JSON& InOutHandle);
+
 private:
     // -------------------------------------------
     // 데이터 멤버 (Data Members)

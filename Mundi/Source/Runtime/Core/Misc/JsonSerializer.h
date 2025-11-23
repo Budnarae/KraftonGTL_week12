@@ -20,7 +20,7 @@
 
 namespace json { class JSON; }
 using JSON = json::JSON;
-
+namespace fs = std::filesystem;
 /**
  * @brief Level 직렬화에 관여하는 클래스
  * JSON 기반으로 레벨의 데이터를 Save / Load 처리
@@ -338,20 +338,50 @@ public:
 		return VectorArray;
 	}
 
+	template<typename T>
+	static JSON UObjectArrayToJson(const bool bInIsLoading, TArray<T*> UObjectList)
+	{
+		JSON ListJson = json::Object();
+		for (T* object : UObjectList)
+		{
+			JSON ElementJson = json::Object();
+			object->Serialize(bInIsLoading, ElementJson);
+			ListJson.append(ElementJson);
+		}
+		return ListJson;
+	}
+
+	template<typename T>
+	static void AddUObject(const bool bInIsLoading, JSON& InOutHandle, UObject* InObject)
+	{
+		JSON ObjectJson = json::Object();
+		if (InObject != nullptr) 
+		{
+			InObject->Serialize(bInIsLoading, ObjectJson);
+		}
+		InOutHandle[T::StaticClass()->Name] = ObjectJson;
+	}
 
 	//====================================================================================
 	// File I/O
 	//====================================================================================
 
-	static bool SaveJsonToFile(const JSON& InJsonData, const FWideString& InFilePath)
+	static bool SaveJsonToFile(const JSON& InJsonData, const FWideString& InFilePath, bool AutoGenerator = false)
 	{
 		try
 		{
-			std::ofstream File(InFilePath);
+			fs::path FilePath(InFilePath);  // wstring 자동 처리
+			fs::create_directories(FilePath.parent_path());
+
+			std::ofstream File(FilePath);  // filesystem::path는 자동 변환
 			if (!File.is_open())
 			{
+				char errBuffer[256];
+				strerror_s(errBuffer, sizeof(errBuffer), errno);
+				std::cerr << "파일 열기 실패: " << errBuffer << "\n";
 				return false;
 			}
+
 			File << std::setw(2) << InJsonData << "\n";
 			File.close();
 			return true;

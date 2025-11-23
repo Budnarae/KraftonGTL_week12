@@ -4,6 +4,9 @@
 #include "ParticleData.h"
 #include "ParticleLODLevel.h"
 
+
+IMPLEMENT_CLASS(UParticleEmitter)
+
 UParticleEmitter::UParticleEmitter()
 {
     // LODLevel의 최대치만큼 미리 LOD Level을 저장한다.
@@ -128,10 +131,21 @@ float UParticleEmitter::GetCalculatedDuration()
 
 bool UParticleEmitter::IsValid() const
 {
-    for (UParticleLODLevel* LODLevel : LODLevels)
-    {
-        if (!LODLevel->IsValid())
-            return false;
-    }
+    if (!LODLevels[CurrentLODLevel]->IsValid())
+        return false;
+    
     return true;
+}
+void UParticleEmitter::Serialize(const bool bInIsLoading, JSON& InOutHandle)
+{
+    Super::Serialize(bInIsLoading, InOutHandle);
+
+    if (bInIsLoading)
+    {
+
+    }
+    else
+    {
+        InOutHandle["LODLevels"] = FJsonSerializer::UObjectArrayToJson(bInIsLoading, LODLevels);
+    }
 }

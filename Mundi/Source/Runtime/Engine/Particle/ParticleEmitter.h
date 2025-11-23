@@ -42,6 +42,8 @@ public:
     float GetCalculatedDuration();
     
     bool IsValid() const;
+    void Serialize(const bool bInIsLoading, JSON& InOutHandle);
+
 private:
     // -------------------------------------------
     // 1. 데이터 멤버 (Data Members)

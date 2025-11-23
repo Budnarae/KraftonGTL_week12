@@ -63,6 +63,7 @@ private:
     UPROPERTY(EditAnywhere, Category="Basic")
     float EmitterDelay{};
 
+public:
     UPROPERTY(EditAnywhere, Category="Basic")
     float LifeTime = 3.f;
 };

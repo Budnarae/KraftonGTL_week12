@@ -2,7 +2,6 @@
 
 #include "UParticleModule.generated.h"
 
-// 런타임에 모듈이 데이터를 조작할 파티클 구조체
 struct FBaseParticle; 
 
 UCLASS(DisplayName="파티클 모듈", Description="파티클을 조작하는 기능을 맡습니다.")
@@ -30,7 +29,7 @@ public:
     // -------------------------------------------
     
     // 이 모듈이 파티클 하나당 요구하는 추가 메모리(Payload)의 크기를 반환합니다.
-    virtual int32 GetRequiredPayloadSize() const;
+    int32 GetRequiredPayloadSize() const;
 
     // 에미터 설정 단계에서 계산된, 이 모듈의 페이로드 데이터 시작 지점 (Offset)을 저장합니다.
     int32 GetPayloadOffset() const;
@@ -46,6 +45,9 @@ public:
     //
     // UPROPERTY(EditAnywhere, Category="Basic")
     // float Value_Max;
+
+    void Serialize(const bool bInIsLoading, JSON& InOutHandle);
+
 protected:
     // 계산된 페이로드 오프셋을 저장하는 변수 (Payload 접근 시 사용됨)
     int32 PayloadOffset{};

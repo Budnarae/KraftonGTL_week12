@@ -9,6 +9,7 @@
 #include "Windows/SMaterialEditorWindow.h"
 #include "Windows/SAnimationViewerWindow.h"
 #include "Windows/SViewerWindowBase.h"
+#include "Windows/SParticleEditWindow.h"
 
 class SSceneIOWindow; // 새로 추가할 UI
 class SDetailsWindow;
