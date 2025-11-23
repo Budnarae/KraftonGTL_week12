@@ -2,14 +2,112 @@
 
 #include "Vector.h"
 
+// -------------------------------------------
+// EDistributionMode - 분포 모드
+// -------------------------------------------
+enum class EDistributionMode : uint8
+{
+    Uniform,  // Min~Max 사이 랜덤 (기본값)
+    Curve     // 시간 기반 커브
+};
+
+// -------------------------------------------
+// FInterpCurvePoint - 키프레임 포인트
+// -------------------------------------------
+template <typename T>
+struct FInterpCurvePoint
+{
+    float InVal{};  // 시간 (X축)
+    T OutVal{};     // 값 (Y축)
+
+    FInterpCurvePoint() = default;
+    FInterpCurvePoint(float InTime, const T& InValue)
+        : InVal(InTime), OutVal(InValue) {}
+};
+
+// -------------------------------------------
+// FInterpCurve - 키프레임 기반 보간 커브
+// -------------------------------------------
+template <typename T>
+struct FInterpCurve
+{
+    TArray<FInterpCurvePoint<T>> Points;
+
+    // 키프레임 추가
+    void AddPoint(float InTime, const T& InValue)
+    {
+        Points.Add(FInterpCurvePoint<T>(InTime, InValue));
+        // 시간순 정렬
+        std::sort(Points.begin(), Points.end(),
+            [](const FInterpCurvePoint<T>& A, const FInterpCurvePoint<T>& B)
+            {
+                return A.InVal < B.InVal;
+            });
+    }
+
+    // 시간에 따른 보간 값 반환
+    T Eval(float InTime) const
+    {
+        if (Points.Num() == 0)
+            return T{};
+
+        if (Points.Num() == 1)
+            return Points[0].OutVal;
+
+        // 범위 밖 처리
+        if (InTime <= Points[0].InVal)
+            return Points[0].OutVal;
+
+        if (InTime >= Points[Points.Num() - 1].InVal)
+            return Points[Points.Num() - 1].OutVal;
+
+        // 보간할 두 키프레임 찾기
+        for (int32 i = 0; i < Points.Num() - 1; ++i)
+        {
+            if (InTime >= Points[i].InVal && InTime <= Points[i + 1].InVal)
+            {
+                float Alpha = (InTime - Points[i].InVal) / (Points[i + 1].InVal - Points[i].InVal);
+                return FMath::Lerp(Points[i].OutVal, Points[i + 1].OutVal, Alpha);
+            }
+        }
+
+        return Points[Points.Num() - 1].OutVal;
+    }
+
+    // 키프레임이 있는지 확인
+    bool HasKeys() const { return Points.Num() > 0; }
+
+    // 키프레임 개수 반환
+    int32 Num() const { return Points.Num(); }
+
+    // 모든 키프레임 제거
+    void Reset() { Points.Empty(); }
+};
+
+// -------------------------------------------
+// FRawDistribution - 기본 분포 템플릿
+// -------------------------------------------
 template <typename T>
 struct FRawDistribution
 {
     T Min{};
     T Max{};
+    EDistributionMode Mode = EDistributionMode::Uniform;
+    FInterpCurve<T> Curve;
 
-    // 단일 T 값으로 보간
-    T GetValue(float T)
+    // 모드에 따른 값 반환
+    T GetValue(float Time)
+    {
+        if (Mode == EDistributionMode::Curve && Curve.HasKeys())
+        {
+            return Curve.Eval(Time);
+        }
+        // 기본: Uniform 모드 (랜덤)
+        return GetRandomValue();
+    }
+
+    // 단일 T 값으로 보간 (Uniform 모드용)
+    T GetLerpValue(float T)
     {
         return FMath::Lerp(Min, Max, T);
     }
@@ -27,9 +125,22 @@ struct FRawDistribution<FVector>
 {
     FVector Min{};
     FVector Max{};
+    EDistributionMode Mode = EDistributionMode::Uniform;
+    FInterpCurve<FVector> Curve;
 
-    // 단일 T 값으로 보간
-    FVector GetValue(float T)
+    // 모드에 따른 값 반환
+    FVector GetValue(float Time)
+    {
+        if (Mode == EDistributionMode::Curve && Curve.HasKeys())
+        {
+            return Curve.Eval(Time);
+        }
+        // 기본: Uniform 모드 (랜덤)
+        return GetRandomValue();
+    }
+
+    // 단일 T 값으로 보간 (Uniform 모드용)
+    FVector GetLerpValue(float T)
     {
         return FMath::Lerp(Min, Max, T);
     }

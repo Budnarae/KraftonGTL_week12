@@ -62,7 +62,7 @@ void UParticleModuleLocation::Spawn(FParticleContext& Context, float EmitterTime
         // 일반 분산 사용
         if (RandomNum > DistributionThreshold)
         {
-            FinalOffset = Distribution.GetRandomValue();
+            FinalOffset = Distribution.GetValue(EmitterTime);
         }
         // 균일 분산 사용
         else
@@ -90,8 +90,8 @@ void UParticleModuleLocation::Spawn(FParticleContext& Context, float EmitterTime
     }
     else
     {
-        // 2. 균일 분산을 사용하지 않는 경우 (가장 단순한 경우)
-        FinalOffset = Distribution.GetRandomValue();
+        // 2. 균일 분산을 사용하지 않는 경우 - GetValue로 모드에 따라 처리
+        FinalOffset = Distribution.GetValue(EmitterTime);
     }
 
     FinalOffset = FinalOffset * Context.Owner->GetWorldTransform().ToRotationScaleMatrix();
