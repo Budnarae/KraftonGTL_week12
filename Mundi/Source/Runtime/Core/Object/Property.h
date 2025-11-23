@@ -38,7 +38,8 @@ struct FProperty
 	float MaxValue = 0.0f;                   // 범위 최대값
 	bool bIsEditAnywhere = false;            // UI에 노출 여부
 	const char* Tooltip = nullptr;           // 툴팁 설명
-	
+	FString ClassName;
+
 	TMap<FName, FString> Metadata;			 // 모든 부가 정보를 key-value 문자열로 저장합니다.
 
 	// 객체 인스턴스에서 프로퍼티 값의 포인터를 가져옴

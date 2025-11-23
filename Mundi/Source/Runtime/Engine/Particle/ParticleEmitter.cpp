@@ -9,6 +9,14 @@ IMPLEMENT_CLASS(UParticleEmitter)
 
 UParticleEmitter::UParticleEmitter()
 {
+    auto pa = &a;
+    auto pb = &b;
+    TestAsset = UResourceManager::GetInstance().Get<UParticleAsset>("Content/Resources/Particle/NewParticle.uasset");
+    auto TestSizeZeroArrayPointer = &TestSizeZeroArray;
+    auto TestSizeArrayPointer = &TestSizeArray;
+    TestSizeArray.push_back(NewObject<UParticleLODLevel>());
+    TestSizeArray.push_back(NewObject<UParticleLODLevel>());
+    auto temp = this;
     // LODLevel의 최대치만큼 미리 LOD Level을 저장한다.
     LODLevels.clear();
     LODLevels.resize(MAX_PARTICLE_LODLEVEL);

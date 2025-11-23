@@ -118,6 +118,7 @@ struct TPropertyTypeTraits
 		Prop.MaxValue = MaxVal; \
 		Prop.bIsEditAnywhere = bEditAnywhere; \
 		Prop.Tooltip = "" __VA_ARGS__; \
+		Prop.ClassName = NormalizeClassName(#VarType);	\
 		Class->AddProperty(Prop); \
 	}
 
@@ -245,7 +246,7 @@ struct TPropertyTypeTraits
 
 // TArray<...> 프로퍼티 추가
 // 첫 번째 인자로 배열의 내부 요소 타입을 받습니다.
-#define ADD_PROPERTY_ARRAY(InnerPropertyType, VarName, CategoryName, bEditAnywhere, ...) \
+#define ADD_PROPERTY_ARRAY(VarType, InnerPropertyType, VarName, CategoryName, bEditAnywhere, ...) \
 { \
 	static_assert(std::is_array_v<std::remove_reference_t<decltype(CategoryName)>>, \
 				  "CategoryName must be a string literal!"); \
@@ -257,6 +258,7 @@ struct TPropertyTypeTraits
 	Prop.Category = CategoryName; \
 	Prop.bIsEditAnywhere = bEditAnywhere; \
 	Prop.Tooltip = "" __VA_ARGS__; \
+	Prop.ClassName = NormalizeClassName(#VarType);	\
 	Class->AddProperty(Prop); \
 }
 

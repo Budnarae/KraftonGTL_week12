@@ -285,6 +285,35 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
+		case EPropertyType::ObjectPtr:
+		{
+			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
+			UObject** object = reinterpret_cast<UObject**>(pValue);
+			JSON Json = json::Object();
+
+			if (*object != nullptr)
+			{
+				if (UResourceBase* Resource = Cast<UResourceBase>(*object))
+				{
+					if (bInIsLoading)
+					{
+
+					}
+					else
+					{
+						
+						Json["ResourceType"] = Prop.ClassName;
+						Json["Path"] = Resource->GetFilePath();
+					}
+				}
+				else
+				{
+					(*object)->Serialize(bInIsLoading, Json);
+				}
+			}
+			InOutHandle[Prop.Name] = Json;
+			break;
+		}
 		case EPropertyType::Array:
 		{
 			// Array 직렬화는 InnerType에 따라 처리
@@ -362,6 +391,46 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 					}
 				}
 
+				break;
+			}
+			case EPropertyType::ObjectPtr:
+			{
+				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
+				TArray<UObject*> pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
+				JSON Json = json::Object();
+				
+				for (UObject* Obj : pArray)
+				{
+					JSON ElementJson = json::Object();
+					if (Obj != nullptr)
+					{
+						if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
+						{
+							if (bInIsLoading)
+							{
+
+							}
+							else
+							{
+								for (UObject* Obj : pArray)
+								{
+									ElementJson["ResourceType"] = Prop.ClassName;
+									ElementJson["Path"] = Resource->GetFilePath();
+								}
+							}
+						}
+						else
+						{
+							for (UObject* Obj : pArray)
+							{
+								Obj->Serialize(bInIsLoading, ElementJson);
+							}
+						}
+					}
+					Json.append(ElementJson);
+				}
+				
+				InOutHandle[Prop.Name] = Json;
 				break;
 			}
 			default:

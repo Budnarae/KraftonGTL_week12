@@ -8,12 +8,12 @@ UCLASS(DisplayName="파티클 모듈 로케이션", Description="파티클의 �
 class UParticleModuleLocation : public UObject
 {
 public:
-    UParticleModuleLocation();
+    UParticleModuleLocation() = default;
     ~UParticleModuleLocation() = default;
 
     GENERATED_REFLECTION_BODY()
 
-    void Spawn(FBaseParticle* Particle, float EmitterTime) override;
+    void Spawn(FBaseParticle* Particle, float EmitterTime);
     /* Spawn 전용 모듈이므로 override를 구현하지 않음 */
 
 private:

@@ -35,7 +35,11 @@ const bool UParticleEmitter::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleEmitter)
     MARK_AS_COMPONENT("파티클 에미터", "파티클 LOD 레벨을 저장하는 객체입니다.")
-    ADD_PROPERTY_ARRAY(EPropertyType::ObjectPtr, LODLevels, "Array", true)
+    ADD_PROPERTY(UParticleAsset*, TestAsset, "Basic", true)
+    ADD_PROPERTY_ARRAY(TArray<UParticleLODLevel*>, EPropertyType::ObjectPtr, TestSizeZeroArray, "Array", true)
+    ADD_PROPERTY_ARRAY(TArray<UParticleLODLevel*>, EPropertyType::ObjectPtr, TestSizeArray, "Array", true)
+    ADD_PROPERTY_ARRAY(TArray<UParticleLODLevel*>, EPropertyType::ObjectPtr, LODLevels, "Array", true)
+    ADD_PROPERTY(UParticleLODLevel*, TestNotAsset, "Basic", true)
     ADD_PROPERTY(int32, MaxParticleCount, "Basic", true)
 END_PROPERTIES()
 
