@@ -10,23 +10,27 @@ void FParticleEmitterInstance::Update(float DeltaTime)
     for (int32 Index = ActiveParticles - 1; Index >= 0; Index--)
     {
         DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
+
+        // FParticleContext 생성
+        FParticleContext Context(ParticleBase, OwnerComponent);
+
         UParticleModuleRequired* RequiredModule = \
             SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
 
-        RequiredModule->Update(ParticleBase, DeltaTime);
+        RequiredModule->Update(Context, DeltaTime);
 
         TArray<UParticleModule*>& UpdateModules = \
             SpriteTemplate->GetCurrentLODLevelInstance()->GetUpdateModule();
 
         for (UParticleModule* UpdateModule : UpdateModules)
         {
-            UpdateModule->Update(ParticleBase, DeltaTime);
+            UpdateModule->Update(Context, DeltaTime);
         }
 
         if (ParticleBase->RelativeTime >= ParticleBase->LifeTime)
             KillParticle(Index);
     }
-    
+
     float SpawnNumFraction = SpawnRate * DeltaTime + SpawnFraction;
     SpawnNum = floor(SpawnNumFraction);
     SpawnFraction = SpawnNumFraction - SpawnNum;
@@ -67,17 +71,20 @@ void FParticleEmitterInstance::SpawnParticles
         ParticleBase.Velocity = InitialVelocity;
         ParticleBase.BaseVelocity = InitialVelocity; // BaseVelocity는 초기 속도 참조용
 
+        // FParticleContext 생성
+        FParticleContext Context(&ParticleBase, OwnerComponent);
+
         // RequiredModule의 Spawn 호출 (필수)
         UParticleModuleRequired* RequiredModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
         if (RequiredModule)
         {
-            RequiredModule->Spawn(&ParticleBase, StartTime);
+            RequiredModule->Spawn(Context, StartTime);
         }
 
         // 추가 SpawnModules 호출
         for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
         {
-            Module->Spawn(&ParticleBase, StartTime);
+            Module->Spawn(Context, StartTime);
         }
     }
 }

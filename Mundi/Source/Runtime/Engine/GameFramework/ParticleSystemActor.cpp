@@ -5,6 +5,7 @@
 #include "../Particle/ParticleEmitter.h"
 #include "../Particle/ParticleLODLevel.h"
 #include "../Particle/ParticleModuleRequired.h"
+#include "../Particle/ParticleModuleLocation.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -52,6 +53,15 @@ AParticleSystemActor::AParticleSystemActor()
 				RequiredModule->SetLifeTime(3.0f); // 3초 수명
 				RequiredModule->SetEmitterDuration(0.0f); // 0 = 무한 루프
 				RequiredModule->SetEmitterDelay(0.0f);
+			}
+
+			// 5. Location Module 설정 (스폰 위치 분산)
+			UParticleModuleLocation* LocationModule = NewObject<UParticleModuleLocation>();
+			if (LocationModule)
+			{
+				// 박스 형태로 스폰 영역 설정 (중심: 0, 반경: 50)
+				LocationModule->SetDistributionBox(FVector::Zero(), FVector(2.0f, 2.0f, 2.0f));
+				TestLODLevel->AddSpawnModule(LocationModule);
 			}
 		}
 
