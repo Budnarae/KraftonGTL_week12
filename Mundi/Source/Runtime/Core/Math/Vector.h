@@ -78,6 +78,16 @@ namespace FMath
 	{
 		return (int32)ceilf(F);
 	}
+
+	static float GetFractional(float F)
+	{
+		return F - floorf(F);
+	}
+
+	static float GetRandZeroOneRange()
+	{
+		return rand() / (float)RAND_MAX;
+	}
 }
 // 각도를 -180 ~ 180 범위로 정규화 (모듈러 연산)
 inline float NormalizeAngleDeg(float angleDeg)
@@ -1245,6 +1255,9 @@ struct FTransform
 
 	FMatrix ToMatrix() const;
 
+	// 회전과 스케일 성분만으로 모델링 행렬 생성 (Translation 제외)
+	FMatrix ToRotationScaleMatrix() const;
+
 	// Child 로컬 좌표계의 점을 부모 좌표계 변환과 합성. 호출하는 Transform의 결과 좌표계로 변환
 	FTransform GetWorldTransform(const FTransform& ChildTransform) const
 	{
@@ -1485,6 +1498,22 @@ inline FMatrix FTransform::ToMatrix() const
 	R.Rows[3] = _mm_set_ps(1.0f, Translation.Z, Translation.Y, Translation.X);
 
 	// The multiplication will use the SIMD-optimized operator*
+	return R;
+}
+
+// 회전과 스케일 성분만으로 모델링 행렬 생성 (Translation 제외)
+inline FMatrix FTransform::ToRotationScaleMatrix() const
+{
+	FMatrix R = Rotation.ToMatrix();
+
+	// Scale the rotation part using SIMD
+	R.Rows[0] = _mm_mul_ps(R.Rows[0], _mm_set1_ps(Scale3D.X));
+	R.Rows[1] = _mm_mul_ps(R.Rows[1], _mm_set1_ps(Scale3D.Y));
+	R.Rows[2] = _mm_mul_ps(R.Rows[2], _mm_set1_ps(Scale3D.Z));
+
+	// Translation을 0으로 설정 (w = 1)
+	R.Rows[3] = _mm_set_ps(1.0f, 0.0f, 0.0f, 0.0f);
+
 	return R;
 }
 

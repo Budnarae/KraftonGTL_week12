@@ -5,6 +5,12 @@
 #include "../Particle/ParticleEmitter.h"
 #include "../Particle/ParticleLODLevel.h"
 #include "../Particle/ParticleModuleRequired.h"
+#include "../Particle/ParticleModuleLocation.h"
+#include "../Particle/ParticleModuleVelocity.h"
+#include "../Particle/ParticleModuleSpawn.h"
+#include "../Particle/ParticleModuleLifetime.h"
+#include "../Particle/ParticleModuleColor.h"
+#include "../Particle/ParticleModuleSize.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -52,6 +58,85 @@ AParticleSystemActor::AParticleSystemActor()
 				RequiredModule->SetLifeTime(3.0f); // 3초 수명
 				RequiredModule->SetEmitterDuration(0.0f); // 0 = 무한 루프
 				RequiredModule->SetEmitterDelay(0.0f);
+			}
+
+			// 5. Location Module 설정 (스폰 위치 분산)
+			UParticleModuleLocation* LocationModule = NewObject<UParticleModuleLocation>();
+			if (LocationModule)
+			{
+				// 박스 형태로 스폰 영역 설정 (중심: 0, 반경: 50)
+				LocationModule->SetDistributionBox(FVector::Zero(), FVector(2.0f, 2.0f, 2.0f));
+				TestLODLevel->AddSpawnModule(LocationModule);
+			}
+
+			// 6. Velocity Module 설정 (초기 속도)
+			UParticleModuleVelocity* VelocityModule = NewObject<UParticleModuleVelocity>();
+			if (VelocityModule)
+			{
+				// 위쪽으로 솟아오르는 속도 설정 (Z축: 1~3 범위)
+				VelocityModule->SetVelocityRange(
+					FVector(-0.5f, -0.5f, 1.0f),  // Min: 약간의 수평 분산 + 위로
+					FVector(0.5f, 0.5f, 3.0f)     // Max: 약간의 수평 분산 + 위로
+				);
+
+				// 방사형 속도 추가 (바깥으로 퍼지는 효과)
+				VelocityModule->SetStartVelocityRadialMin(0.5f);
+				VelocityModule->SetStartVelocityRadialMax(1.5f);
+
+				TestLODLevel->AddSpawnModule(VelocityModule);
+			}
+
+			// 7. Spawn Module 설정 (스폰율 및 버스트)
+			UParticleModuleSpawn* SpawnModule = NewObject<UParticleModuleSpawn>();
+			if (SpawnModule)
+			{
+				// 기본 스폰율: 초당 30~50개
+				SpawnModule->SetRateMin(30.0f);
+				SpawnModule->SetRateMax(50.0f);
+
+				// 시작 시 버스트: 0초에 20개 한번에 생성
+				SpawnModule->AddBurst(20, 0.0f);
+
+				// 1초에 추가 버스트: 10~30개 랜덤
+				SpawnModule->AddBurst(10, 30, 1.0f);
+
+				TestLODLevel->AddSpawnModule(SpawnModule);
+			}
+
+			// 8. Lifetime Module 설정 (파티클 수명)
+			UParticleModuleLifetime* LifetimeModule = NewObject<UParticleModuleLifetime>();
+			if (LifetimeModule)
+			{
+				// 파티클 수명: 2~4초 랜덤
+				LifetimeModule->SetLifetimeRange(2.0f, 4.0f);
+
+				TestLODLevel->AddSpawnModule(LifetimeModule);
+			}
+
+			// 9. Color Module 설정 (초기 색상)
+			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
+			if (ColorModule)
+			{
+				// 주황~노랑 색상 범위 (불꽃 느낌)
+				ColorModule->SetColorRange(
+					FVector(1.0f, 0.3f, 0.0f),   // Min: 주황
+					FVector(1.0f, 0.8f, 0.2f)    // Max: 노랑
+				);
+
+				// 알파: 0.8~1.0 (약간 반투명~불투명)
+				ColorModule->SetAlphaRange(0.8f, 1.0f);
+
+				TestLODLevel->AddSpawnModule(ColorModule);
+			}
+
+			// 10. Size Module 설정 (초기 크기)
+			UParticleModuleSize* SizeModule = NewObject<UParticleModuleSize>();
+			if (SizeModule)
+			{
+				// 파티클 크기: 0.1~0.3 유닛 (작은 파티클)
+				SizeModule->SetUniformSize(0.1f, 0.3f);
+
+				TestLODLevel->AddSpawnModule(SizeModule);
 			}
 		}
 

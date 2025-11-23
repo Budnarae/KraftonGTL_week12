@@ -49,6 +49,24 @@ public:
     // 이 뒤에 Payload 및 Padding 영역이 이어지지만, 구조체 선언에는 포함되지 않습니다.
 };
 
+// 전방 선언
+class UParticleSystemComponent;
+
+// 파티클 모듈에 전달되는 컨텍스트 정보
+struct FParticleContext
+{
+    // 현재 처리 중인 파티클 데이터
+    FBaseParticle* Particle;
+
+    // 이 파티클을 소유하는 컴포넌트
+    UParticleSystemComponent* Owner;
+
+    FParticleContext(FBaseParticle* InParticle, UParticleSystemComponent* InOwner)
+        : Particle(InParticle)
+        , Owner(InOwner)
+    {}
+};
+
 // FParticleDataContainer는 파티클 시스템의 런타임 메모리 블록을 관리합니다.
 struct FParticleDataContainer
 {

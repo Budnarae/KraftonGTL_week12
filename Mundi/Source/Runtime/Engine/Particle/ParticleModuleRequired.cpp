@@ -7,8 +7,9 @@ UParticleModuleRequired::UParticleModuleRequired() :
     UParticleModule(REQUIRED_MODULE_PAYLOAD_SIZE)
 {}
 
-void UParticleModuleRequired::Spawn(FBaseParticle* Particle, float EmitterTime)
+void UParticleModuleRequired::Spawn(FParticleContext& Context, float EmitterTime)
 {
+    FBaseParticle* Particle = Context.Particle;
     if (!Particle) return;
 
     // 파티클의 기본 크기 설정 (테스트용으로 고정값 사용)
@@ -25,8 +26,9 @@ void UParticleModuleRequired::Spawn(FBaseParticle* Particle, float EmitterTime)
     Particle->BaseRotationRate = 0.0f;
 }
 
-void UParticleModuleRequired::Update(FBaseParticle* Particle, float DeltaTime)
+void UParticleModuleRequired::Update(FParticleContext& Context, float DeltaTime)
 {
+    FBaseParticle* Particle = Context.Particle;
     if (!Particle) return;
 
     // RelativeTime 업데이트
