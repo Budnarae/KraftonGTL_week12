@@ -131,11 +131,9 @@ float UParticleEmitter::GetCalculatedDuration()
 
 bool UParticleEmitter::IsValid() const
 {
-    for (UParticleLODLevel* LODLevel : LODLevels)
-    {
-        if (!LODLevel->IsValid())
-            return false;
-    }
+    if (!LODLevels[CurrentLODLevel]->IsValid())
+        return false;
+    
     return true;
 }
 void UParticleEmitter::Serialize(const bool bInIsLoading, JSON& InOutHandle)
