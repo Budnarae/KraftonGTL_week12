@@ -37,7 +37,7 @@ BEGIN_PROPERTIES(UParticleModuleSpawn)
     MARK_AS_COMPONENT("파티클 모듈 스폰", "파티클의 스폰율과 버스트를 제어합니다.")
     ADD_PROPERTY(FRawDistribution<float>, Rate, "[스폰]", true, "초당 생성할 파티클 개수")
     ADD_PROPERTY(FRawDistribution<float>, RateScale, "[스폰]", true, "스폰율에 곱해지는 배율")
-    ADD_PROPERTY_ARRAY(EPropertyType::ObjectPtr, BurstList, "[버스트]", true, "버스트 스폰 목록")
+    ADD_PROPERTY_ARRAY(TArray<FParticleBurst>, EPropertyType::ObjectPtr, BurstList, "[버스트]", true, "버스트 스폰 목록")
 END_PROPERTIES()
 
 // ===== Lua Binding =====

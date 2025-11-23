@@ -10,11 +10,11 @@
 #endif
 #define CURRENT_CLASS_GENERATED_BODY \
 public: \
-    using Super = UObject; \
+    using Super = UParticleModule; \
     using ThisClass_t = UParticleModuleLocation; \
     static UClass* StaticClass() \
     { \
-        static UClass Cls{ "UParticleModuleLocation", UObject::StaticClass(), sizeof(UParticleModuleLocation) }; \
+        static UClass Cls{ "UParticleModuleLocation", UParticleModule::StaticClass(), sizeof(UParticleModuleLocation) }; \
         static bool bRegistered = (UClass::SignUpClass(&Cls), true); \
         return &Cls; \
     } \

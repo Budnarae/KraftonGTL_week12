@@ -878,7 +878,7 @@
     <ClCompile Include="Generated\UParticleSystem.generated.cpp">
       <Filter>Generated</Filter>
     </ClCompile>
-  <ClCompile Include="Generated\AParticleSystemActor.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleLocation.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
+  <ClCompile Include="Generated\AParticleSystemActor.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleLocation.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleColor.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleLifetime.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleSize.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleSpawn.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleVelocity.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generated\USoundAnimNotify.generated.h">
       <Filter>Generated</Filter>
@@ -1862,7 +1862,7 @@
     <ClInclude Include="Generated\UParticleSystem.generated.h">
       <Filter>Generated</Filter>
     </ClInclude>
-  <ClInclude Include="Generated\AParticleSystemActor.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleLocation.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
+  <ClInclude Include="Generated\AParticleSystemActor.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleLocation.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleColor.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleLifetime.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleSize.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleSpawn.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleVelocity.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py">
       <Filter>Tools\CodeGenerator</Filter>

@@ -1,7 +1,4 @@
-﻿﻿#include "pch.h"
-#include "ParticleModuleLocation.h"
-
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleModuleLocation.h"
 
 #include "ParticleData.h"
@@ -77,12 +74,12 @@ void UParticleModuleLocation::Spawn(FParticleContext& Context, float EmitterTime
 
             // 각 축에 독립적인 균일 분산 적용
             auto GetUniformValue = [IndexRange](float Min, float Max) -> float
-            {
-                float RandomIndexFloat = FMath::GetRandZeroOneRange() * IndexRange;
-                int SelectedIndex = FMath::FloorToInt(RandomIndexFloat + 0.5f);
-                float LerpRatio = (float)SelectedIndex / IndexRange;
-                return FMath::Lerp(Min, Max, LerpRatio);
-            };
+                {
+                    float RandomIndexFloat = FMath::GetRandZeroOneRange() * IndexRange;
+                    int SelectedIndex = FMath::FloorToInt(RandomIndexFloat + 0.5f);
+                    float LerpRatio = (float)SelectedIndex / IndexRange;
+                    return FMath::Lerp(Min, Max, LerpRatio);
+                };
 
             FinalOffset = FVector(
                 GetUniformValue(Distribution.Min.X, Distribution.Max.X),

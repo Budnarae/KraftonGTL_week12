@@ -5,7 +5,7 @@
 
 struct FBaseParticle;
 
-UCLASS(DisplayName="파티클 모듈 로케이션", Description="파티클의 초기 스폰 위치를 지정합니다.")
+UCLASS(DisplayName = "파티클 모듈 로케이션", Description = "파티클의 초기 스폰 위치를 지정합니다.")
 class UParticleModuleLocation : public UParticleModule
 {
 public:
@@ -14,7 +14,7 @@ public:
 
     GENERATED_REFLECTION_BODY()
 
-    void Spawn(FParticleContext& Context, float EmitterTime) override;
+        void Spawn(FParticleContext& Context, float EmitterTime) override;
     /* Spawn 전용 모듈이므로 Update override를 구현하지 않음 */
 
     // -------------------------------------------
@@ -48,12 +48,12 @@ public:
     void SetDistributionSphere(const FVector& Center, float Radius);
 
 private:
-    UPROPERTY(EditAnywhere, Category="[위치]", Tooltip="스폰 위치의 최소/최대 범위")
+    UPROPERTY(EditAnywhere, Category = "[위치]", Tooltip = "스폰 위치의 최소/최대 범위")
     FRawDistribution<FVector> Distribution{};
 
-    UPROPERTY(EditAnywhere, Category="[위치]", Tooltip="균일 분산에 사용할 포인트 개수")
+    UPROPERTY(EditAnywhere, Category = "[위치]", Tooltip = "균일 분산에 사용할 포인트 개수")
     float DistributeOverNPoints{};
 
-    UPROPERTY(EditAnywhere, Category="[위치]", Range="0.0, 1.0", Tooltip="균일 분산 사용 임계값")
+    UPROPERTY(EditAnywhere, Category = "[위치]", Range = "0.0, 1.0", Tooltip = "균일 분산 사용 임계값")
     float DistributionThreshold{};
 };
