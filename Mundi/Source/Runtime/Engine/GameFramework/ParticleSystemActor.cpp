@@ -7,6 +7,8 @@
 #include "../Particle/ParticleModuleRequired.h"
 #include "../Particle/ParticleModuleLocation.h"
 #include "../Particle/ParticleModuleVelocity.h"
+#include "../Particle/ParticleModuleSpawn.h"
+#include "../Particle/ParticleModuleLifetime.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -80,6 +82,33 @@ AParticleSystemActor::AParticleSystemActor()
 				VelocityModule->SetStartVelocityRadialMax(1.5f);
 
 				TestLODLevel->AddSpawnModule(VelocityModule);
+			}
+
+			// 7. Spawn Module 설정 (스폰율 및 버스트)
+			UParticleModuleSpawn* SpawnModule = NewObject<UParticleModuleSpawn>();
+			if (SpawnModule)
+			{
+				// 기본 스폰율: 초당 30~50개
+				SpawnModule->SetRateMin(30.0f);
+				SpawnModule->SetRateMax(50.0f);
+
+				// 시작 시 버스트: 0초에 20개 한번에 생성
+				SpawnModule->AddBurst(20, 0.0f);
+
+				// 1초에 추가 버스트: 10~30개 랜덤
+				SpawnModule->AddBurst(10, 30, 1.0f);
+
+				TestLODLevel->AddSpawnModule(SpawnModule);
+			}
+
+			// 8. Lifetime Module 설정 (파티클 수명)
+			UParticleModuleLifetime* LifetimeModule = NewObject<UParticleModuleLifetime>();
+			if (LifetimeModule)
+			{
+				// 파티클 수명: 2~4초 랜덤
+				LifetimeModule->SetLifetimeRange(2.0f, 4.0f);
+
+				TestLODLevel->AddSpawnModule(LifetimeModule);
 			}
 		}
 
