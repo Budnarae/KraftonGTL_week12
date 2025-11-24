@@ -85,7 +85,6 @@ void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
 }
 void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
 {
-
     if (State->SelectedEmitter)
     {
         UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
@@ -96,6 +95,41 @@ void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
         }
     }
 }
+
+void SParticleEditWindow::RemoveEmitter()
+{
+    if (State->SelectedEmitter)
+    {
+        State->PreviewParticle->ParticleSystem.RemoveEmitter(State->SelectedEmitter);
+        State->SelectedEmitter = nullptr;
+        State->SelectedModule = nullptr;
+    }
+}
+void SParticleEditWindow::RemoveModule()
+{
+    if (State->SelectedEmitter && State->SelectedModule)
+    {
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+        if (LOD->RemoveSpawnModule(State->SelectedModule) == false)
+        {
+            State->SelectedModule = nullptr;
+            return;
+        }
+        if (LOD->RemoveUpdateModule(State->SelectedModule) == false)
+        {
+            State->SelectedModule = nullptr;
+            return;
+        }
+    }
+}
+void SParticleEditWindow::ResetModule()
+{
+
+}
+
+
+
+
 
 void SParticleEditWindow::CreateParticleEditor(const FString& Path)
 {
@@ -168,7 +202,6 @@ void SParticleEditWindow::LoadAsset(const FString& AssetPath)
 }
 void SParticleEditWindow::OnRender()
 {
-    HoveredWindow = EParticleEditorWindow::None;
     // If window is closed, don't render
     if (!bIsOpen)
     {
@@ -178,6 +211,7 @@ void SParticleEditWindow::OnRender()
     ImGuiWindowFlags ChildFlag = ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoCollapse;
+    HoveredWindowType = EHoveredWindowType::None;
 
     if (!bInitialPlacementDone)
     {
@@ -210,32 +244,33 @@ void SParticleEditWindow::OnRender()
 
         ImVec2 ChildSize = Size * 0.5f;
         ImGui::BeginChild("Viewport", ChildSize);
-        ImGui::Text("Viewport");
-        if (ImGui::IsWindowHovered()) 
+        if (ImGui::IsWindowHovered())
         {
-            HoveredWindow = EParticleEditorWindow::Viewport;
+            HoveredWindowType = EHoveredWindowType::Viewport;
         }
+        ImGui::Text("Viewport");
         //World Rendering
         ImGui::EndChild();
         ImGui::SameLine();
 
         ImGui::BeginChild("Emitter", ChildSize,0, ImGuiWindowFlags_HorizontalScrollbar);
-        ImGui::Text("Emitter");
         if (ImGui::IsWindowHovered())
         {
-            HoveredWindow = EParticleEditorWindow::Emitter;
+            HoveredWindowType = EHoveredWindowType::Emitter;
         }
+        ImGui::Text("Emitter");
+
         DrawEmitterView();
         DrawEmitterDropdown();
+        DrawModuleDropdown();
         //
         ImGui::EndChild();
 
         ImGui::BeginChild("Detail", ChildSize);
         if (ImGui::IsWindowHovered())
         {
-            HoveredWindow = EParticleEditorWindow::Detail;
+            HoveredWindowType = EHoveredWindowType::Detail;
         }
-
         ImGui::EndChild();
         ImGui::SameLine();
         ImGui::BeginChild("CurveEditor", ChildSize);
@@ -244,6 +279,8 @@ void SParticleEditWindow::OnRender()
       
         ImGui::End();
     }
+
+
 
 }
 void SParticleEditWindow::OnUpdate(float DeltaSeconds)
@@ -272,6 +309,8 @@ void SParticleEditWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
     if (!State || !State->Viewport) return;
 
+
+
     if (CenterRect.Contains(MousePos))
     {
         FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
@@ -288,30 +327,30 @@ void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
     if (!State || !State->Viewport) return;
 
-    UE_LOG("%d", Button);
-    switch (HoveredWindow)
+    switch (HoveredWindowType)
     {
-    case EParticleEditorWindow::Viewport:
+    case EHoveredWindowType::Viewport:
         bEmitterDropdown = false;
+        bModuleDropdown = false;
         break;
-    case EParticleEditorWindow::Emitter:
-        if (Button == 0) //left click
+    case EHoveredWindowType::Emitter:
+        if (Button == 1 && ImGui::IsAnyItemHovered() == false)
         {
-            
-        }
-        else
-        {
-            bEmitterDropdown = true;   
+            bEmitterDropdown = true;
             EmitterDropdownPos = ImGui::GetMousePos();
         }
         break;
-    case EParticleEditorWindow::Detail:
+    case EHoveredWindowType::Detail:
         bEmitterDropdown = false;
+        bModuleDropdown = false;
         break;
-    case EParticleEditorWindow::None:
+    default:
         bEmitterDropdown = false;
+        bModuleDropdown = false;
         break;
     }
+
+   
 }
 
 void SParticleEditWindow::OnRenderViewport()
@@ -329,7 +368,9 @@ void SParticleEditWindow::OnRenderViewport()
     }
 }
 
-void SParticleEditWindow::DrawModuleInEmitterView(UParticleModule* Module, const ImVec2& Size)
+//window우클릭
+//module 우클릭
+void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size)
 {
     if (Module == nullptr)
     {
@@ -340,8 +381,17 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleModule* Module, const
     if (ImGui::Selectable(RequireModuleGUIID.c_str(), bSelected, 0, Size))
     {
         State->SelectedModule = Module;
+        State->SelectedEmitter = ParentEmitter;
+    }
+    if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+    {
+        State->SelectedModule = Module;
+        State->SelectedEmitter = ParentEmitter;
+        bModuleDropdown = true;
+        ModuleDropdownPos = ImGui::GetMousePos();
     }
 }
+
 void SParticleEditWindow::DrawEmitterView()
 {
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
@@ -350,6 +400,11 @@ void SParticleEditWindow::DrawEmitterView()
     TArray<UParticleEmitter*> Emitters = CurParticle.GetEmitters();
     for (UParticleEmitter* Emitter : Emitters)
     {
+        UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);
+        UParticleModule* RequireModule = ParticleLOD->GetRequiredModule();
+        TArray<UParticleModule*>& SpawnModules = ParticleLOD->GetSpawnModule();
+        TArray<UParticleModule*>& UpdateModules = ParticleLOD->GetUpdateModule();
+
         ImGui::BeginGroup();
         FString GUIID = GetUniqueGUIIDWithPointer(Emitter->GetEmitterName(), Emitter);
         bool bSelected = Emitter == State->SelectedEmitter;
@@ -359,22 +414,20 @@ void SParticleEditWindow::DrawEmitterView()
         {
             //선택된 이미터 이걸로 변경
             State->SelectedEmitter = Emitter;
+            State->SelectedModule = RequireModule;
         }
         ImGui::PopStyleColor();
         ImGui::PushStyleColor(ImGuiCol_Header, ModuleColor);
-        UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);
-        UParticleModule* RequireModule = ParticleLOD->GetRequiredModule();
-        TArray<UParticleModule*>& SpawnModules = ParticleLOD->GetSpawnModule();
-        TArray<UParticleModule*>& UpdateModules = ParticleLOD->GetUpdateModule();
+        
 
-        DrawModuleInEmitterView(RequireModule, RequireModuleSize);
+        DrawModuleInEmitterView(Emitter, RequireModule, RequireModuleSize);
         for (UParticleModule* Module : SpawnModules)
         {
-            DrawModuleInEmitterView(Module, ModuleSize);
+            DrawModuleInEmitterView(Emitter, Module, ModuleSize);
         }
         for (UParticleModule* Module : UpdateModules)
         {
-            DrawModuleInEmitterView(Module, ModuleSize);
+            DrawModuleInEmitterView(Emitter, Module, ModuleSize);
         }
 
         ImGui::EndGroup();
@@ -385,6 +438,28 @@ void SParticleEditWindow::DrawEmitterView()
 
 }
 
+void SParticleEditWindow::DrawModuleDropdown()
+{
+    if (bModuleDropdown == false)
+    {
+        return;
+    }
+    ImGui::OpenPopup("ModuleDropdown");
+
+    ImGui::SetNextWindowPos(ModuleDropdownPos);
+    if (ImGui::BeginPopup("ModuleDropdown"))
+    {
+        if (ImGui::Selectable("모듈 새로고침"))
+        {
+            ResetModule();
+        }
+        if (ImGui::Selectable("모듈 제거"))
+        {
+            RemoveModule();
+        }
+        ImGui::EndPopup();
+    }
+}
 void SParticleEditWindow::DrawEmitterDropdown()
 {
     if (bEmitterDropdown == false)
@@ -428,6 +503,5 @@ void SParticleEditWindow::DrawEmitterDropdown()
             }
         }
         ImGui::EndPopup();
-    }
-    
+    }    
 }

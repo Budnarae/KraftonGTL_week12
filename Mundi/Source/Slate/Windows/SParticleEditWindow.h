@@ -9,19 +9,20 @@ class FViewportClient;
 class SParticleEditWindow;
 struct ID3D11Device;
 
-enum class EParticleEditorWindow
-{
-    None,
-    Viewport,
-    Emitter,
-    Detail
-};
 enum class EMenuActionType
 {
     AddEmitter,
     AddSpawnModule,
     AddUpdateModule,
 };
+enum class EHoveredWindowType
+{
+    None,
+    Viewport,
+    Emitter,
+    Detail,
+};
+
 struct FMenuAction
 {
     EMenuActionType MenuActionType;
@@ -94,15 +95,16 @@ public:
 private:
 
     ParticleViewerState* State = nullptr;
-
     // Layout state
     float LeftPanelRatio = 0.25f;   // 25% of width
     float RightPanelRatio = 0.25f;  // 25% of width
 
-
-    EParticleEditorWindow HoveredWindow;
+    EHoveredWindowType HoveredWindowType;
     ImVec2 EmitterDropdownPos;
     bool bEmitterDropdown = false;
+
+    ImVec2 ModuleDropdownPos;
+    bool bModuleDropdown = false;
 
     // Cached center region used for viewport sizing and input mapping
     FRect CenterRect;
@@ -115,8 +117,13 @@ private:
     void Save();
     void ReStart();
 
+    void ResetModule();
+    void RemoveModule();
+    void RemoveEmitter();
+
     void DrawEmitterView();
-    void DrawModuleInEmitterView(UParticleModule* Module, const ImVec2& Size);
+    void DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size);
     void DrawEmitterDropdown();
+    void DrawModuleDropdown();
 
 };
