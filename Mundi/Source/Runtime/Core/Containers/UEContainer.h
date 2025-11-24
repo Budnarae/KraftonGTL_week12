@@ -770,3 +770,7 @@ inline std::string NormalizeClassName(const std::string& name)
 
     return inner; // 템플릿 이름 제거하고 클래스 이름만 반환
 }
+inline FString GetUniqueGUIIDWithPointer(const FString& Name, const void* Ptr)
+{
+    return Name + "##" + std::to_string(reinterpret_cast<uintptr_t>(Ptr));
+}

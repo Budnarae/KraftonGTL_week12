@@ -11,4 +11,5 @@ public:
 
 	UParticleAsset* PreviewParticle = nullptr;
 	UParticleEmitter* SelectedEmitter = nullptr;
+	UParticleModule* SelectedModule = nullptr;
 };

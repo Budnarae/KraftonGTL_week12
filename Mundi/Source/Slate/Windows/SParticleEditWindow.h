@@ -115,6 +115,8 @@ private:
     void Save();
     void ReStart();
 
+    void DrawEmitterView();
+    void DrawModuleInEmitterView(UParticleModule* Module, const ImVec2& Size);
     void DrawEmitterDropdown();
 
 };

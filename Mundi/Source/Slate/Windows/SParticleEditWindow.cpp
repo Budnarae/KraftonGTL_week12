@@ -14,6 +14,16 @@
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
 
+ImVec4 HoveredColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f); //마우스 올리면
+ImVec4 ActiveColor = ImVec4(0.9f, 0.9f, 0.9f, 1.0f); //선택했을때 클릭
+
+ImVec4 EmitterColor = ImVec4(0.25f, 0.25f, 0.8f, 1.0f);//선택된
+ImVec4 ModuleColor = ImVec4(0.25f, 0.8f, 0.25f, 1.0f);
+
+ImVec2 EmitterSize = ImVec2(100, 40);
+ImVec2 RequireModuleSize = ImVec2(100, 30);
+ImVec2 ModuleSize = ImVec2(100, 20);
+
 //Dropdown에서 첫 카테고리안에 두번째 생성할 목록이 들어가 있다.
 //각 생성할 목록들을 클릭하면 그 값이 현재 클릭된 이미터를 기준으로 추가된다.
 //즉 파티클 시스템에 추가 함수가 있고, 각 목록들은 그함수에 연결되어 있다.
@@ -186,6 +196,7 @@ void SParticleEditWindow::OnRender()
         Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
         UParticleSystem& CurParticleSystem = State->PreviewParticle->ParticleSystem;
 
+        ImGui::Text("Path %s", State->PreviewParticle->GetFilePath().c_str());
         if (ImGui::Button("Save"))
         {
 
@@ -208,12 +219,13 @@ void SParticleEditWindow::OnRender()
         ImGui::EndChild();
         ImGui::SameLine();
 
-        ImGui::BeginChild("Emitter", ChildSize);
+        ImGui::BeginChild("Emitter", ChildSize,0, ImGuiWindowFlags_HorizontalScrollbar);
         ImGui::Text("Emitter");
         if (ImGui::IsWindowHovered())
         {
             HoveredWindow = EParticleEditorWindow::Emitter;
         }
+        DrawEmitterView();
         DrawEmitterDropdown();
         //
         ImGui::EndChild();
@@ -312,13 +324,66 @@ void SParticleEditWindow::OnRenderViewport()
         const uint32 NewHeight = static_cast<uint32>(CenterRect.Bottom - CenterRect.Top);
         State->Viewport->Resize(NewStartX, NewStartY, NewWidth, NewHeight);
 
-       
-
         // 뷰포트 렌더링 (ImGui보다 먼저)
         State->Viewport->Render();
     }
 }
 
+void SParticleEditWindow::DrawModuleInEmitterView(UParticleModule* Module, const ImVec2& Size)
+{
+    if (Module == nullptr)
+    {
+        return;
+    }
+    FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+    bool bSelected = Module == State->SelectedModule;
+    if (ImGui::Selectable(RequireModuleGUIID.c_str(), bSelected, 0, Size))
+    {
+        State->SelectedModule = Module;
+    }
+}
+void SParticleEditWindow::DrawEmitterView()
+{
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HoveredColor);
+    UParticleSystem& CurParticle = State->PreviewParticle->ParticleSystem;
+    TArray<UParticleEmitter*> Emitters = CurParticle.GetEmitters();
+    for (UParticleEmitter* Emitter : Emitters)
+    {
+        ImGui::BeginGroup();
+        FString GUIID = GetUniqueGUIIDWithPointer(Emitter->GetEmitterName(), Emitter);
+        bool bSelected = Emitter == State->SelectedEmitter;
+        ImGui::PushStyleColor(ImGuiCol_Header, EmitterColor);
+
+        if (ImGui::Selectable(GUIID.c_str(), bSelected, 0, EmitterSize))
+        {
+            //선택된 이미터 이걸로 변경
+            State->SelectedEmitter = Emitter;
+        }
+        ImGui::PopStyleColor();
+        ImGui::PushStyleColor(ImGuiCol_Header, ModuleColor);
+        UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);
+        UParticleModule* RequireModule = ParticleLOD->GetRequiredModule();
+        TArray<UParticleModule*>& SpawnModules = ParticleLOD->GetSpawnModule();
+        TArray<UParticleModule*>& UpdateModules = ParticleLOD->GetUpdateModule();
+
+        DrawModuleInEmitterView(RequireModule, RequireModuleSize);
+        for (UParticleModule* Module : SpawnModules)
+        {
+            DrawModuleInEmitterView(Module, ModuleSize);
+        }
+        for (UParticleModule* Module : UpdateModules)
+        {
+            DrawModuleInEmitterView(Module, ModuleSize);
+        }
+
+        ImGui::EndGroup();
+        ImGui::SameLine();
+        ImGui::PopStyleColor();
+    }
+    ImGui::PopStyleColor(2);
+
+}
 
 void SParticleEditWindow::DrawEmitterDropdown()
 {
