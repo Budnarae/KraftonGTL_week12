@@ -49,6 +49,24 @@ public:
     // 이 뒤에 Payload 및 Padding 영역이 이어지지만, 구조체 선언에는 포함되지 않습니다.
 };
 
+// 전방 선언
+class UParticleSystemComponent;
+
+// 파티클 모듈에 전달되는 컨텍스트 정보
+struct FParticleContext
+{
+    // 현재 처리 중인 파티클 데이터
+    FBaseParticle* Particle;
+
+    // 이 파티클을 소유하는 컴포넌트
+    UParticleSystemComponent* Owner;
+
+    FParticleContext(FBaseParticle* InParticle, UParticleSystemComponent* InOwner)
+        : Particle(InParticle)
+        , Owner(InOwner)
+    {}
+};
+
 // FParticleDataContainer는 파티클 시스템의 런타임 메모리 블록을 관리합니다.
 struct FParticleDataContainer
 {
@@ -282,7 +300,21 @@ struct FMeshParticleInstanceVertex;
 // 특정 UParticleEmitter 템플릿의 활성 시뮬레이션 상태를 담는 구조체
 struct FParticleEmitterInstance
 {
+    FParticleEmitterInstance() = default;
+    ~FParticleEmitterInstance();
+
+    // 복사 생성자 (Deep Copy)
+    FParticleEmitterInstance(const FParticleEmitterInstance& Other);
+
+    // 복사 대입 연산자 (Deep Copy)
+    FParticleEmitterInstance& operator=(const FParticleEmitterInstance& Other);
+
+private:
+    // 복사 헬퍼 함수
+    void CopyFrom(const FParticleEmitterInstance& Other);
+
 public:
+    
     // 템플릿 및 소유자 참조
     UParticleEmitter* SpriteTemplate{};
     UParticleSystemComponent* OwnerComponent{};
@@ -309,7 +341,7 @@ public:
     float Duration{};
     
     int32 ActiveParticles{};        // 현재 시뮬레이션 루프에서 실제 활성화된 파티클의 수 (현재 카운트).
-public:
+
     // 파티클 갱신 함수 (Update 모듈 호출)
     void Update(float DeltaTime);
     
@@ -325,6 +357,8 @@ public:
 
     // 파티클 소멸 함수
     void KillParticle(int32 Index);
+
+    void KillAllParticles();
 
     float GetLifeTimeValue()
     {

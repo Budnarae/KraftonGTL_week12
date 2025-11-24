@@ -1,6 +1,5 @@
 ﻿#include "ParticleSystem.h"           // 템플릿 정의
 #include "PrimitiveComponent.h"
-#include "ParticleEventTypes.h"
 #include "UParticleSystemComponent.generated.h"
 
 // 전방 선언: 실제 파티클 데이터를 담는 런타임 인스턴스 구조체
@@ -13,9 +12,15 @@ class UParticleSystemComponent : public UPrimitiveComponent
 {
 public:
     UParticleSystemComponent();
-    ~UParticleSystemComponent() = default;
+    ~UParticleSystemComponent();
 
     GENERATED_REFLECTION_BODY()
+
+    // ========================================================================
+    // 복사 관련 (Duplication)
+    // ========================================================================
+    void DuplicateSubObjects() override;
+    void PostDuplicate() override;
 
     // Getters
     UParticleSystem* GetTemplate() const;
@@ -47,38 +52,12 @@ public:
 
     // [Tick Phase] 매 프레임 호출되어 DeltaTime만큼 시뮬레이션을 전진시킵니다. (가장 중요)
     void TickComponent(float DeltaTime) override;
-
+    
     // // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)
     // void KillParticlesAndCleanUp();
     //
     // // 이 컴포넌트가 현재 재생 중인 이펙트를 멈추고 메모리를 해제합니다. (소멸자 등에서 호출)
     // void BeginDestroy();
-
-    // Collision Events
-    TArray<FParticleEventCollideData>& GetCollisionEvents() { return CollisionEvents; }
-    const TArray<FParticleEventCollideData>& GetCollisionEvents() const { return CollisionEvents; }
-    void AddCollisionEvent(const FParticleEventCollideData& Event) { CollisionEvents.Add(Event); }
-    void ClearCollisionEvents() { CollisionEvents.Empty(); }
-
-    // Death Events
-    TArray<FParticleEventDeathData>& GetDeathEvents() { return DeathEvents; }
-    const TArray<FParticleEventDeathData>& GetDeathEvents() const { return DeathEvents; }
-    void AddDeathEvent(const FParticleEventDeathData& Event) { DeathEvents.Add(Event); }
-    void ClearDeathEvents() { DeathEvents.Empty(); }
-
-    // Spawn Events
-    TArray<FParticleEventSpawnData>& GetSpawnEvents() { return SpawnEvents; }
-    const TArray<FParticleEventSpawnData>& GetSpawnEvents() const { return SpawnEvents; }
-    void AddSpawnEvent(const FParticleEventSpawnData& Event) { SpawnEvents.Add(Event); }
-    void ClearSpawnEvents() { SpawnEvents.Empty(); }
-
-    // Clear all events (called at the start of each tick)
-    void ClearAllEvents()
-    {
-        CollisionEvents.Empty();
-        DeathEvents.Empty();
-        SpawnEvents.Empty();
-    }
     
 private:
     // [Template] 이 컴포넌트가 재생할 파티클 시스템의 마스터 설계도 (Asset)
@@ -98,15 +77,5 @@ private:
     int32 CurrentLODLevel{};
 
     // 템플릿을 기반으로 실제 수많은 파티클의 데이터와 상태를 관리하는 내부 런타임 인스턴스
-    TArray<FParticleEmitterInstance*> EmitterInstances{};
-
-    // Event arrays - populated during tick by collision/event modules
-    /** The Collision events that occurred in this PSysComp. */
-    TArray<FParticleEventCollideData> CollisionEvents;
-
-    /** The Death events that occurred in this PSysComp. */
-    TArray<FParticleEventDeathData> DeathEvents;
-
-    /** The Spawn events that occurred in this PSysComp. */
-    TArray<FParticleEventSpawnData> SpawnEvents;
+    TArray<FParticleEmitterInstance*> EmitterInstances{}; 
 };

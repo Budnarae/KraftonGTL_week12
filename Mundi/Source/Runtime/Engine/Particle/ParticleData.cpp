@@ -5,28 +5,102 @@
 #include "ParticleModuleRequired.h"
 #include "ParticleHelper.h"
 
+FParticleEmitterInstance::~FParticleEmitterInstance()
+{
+    KillAllParticles();
+}
+
+// ============================================================================
+// 복사 생성자
+// ============================================================================
+// ParticleData 메모리 블록을 깊은 복사합니다.
+// OwnerComponent는 복사 후 호출자가 별도로 설정해야 합니다.
+// ============================================================================
+FParticleEmitterInstance::FParticleEmitterInstance(const FParticleEmitterInstance& Other)
+    : ParticleData(nullptr)
+    , OwnerComponent(nullptr)
+{
+    CopyFrom(Other);
+}
+
+// ============================================================================
+// 복사 대입 연산자
+// ============================================================================
+FParticleEmitterInstance& FParticleEmitterInstance::operator=(const FParticleEmitterInstance& Other)
+{
+    if (this != &Other)
+    {
+        // 기존 ParticleData 해제
+        if (ParticleData)
+        {
+            free(ParticleData);
+            ParticleData = nullptr;
+        }
+        CopyFrom(Other);
+    }
+    return *this;
+}
+
+// ============================================================================
+// 복사 헬퍼 함수
+// ============================================================================
+void FParticleEmitterInstance::CopyFrom(const FParticleEmitterInstance& Other)
+{
+    // 템플릿 및 LOD 참조 (얕은 복사 - 공유 데이터)
+    SpriteTemplate = Other.SpriteTemplate;
+    CurrentLODLevelIndex = Other.CurrentLODLevelIndex;
+    CurrentLODLevel = Other.CurrentLODLevel;
+
+    // 메모리 관리 변수 복사
+    MaxActiveParticles = Other.MaxActiveParticles;
+    ParticleStride = Other.ParticleStride;
+
+    // 런타임 파티클 생성 관리 변수 복사
+    SpawnRate = Other.SpawnRate;
+    SpawnNum = Other.SpawnNum;
+    SpawnFraction = Other.SpawnFraction;
+    Duration = Other.Duration;
+    ActiveParticles = Other.ActiveParticles;
+
+    // ParticleData 깊은 복사
+    if (Other.ParticleData && MaxActiveParticles > 0 && ParticleStride > 0)
+    {
+        size_t DataSize = static_cast<size_t>(MaxActiveParticles) * ParticleStride;
+        ParticleData = static_cast<uint8*>(malloc(DataSize));
+
+        if (ParticleData)
+        {
+            memcpy(ParticleData, Other.ParticleData, DataSize);
+        }
+    }
+}
+
 void FParticleEmitterInstance::Update(float DeltaTime)
 {
     for (int32 Index = ActiveParticles - 1; Index >= 0; Index--)
     {
         DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
+
+        // FParticleContext 생성
+        FParticleContext Context(ParticleBase, OwnerComponent);
+
         UParticleModuleRequired* RequiredModule = \
             SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
 
-        RequiredModule->Update(ParticleBase, DeltaTime);
+        RequiredModule->Update(Context, DeltaTime);
 
         TArray<UParticleModule*>& UpdateModules = \
             SpriteTemplate->GetCurrentLODLevelInstance()->GetUpdateModule();
 
         for (UParticleModule* UpdateModule : UpdateModules)
         {
-            UpdateModule->Update(ParticleBase, DeltaTime);
+            UpdateModule->Update(Context, DeltaTime);
         }
 
         if (ParticleBase->RelativeTime >= ParticleBase->LifeTime)
             KillParticle(Index);
     }
-    
+
     float SpawnNumFraction = SpawnRate * DeltaTime + SpawnFraction;
     SpawnNum = floor(SpawnNumFraction);
     SpawnFraction = SpawnNumFraction - SpawnNum;
@@ -67,17 +141,20 @@ void FParticleEmitterInstance::SpawnParticles
         ParticleBase.Velocity = InitialVelocity;
         ParticleBase.BaseVelocity = InitialVelocity; // BaseVelocity는 초기 속도 참조용
 
+        // FParticleContext 생성
+        FParticleContext Context(&ParticleBase, OwnerComponent);
+
         // RequiredModule의 Spawn 호출 (필수)
         UParticleModuleRequired* RequiredModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
         if (RequiredModule)
         {
-            RequiredModule->Spawn(&ParticleBase, StartTime);
+            RequiredModule->Spawn(Context, StartTime);
         }
 
         // 추가 SpawnModules 호출
         for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
         {
-            Module->Spawn(&ParticleBase, StartTime);
+            Module->Spawn(Context, StartTime);
         }
     }
 }
@@ -98,5 +175,14 @@ void FParticleEmitterInstance::KillParticle(int32 Index)
         DECLARE_PARTICLE_PTR(Target, ParticleData + ParticleStride * Index);
         DECLARE_PARTICLE_PTR(Last, ParticleData + ParticleStride * ActiveParticles);
         memcpy(Target, Last, ParticleStride);
+    }
+}
+
+void FParticleEmitterInstance::KillAllParticles()
+{
+    for (int32 i = ActiveParticles - 1; i >= 0; i--)
+    {
+        KillParticle(i);
+        ActiveParticles--;
     }
 }

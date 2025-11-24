@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 
+
 FString UObject::GetName()
 {
     return ObjectName.ToString();
@@ -285,6 +286,57 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
+		case EPropertyType::ObjectPtr:
+		{
+			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
+			UObject** object = reinterpret_cast<UObject**>(pValue);
+			if (bInIsLoading)
+			{
+				JSON Json = InOutHandle[Prop.Name];
+				
+				if (UResourceBase* Resource = Cast<UResourceBase>(*object))
+				{
+					FString ResourceTypeName;
+					FString Path;
+					FJsonSerializer::ReadString(Json, "ResourceType", ResourceTypeName);
+					FJsonSerializer::ReadString(Json, "Path", Path);
+					if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
+					{
+						UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
+					}
+				}
+				else
+				{
+					UClass* TypeClass = UClass::FindClass(Prop.ClassName);
+					if (TypeClass) 
+					{
+						(*object) = NewObject(TypeClass);
+						(*object)->Serialize(bInIsLoading, Json);
+					}
+				}
+			}
+			else
+			{
+			
+				JSON Json = json::Object();
+
+				if (*object != nullptr)
+				{
+					if (UResourceBase* Resource = Cast<UResourceBase>(*object))
+					{
+						Json["ResourceType"] = Prop.ClassName;
+						Json["Path"] = Resource->GetFilePath();
+					}
+					else
+					{
+						(*object)->Serialize(bInIsLoading, Json);
+					}
+				}
+				InOutHandle[Prop.Name] = Json;
+			}
+			
+			break;
+		}
 		case EPropertyType::Array:
 		{
 			// Array 직렬화는 InnerType에 따라 처리
@@ -364,6 +416,59 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 
 				break;
 			}
+			case EPropertyType::ObjectPtr:
+			{
+				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
+				TArray<UObject*> pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
+				if (bInIsLoading)
+				{
+					JSON Json = InOutHandle[Prop.Name];
+					int idx = 0;
+					for (auto ElementJson : Json.ArrayRange())
+					{
+						pArray.emplace_back();
+						if (UResourceBase* Resource = Cast<UResourceBase>(pArray[idx]))
+						{
+							FString ResourceTypeName;
+							FString Path;
+							FJsonSerializer::ReadString(Json, "ResourceType", ResourceTypeName);
+							FJsonSerializer::ReadString(Json, "Path", Path);
+							if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
+							{
+								UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
+							}
+						}
+						else
+						{
+							UClass* TypeClass = UClass::FindClass(Prop.ClassName);
+							if (TypeClass) 
+							{
+								pArray[idx] = NewObject(TypeClass);
+								pArray[idx]->Serialize(bInIsLoading, ElementJson);
+							}
+						}
+						idx++;
+					}
+				}
+				else
+				{
+					for (UObject* Obj : pArray)
+					{
+						JSON ElementJson = json::Object();
+						if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
+						{
+							ElementJson["ResourceType"] = Prop.ClassName;
+							ElementJson["Path"] = Resource->GetFilePath();
+						}
+						else
+						{
+							Obj->Serialize(bInIsLoading, ElementJson);
+						}
+						ArrayJson.append(ElementJson);
+					}
+				}
+				break;
+			}
 			default:
 			{
 				//UE_LOG("[AutoSerialize] Array property '%s' has unsupported InnerType: %d", Prop.Name, static_cast<int>(Prop.InnerType));
@@ -397,8 +502,3 @@ UObject* UObject::Duplicate() const
 	NewObject->PostDuplicate();
     return NewObject;
 }
-
-
-
-
-

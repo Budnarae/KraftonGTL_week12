@@ -7,7 +7,7 @@ UCLASS(DisplayName="파티클 시스템", Description="파티클 데이터 저�
 class UParticleSystem : public UObject
 {
 public:
-    UParticleSystem() = default;
+    UParticleSystem();
     ~UParticleSystem() = default;
     
     GENERATED_REFLECTION_BODY()
@@ -39,7 +39,7 @@ public:
     
     // 이 시스템을 구성하는 모든 개별 이펙트 요소들(Emitter)의 리스트 (필수)
     // Emitter 배열 덕분에 시스템은 복합적인 시각 효과를 표현할 수 있습니다.
-    //UPROPERTY(EditAnywhere, Category="Array") //(작동안하니 하드코딩 렛츠고)
+    UPROPERTY(EditAnywhere, Category="Array")
     TArray<UParticleEmitter*> Emitters;
 
     // 이 시스템이 한 번 재생될 때의 총 재생 시간 (0이면 무한 루프)

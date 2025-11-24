@@ -743,3 +743,30 @@ static inline FString ToUtf8(const FString& Ansi)
     WideCharToMultiByte(CP_UTF8, 0, Wide.c_str(), -1, Utf8.data(), Utf8Len, nullptr, nullptr);
     return Utf8;
 }
+
+
+inline std::string NormalizeClassName(const std::string& name)
+{
+    std::string result = name;
+
+    auto left = result.find('<');
+    auto right = result.find('>');
+
+    std::string inner;
+
+    if (left != std::string::npos && right != std::string::npos && right > left)
+    {
+        // < > 안쪽 문자열만 추출
+        inner = result.substr(left + 1, right - left - 1);
+    }
+    else
+    {
+        inner = result; // 단순 클래스 이름
+    }
+
+    // 끝에 '*' 제거
+    while (!inner.empty() && inner.back() == '*')
+        inner.pop_back();
+
+    return inner; // 템플릿 이름 제거하고 클래스 이름만 반환
+}

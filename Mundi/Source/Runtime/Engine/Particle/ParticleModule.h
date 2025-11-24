@@ -2,7 +2,8 @@
 
 #include "UParticleModule.generated.h"
 
-struct FBaseParticle; 
+struct FBaseParticle;
+struct FParticleContext; 
 
 UCLASS(DisplayName="파티클 모듈", Description="파티클을 조작하는 기능을 맡습니다.")
 class UParticleModule : public UObject
@@ -17,12 +18,12 @@ public:
     // -------------------------------------------
     // 핵심 인터페이스 (Core Virtual Functions)
     // -------------------------------------------
-    
+
     // [Spawn Phase] 파티클 생성 시점에 딱 한 번 호출되어 초기 속성을 설정합니다.
-    virtual void Spawn(FBaseParticle* Particle, float EmitterTime);
+    virtual void Spawn(FParticleContext& Context, float EmitterTime);
 
     // [Update Phase] 파티클이 살아있는 동안 매 프레임 호출되어 속성을 갱신합니다.
-    virtual void Update(FBaseParticle* Particle, float DeltaTime);
+    virtual void Update(FParticleContext& Context, float DeltaTime);
 
     // -------------------------------------------
     // 페이로드(Payload) 및 메모리 관리 인터페이스

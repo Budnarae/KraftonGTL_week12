@@ -139,13 +139,4 @@ bool UParticleEmitter::IsValid() const
 void UParticleEmitter::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 {
     Super::Serialize(bInIsLoading, InOutHandle);
-
-    if (bInIsLoading)
-    {
-
-    }
-    else
-    {
-        InOutHandle["LODLevels"] = FJsonSerializer::UObjectArrayToJson(bInIsLoading, LODLevels);
-    }
 }

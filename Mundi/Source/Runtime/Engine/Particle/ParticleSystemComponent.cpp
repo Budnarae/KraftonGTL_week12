@@ -17,6 +17,79 @@ UParticleSystemComponent::UParticleSystemComponent()
     bCanEverTick = true;
 }
 
+UParticleSystemComponent::~UParticleSystemComponent()
+{
+    Deactivate();
+}
+
+// ============================================================================
+// 복사 관련 (Duplication)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// DuplicateSubObjects
+// ----------------------------------------------------------------------------
+// 얕은 복사된 멤버들에 대해 깊은 복사를 수행합니다.
+//
+// 처리 순서:
+// 1. Super::DuplicateSubObjects() 호출 (상위 클래스 복사 처리)
+// 2. Template - 얕은 복사 유지 (공유 Asset)
+// 3. EmitterInstances - 깊은 복사 수행
+//    - 각 FParticleEmitterInstance를 새로 생성
+//    - ParticleData 메모리 블록 복사
+//    - OwnerComponent를 새 컴포넌트(this)로 설정
+// ----------------------------------------------------------------------------
+void UParticleSystemComponent::DuplicateSubObjects()
+{
+    Super::DuplicateSubObjects();
+
+    // ------------------------------------------------------------------------
+    // EmitterInstances 깊은 복사
+    // ------------------------------------------------------------------------
+    // 현재 EmitterInstances는 원본의 포인터들을 얕은 복사한 상태입니다.
+    // 각 인스턴스를 새로 생성하고 데이터를 복사해야 합니다.
+
+    // Step 1: 원본 포인터 배열을 임시 저장
+    TArray<FParticleEmitterInstance*> OldInstances = EmitterInstances;
+
+    // Step 2: 현재 배열을 비움 (메모리 해제 아님 - 원본 것이므로)
+    EmitterInstances.Empty();
+
+    // Step 3: 각 인스턴스를 깊은 복사 (복사 생성자 사용)
+    for (FParticleEmitterInstance* OldInstance : OldInstances)
+    {
+        if (!OldInstance)
+        {
+            continue;
+        }
+
+        // 복사 생성자를 사용하여 새 인스턴스 생성
+        FParticleEmitterInstance* NewInstance = new FParticleEmitterInstance(*OldInstance);
+
+        // 소유자를 새 컴포넌트(this)로 설정
+        NewInstance->OwnerComponent = this;
+
+        // 새 인스턴스를 배열에 추가
+        EmitterInstances.Add(NewInstance);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// PostDuplicate
+// ----------------------------------------------------------------------------
+// 복사가 완료된 후 상태를 초기화합니다.
+//
+// 복사본은 새로운 인스턴스이므로:
+// - ElapsedTime을 0으로 리셋하여 처음부터 재생
+// ----------------------------------------------------------------------------
+void UParticleSystemComponent::PostDuplicate()
+{
+    Super::PostDuplicate();
+
+    // 복사본은 처음부터 시작하도록 경과 시간 초기화
+    ElapsedTime = 0.0f;
+}
+
 // Getters
 UParticleSystem* UParticleSystemComponent::GetTemplate() const
 {
@@ -168,7 +241,7 @@ void UParticleSystemComponent::Activate(bool bReset)
     }
 }
 
-// 시뮬레이션 종료 명령 (새 파티클 생성을 중단하고 기존 파티클이 수명을 다하도록 둠)
+// 시뮬레이션 종료 명령
 void UParticleSystemComponent::Deactivate()
 {
     for (FParticleEmitterInstance* Instance : EmitterInstances)

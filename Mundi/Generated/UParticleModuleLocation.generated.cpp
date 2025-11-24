@@ -35,8 +35,10 @@ const bool UParticleModuleLocation::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleModuleLocation)
     MARK_AS_COMPONENT("파티클 모듈 로케이션", "파티클의 초기 스폰 위치를 지정합니다.")
+    ADD_PROPERTY(FRawDistribution<FVector>, Distribution, "[위치]", true, "스폰 위치의 최소/최대 범위")
+    ADD_PROPERTY(float, DistributeOverNPoints, "[위치]", true, "균일 분산에 사용할 포인트 개수")
+    ADD_PROPERTY_RANGE(float, DistributionThreshold, "[위치]", 0.0f, 1.0f, true, "균일 분산 사용 임계값")
 END_PROPERTIES()
-
 
 // ===== Lua Binding =====
 

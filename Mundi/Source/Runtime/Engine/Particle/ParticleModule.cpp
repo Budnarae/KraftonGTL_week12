@@ -1,12 +1,13 @@
 ﻿#include "pch.h"
 #include "ParticleModule.h"
+#include "ParticleData.h"
 
 UParticleModule::UParticleModule(int32 InPayloadSize) :
     PayloadSize(InPayloadSize)
 {}
 
-void UParticleModule::Spawn(FBaseParticle* Particle, float EmitterTime) {}
-void UParticleModule::Update(FBaseParticle* Particle, float DeltaTime) {}
+void UParticleModule::Spawn(FParticleContext& Context, float EmitterTime) {}
+void UParticleModule::Update(FParticleContext& Context, float DeltaTime) {}
 
 int32 UParticleModule::GetRequiredPayloadSize() const { return PayloadSize; }
 
