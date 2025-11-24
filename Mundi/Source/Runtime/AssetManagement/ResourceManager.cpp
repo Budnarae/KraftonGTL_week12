@@ -437,6 +437,7 @@ void UResourceManager::CreateDefaultShader()
     Load<UShader>("Shaders/UI/Gizmo.hlsl");
     Load<UShader>("Shaders/UI/TextBillboard.hlsl");
     Load<UShader>("Shaders/UI/Billboard.hlsl");
+    Load<UShader>("Shaders/Effects/Beam.hlsl");
     Load<UShader>("Shaders/Materials/Fireball.hlsl");
 }
 
@@ -499,6 +500,18 @@ void UResourceManager::InitShaderILMap()
     layout.Add({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12,
                  D3D11_INPUT_PER_VERTEX_DATA, 0 });
     ShaderToInputLayoutMap["Shaders/UI/Billboard.hlsl"] = layout;
+    layout.clear();
+
+    // ────────────────────────────────
+    // Beam 셰이더 (Position + UV + Color)
+    // ────────────────────────────────
+    layout.Add({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+                 D3D11_INPUT_PER_VERTEX_DATA, 0 });
+    layout.Add({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12,
+                 D3D11_INPUT_PER_VERTEX_DATA, 0 });
+    layout.Add({ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 20,
+                 D3D11_INPUT_PER_VERTEX_DATA, 0 });
+    ShaderToInputLayoutMap["Shaders/Effects/Beam.hlsl"] = layout;
     layout.clear();
     
 

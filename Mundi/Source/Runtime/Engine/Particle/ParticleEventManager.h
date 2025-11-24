@@ -41,7 +41,7 @@ struct FParticleEventReceiverEntry
  * Particle Event Manager - manages and dispatches particle events
  * This actor receives events from particle systems and routes them to listeners
  */
-UCLASS(DisplayName="파티클 이벤트 매니저", Description="파티클 이벤트를 관리하고 배포합니다.")
+UCLASS()
 class AParticleEventManager : public AActor
 {
 public:

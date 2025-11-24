@@ -23,7 +23,7 @@ public:
     virtual void Update(FParticleContext& Context, float DeltaTime) override;
 
     // Getters
-    UMaterial* GetMaterial() const { return Material; }
+    UMaterialInterface* GetMaterial() const { return Material; }
     FVector GetEmitterOrigin() const { return EmitterOrigin; }
     FQuat GetEmitterRotation() const { return EmitterRotation; }
     float GetEmitterDuration() const { return EmitterDuration; }
@@ -32,7 +32,7 @@ public:
     float GetLifeTime() const { return LifeTime; }
 
     // Setters
-    void SetMaterial(UMaterial* InMaterial) { Material = InMaterial; }
+    void SetMaterial(UMaterialInterface* InMaterial) { Material = InMaterial; }
     void SetEmitterOrigin(const FVector& InOrigin) { EmitterOrigin = InOrigin; }
     void SetEmitterRotation(const FQuat& InRotation) { EmitterRotation = InRotation; }
     void SetEmitterDuration(float InDuration) { EmitterDuration = InDuration; }
@@ -42,7 +42,7 @@ public:
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")
-    UMaterial* Material{};
+    UMaterialInterface* Material{};
 
     UPROPERTY(EditAnywhere, Category="Basic")
     FVector EmitterOrigin{};

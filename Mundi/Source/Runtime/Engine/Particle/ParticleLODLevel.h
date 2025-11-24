@@ -34,6 +34,10 @@ public:
     // 이 LOD 레벨의 설정이 유효한지 확인
     bool IsValid() const;
 
+    // TypeDataModule 관련 함수
+    UParticleModuleTypeDataBase* GetTypeDataModule() const { return TypeDataModule; }
+    void SetTypeDataModule(UParticleModuleTypeDataBase* InTypeDataModule) { TypeDataModule = InTypeDataModule; }
+
     void Serialize(const bool bInIsLoading, JSON& InOutHandle);
 
 private:

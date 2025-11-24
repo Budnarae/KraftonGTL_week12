@@ -11,6 +11,7 @@
 #include "../Particle/ParticleModuleLifetime.h"
 #include "../Particle/ParticleModuleColor.h"
 #include "../Particle/ParticleModuleSize.h"
+#include "../Particle/ParticleModuleTypeDataBeam.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -46,20 +47,34 @@ AParticleSystemActor::AParticleSystemActor()
 			UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
 			if (RequiredModule)
 			{
-				// 머티리얼 설정 (Billboard 셰이더 사용)
-				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>("Shaders/UI/Billboard.hlsl");
-				if (ParticleMaterial)
+				// 머티리얼 설정 (Beam 셰이더 사용 - 빌보드 회전 없음)
+				UMaterial* BaseMaterial = UResourceManager::GetInstance().Load<UMaterial>("Shaders/Effects/Beam.hlsl");
+				if (BaseMaterial)
 				{
-					RequiredModule->SetMaterial(ParticleMaterial);
+					// 동적 머티리얼 인스턴스 생성
+					UMaterialInstanceDynamic* ParticleMaterial = UMaterialInstanceDynamic::Create(BaseMaterial);
+					if (ParticleMaterial)
+					{
+						// 텍스처 로드 및 설정
+						//UTexture* BeamTexture = UResourceManager::GetInstance().Load<UTexture>("Data/Textures/lightning_beam_01.png");
+						UTexture* BeamTexture = UResourceManager::GetInstance().Load<UTexture>("Data/Textures/energy_beam_soft.png");
+						if (BeamTexture)
+						{
+							ParticleMaterial->SetTextureParameterValue(EMaterialTextureSlot::Diffuse, BeamTexture);
+						}
+
+						RequiredModule->SetMaterial(ParticleMaterial);
+					}
 				}
 
-				// 파티클 생성 설정 - 가시성 좋게 높은 스폰율
-				RequiredModule->SetSpawnRate(50.0f);  // 초당 50개 생성
-				RequiredModule->SetLifeTime(3.0f); // 3초 수명
+				// 빔은 파티클이 필요 없으므로 SpawnRate 0
+				RequiredModule->SetSpawnRate(0.0f);  // 빔은 파티클 생성 안함
+				RequiredModule->SetLifeTime(1.0f);
 				RequiredModule->SetEmitterDuration(0.0f); // 0 = 무한 루프
 				RequiredModule->SetEmitterDelay(0.0f);
 			}
 
+			/* 스프라이트 모듈 주석처리 - 빔 테스트용
 			// 5. Location Module 설정 (스폰 위치 분산)
 			UParticleModuleLocation* LocationModule = NewObject<UParticleModuleLocation>();
 			if (LocationModule)
@@ -137,6 +152,38 @@ AParticleSystemActor::AParticleSystemActor()
 				SizeModule->SetUniformSize(0.1f, 0.3f);
 
 				TestLODLevel->AddSpawnModule(SizeModule);
+			}
+			*/
+
+			// 11. Beam TypeData 설정 (빔 렌더링 테스트)
+			UParticleModuleTypeDataBeam* BeamModule = NewObject<UParticleModuleTypeDataBeam>();
+			if (BeamModule)
+			{
+				// 빔 기본 설정
+				BeamModule->SetBeamMethod(EBeamMethod::Distance);  // 거리 기반 빔
+				BeamModule->SetBeamLength(20.0f);                  // 10 유닛 길이
+				BeamModule->SetBeamWidth(0.5f);                   // 빔 너비
+				BeamModule->SetSegmentCount(60);                   // 32개 세그먼트 (많은 꺾임)
+				BeamModule->SetTextureRepeat(1.0f);                // 텍스처 1번 반복
+
+				// 노이즈 설정 (각진 번개 효과)
+				BeamModule->SetNoiseAmplitude(0.8f);               // 노이즈 강도
+				BeamModule->SetNoiseFrequency(1.0f);
+
+				// 테이퍼링 (양 끝이 얇고 중간이 두꺼움)
+				BeamModule->SetTaperBeam(true);
+				BeamModule->SetTaperFactor(0.05f);                  // 끝단 5% 두께
+
+				// 새로운 번개 파라미터
+				BeamModule->SetBeamColor(FVector4(1.0f, 1.0f, 1.0f, 1.0f));  // 흰색 (텍스처 틴트)
+				BeamModule->SetJitterFrequency(30.0f);             // 초당 30번 지직거림
+				BeamModule->SetDisplacementDecay(0.6f);            // 변위 감소율
+				BeamModule->SetGlowIntensity(1.5f);                // 밝기 1.5배
+
+				// 텍스처 사용 활성화
+				BeamModule->SetUseTexture(true);
+
+				TestLODLevel->SetTypeDataModule(BeamModule);
 			}
 		}
 

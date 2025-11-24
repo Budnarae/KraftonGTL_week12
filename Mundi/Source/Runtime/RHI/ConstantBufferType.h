@@ -154,7 +154,17 @@ struct ColorBufferType // b3
 {
     FLinearColor Color;
     uint32 UUID;
-    FVector Padding;
+    FVector Padding;  // X=UVStart, Y=UVEnd, Z=UseTexture
+
+    ColorBufferType() = default;
+
+    // 기존 호환성을 위한 생성자
+    ColorBufferType(const FLinearColor& InColor, uint32 InUUID)
+        : Color(InColor), UUID(InUUID), Padding(FVector::Zero()) {}
+
+    // UV 데이터를 포함하는 생성자
+    ColorBufferType(const FLinearColor& InColor, uint32 InUUID, float UVStart, float UVEnd, float UseTexture)
+        : Color(InColor), UUID(InUUID), Padding(FVector(UVStart, UVEnd, UseTexture)) {}
 };
 
 struct FLightBufferType

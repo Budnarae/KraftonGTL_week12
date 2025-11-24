@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "ParticleEmitter.h"
+#include "ParticleModuleTypeDataBase.h"
 
 struct FBaseParticle
 {
@@ -108,15 +109,6 @@ public:
 
     // ParticleData 포인터를 기반으로 인덱스 배열의 시작 주소를 계산하여 ParticleIndices에 설정합니다.
     void SetupIndicesPtr();
-};
-
-// 에미터 타입 정의 (최소 구현)
-enum EDynamicEmitterType : int32
-{
-    EDET_Sprite,
-    EDET_Mesh,
-    EDET_Beam,
-    EDET_Ribbon
 };
 
 struct FDynamicEmitterReplayDataBase

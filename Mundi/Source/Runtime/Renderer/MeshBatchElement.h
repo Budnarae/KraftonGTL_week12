@@ -69,6 +69,11 @@ struct FMeshBatchElement
 	// (기본값으로 흰색(1,1,1,1)을 설정하는 것이 일반적입니다.)
 	FLinearColor InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
+	// 빔 UV 매핑용 (ColorBufferType의 Padding으로 전달됨)
+	float UVStart = 0.0f;      // 세그먼트 시작 U
+	float UVEnd = 1.0f;        // 세그먼트 끝 U
+	float UseTexture = 0.0f;   // 텍스처 사용 여부
+
 	// --- 기본 생성자 ---
 	FMeshBatchElement() = default;
 

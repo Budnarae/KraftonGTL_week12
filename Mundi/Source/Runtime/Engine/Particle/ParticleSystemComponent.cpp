@@ -4,6 +4,9 @@
 #include "Keyboard.h"
 #include "ParticleData.h"
 #include "ParticleHelper.h"
+#include "ParticleLODLevel.h"
+#include "ParticleModuleTypeDataBase.h"
+#include "ParticleModuleTypeDataBeam.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
 #include "ResourceManager.h"
@@ -339,7 +342,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
     // 2. 각 에미터 인스턴스를 순회
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
-        if (!Instance || Instance->ActiveParticles == 0)
+        if (!Instance)
         {
             continue;
         }
@@ -351,7 +354,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        UMaterial* ParticleMaterial = RequiredModule->GetMaterial();
+        UMaterialInterface* ParticleMaterial = RequiredModule->GetMaterial();
         if (!ParticleMaterial)
         {
             UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No material found.");
@@ -381,7 +384,162 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        // 6. 각 파티클에 대해 FMeshBatchElement 생성
+        // 5.5. TypeDataModule 체크 - Beam 타입인지 확인
+        UParticleLODLevel* LODLevel = Instance->SpriteTemplate->GetCurrentLODLevelInstance();
+        UParticleModuleTypeDataBase* TypeDataModule = LODLevel ? LODLevel->GetTypeDataModule() : nullptr;
+
+        // Beam 타입이면 빔 렌더링
+        if (TypeDataModule && TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Beam)
+        {
+            UParticleModuleTypeDataBeam* BeamModule = static_cast<UParticleModuleTypeDataBeam*>(TypeDataModule);
+
+            // 빔 포인트 계산 (시간을 전달하여 동적 노이즈)
+            TArray<FVector> BeamPoints;
+            TArray<float> BeamWidths;
+            BeamModule->CalculateBeamPoints(GetWorldLocation(), BeamPoints, BeamWidths, ElapsedTime);
+
+            if (BeamPoints.Num() < 2)
+                continue;
+
+            // 공유 리소스 준비 (Billboard Quad)
+            UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
+            if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
+                continue;
+
+            // 1. 각 포인트에 대해 Right 벡터를 미리 계산 (세그먼트 연결 문제 해결)
+            TArray<FVector> PointRightVectors;
+            PointRightVectors.SetNum(BeamPoints.Num());
+
+            for (int32 i = 0; i < BeamPoints.Num(); ++i)
+            {
+                // 이 포인트에서의 Forward 방향 계산 (인접 세그먼트들의 평균)
+                FVector Forward = FVector::Zero();
+
+                if (i > 0)
+                    Forward += (BeamPoints[i] - BeamPoints[i - 1]).GetNormalized();
+                if (i < BeamPoints.Num() - 1)
+                    Forward += (BeamPoints[i + 1] - BeamPoints[i]).GetNormalized();
+
+                if (Forward.Size() < 0.001f)
+                    Forward = FVector(1, 0, 0);
+                else
+                    Forward = Forward.GetNormalized();
+
+                // 카메라 방향
+                FVector ToCamera = (View->ViewLocation - BeamPoints[i]).GetNormalized();
+
+                // Right 벡터 계산
+                FVector Right = FVector::Cross(Forward, ToCamera);
+
+                // 폴백 처리
+                if (Right.Size() < 0.001f)
+                {
+                    Right = FVector::Cross(Forward, FVector(0, 0, 1));
+                    if (Right.Size() < 0.001f)
+                        Right = FVector::Cross(Forward, FVector(0, 1, 0));
+                }
+
+                PointRightVectors[i] = Right.GetNormalized();
+            }
+
+            // 2. 각 세그먼트를 빔 방향으로 정렬된 쿼드로 렌더링
+            for (int32 i = 0; i < BeamPoints.Num() - 1; ++i)
+            {
+                FVector Start = BeamPoints[i];
+                FVector End = BeamPoints[i + 1];
+                FVector Center = (Start + End) * 0.5f;
+                FVector SegmentDir = End - Start;
+                float SegmentLength = SegmentDir.Size();
+                float Width = (BeamWidths[i] + BeamWidths[i + 1]) * 0.5f;
+
+                if (SegmentLength < 0.001f)
+                    continue;
+
+                // 빔 방향 정규화
+                FVector Forward = SegmentDir / SegmentLength;
+
+                // 양 끝점 Right의 평균 사용 (세그먼트 연결 문제 해결)
+                FVector Right = ((PointRightVectors[i] + PointRightVectors[i + 1]) * 0.5f).GetNormalized();
+
+                // Up 벡터 계산
+                FVector Up = FVector::Cross(Right, Forward).GetNormalized();
+
+                FMeshBatchElement BatchElement;
+                BatchElement.VertexShader = ShaderVariant->VertexShader;
+                BatchElement.PixelShader = ShaderVariant->PixelShader;
+                BatchElement.InputLayout = ShaderVariant->InputLayout;
+                BatchElement.Material = ParticleMaterial;
+                BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
+                BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
+                BatchElement.VertexStride = ParticleQuad->GetVertexStride();
+                BatchElement.IndexCount = ParticleQuad->GetIndexCount();
+                BatchElement.StartIndex = 0;
+                BatchElement.BaseVertexIndex = 0;
+                BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+                // 회전 행렬 생성 (빔 방향으로 정렬)
+                // Quad의 기본 방향: X=오른쪽, Y=위쪽, Z=앞쪽
+                // 빔: X=Forward(길이 방향), Y=Right(너비 방향), Z=Up
+                FMatrix RotationMatrix = FMatrix::Identity();
+                RotationMatrix.M[0][0] = Forward.X; RotationMatrix.M[0][1] = Forward.Y; RotationMatrix.M[0][2] = Forward.Z;
+                RotationMatrix.M[1][0] = Right.X;   RotationMatrix.M[1][1] = Right.Y;   RotationMatrix.M[1][2] = Right.Z;
+                RotationMatrix.M[2][0] = Up.X;      RotationMatrix.M[2][1] = Up.Y;      RotationMatrix.M[2][2] = Up.Z;
+
+                FMatrix ScaleMatrix = FMatrix::MakeScale(FVector(SegmentLength, Width, 1.0f));
+                FMatrix TranslationMatrix = FMatrix::MakeTranslation(Center);
+                BatchElement.WorldMatrix = ScaleMatrix * RotationMatrix * TranslationMatrix;
+
+                // 빔 색상 (GlowIntensity 적용)
+                FVector4 BeamColor = BeamModule->GetBeamColor();
+                float GlowIntensity = BeamModule->GetGlowIntensity();
+                BatchElement.InstanceColor = FVector4(
+                    BeamColor.X * GlowIntensity,
+                    BeamColor.Y * GlowIntensity,
+                    BeamColor.Z * GlowIntensity,
+                    BeamColor.W
+                );
+
+                // UV 매핑 계산 (빔 전체에서 시작=0, 끝=1)
+                int32 NumSegments = BeamPoints.Num() - 1;
+                float UVStart = static_cast<float>(i) / static_cast<float>(NumSegments);
+                float UVEnd = static_cast<float>(i + 1) / static_cast<float>(NumSegments);
+                BatchElement.UVStart = UVStart;
+                BatchElement.UVEnd = UVEnd;
+
+                // 텍스처 사용 여부
+                bool bUseTexture = BeamModule->GetUseTexture();
+                BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+                // 텍스처 모드일 때만 머티리얼의 텍스처 사용
+                if (bUseTexture && ParticleMaterial)
+                {
+                    if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                    {
+                        BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    }
+                    else
+                    {
+                        BatchElement.InstanceShaderResourceView = nullptr;
+                    }
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+
+                BatchElement.ObjectID = InternalIndex;
+                OutMeshBatchElements.Add(BatchElement);
+            }
+            continue; // 빔 렌더링 완료, 스프라이트 렌더링 스킵
+        }
+
+        // 6. 각 파티클에 대해 FMeshBatchElement 생성 (스프라이트)
+        // 스프라이트는 ActiveParticles가 0이면 스킵
+        if (Instance->ActiveParticles == 0)
+        {
+            continue;
+        }
+
         // TODO: 현재는 각 파티클마다 별도의 Draw Call을 생성 (최소 구현)
         // 추후 인스턴싱이나 동적 버퍼로 최적화 필요
         for (int32 ParticleIndex = 0; ParticleIndex < Instance->ActiveParticles; ParticleIndex++)

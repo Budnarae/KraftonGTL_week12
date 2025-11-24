@@ -409,6 +409,9 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleCollision.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEventManager.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleEventGenerator.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\NoiseGenerator.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\PlacementDistribution.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.cpp" />
@@ -609,7 +612,11 @@
     <ClCompile Include="Generated\UParticleModuleSize.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleSpawn.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleVelocity.generated.cpp" />
-  <ClCompile Include="Generated\AParticleEventManager.generated.cpp" /><ClCompile Include="Generated\UParticleModuleCollision.generated.cpp" /><ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp" /><ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp" /></ItemGroup>
+    <ClCompile Include="Generated\AParticleEventManager.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleCollision.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp" />
+    <ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp" />
+  <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -861,6 +868,8 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEventManager.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleEventGenerator.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEventTypes.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.h" />
     <ClInclude Include="Source\Runtime\Engine\PCG\NoiseGenerator.h" />
     <ClInclude Include="Source\Runtime\Engine\PCG\PlacementDistribution.h" />
     <ClInclude Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.h" />
@@ -1083,8 +1092,13 @@
     <ClInclude Include="Generated\UParticleModuleSize.generated.h" />
     <ClInclude Include="Generated\UParticleModuleSpawn.generated.h" />
     <ClInclude Include="Generated\UParticleModuleVelocity.generated.h" />
-  <ClInclude Include="Generated\AParticleEventManager.generated.h" /><ClInclude Include="Generated\UParticleModuleCollision.generated.h" /><ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h" /><ClInclude Include="Generated\AProceduralPlacementVolume.generated.h" /></ItemGroup>
+    <ClInclude Include="Generated\AParticleEventManager.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleCollision.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h" />
+    <ClInclude Include="Generated\AProceduralPlacementVolume.generated.h" />
+  <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" /></ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />
     <None Include="Tools\CodeGenerator\parser.py" />
@@ -1094,7 +1108,9 @@
     <Text Include="Tools\CodeGenerator\requirements.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\directxtk_desktop_2019.2025.10.28.2\build\native\directxtk_desktop_2019.targets" Condition="Exists('..\packages\directxtk_desktop_2019.2025.10.28.2\build\native\directxtk_desktop_2019.targets')" />
+  </ImportGroup>
   <UsingTask TaskName="ConvertToBase64" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
     <ParameterGroup>
       <Input ParameterType="System.String" Required="true" />
@@ -1214,5 +1230,11 @@
       <Output TaskParameter="Output" PropertyName="EncodedScript" />
     </ConvertToBase64>
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand $(EncodedScript)" Condition="'$(EncodedScript)' != ''" />
+  </Target>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>이 프로젝트는 이 컴퓨터에 없는 NuGet 패키지를 참조합니다. 해당 패키지를 다운로드하려면 NuGet 패키지 복원을 사용하십시오. 자세한 내용은 http://go.microsoft.com/fwlink/?LinkID=322105를 참조하십시오. 누락된 파일은 {0}입니다.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\directxtk_desktop_2019.2025.10.28.2\build\native\directxtk_desktop_2019.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\directxtk_desktop_2019.2025.10.28.2\build\native\directxtk_desktop_2019.targets'))" />
   </Target>
 </Project>
