@@ -107,7 +107,7 @@ private:
     bool bModuleDropdown = false;
 
     // Cached center region used for viewport sizing and input mapping
-    FRect CenterRect;
+    FRect ViewportRect;
 
     // UI Widgets (재사용 가능)
     FAssetBrowserWidget AssetBrowser;

@@ -35,6 +35,14 @@ ImVec2 ModuleSize = ImVec2(100, 20);
 //함수 연결? 아니면 string?
 //함수연결이 낫겠지
 
+FRect GetWindowRect()
+{
+    ImVec2 pos = ImGui::GetWindowPos();
+    ImVec2 size = ImGui::GetWindowSize();
+    FRect Rect;
+    Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
+    return Rect;
+}
 
 void FMenuAction::Action(SParticleEditWindow* ParticleEditWindow) const
 {
@@ -176,7 +184,7 @@ void SParticleEditWindow::CreateParticleEditor(const UParticleModuleRequired* Pa
 }
 SParticleEditWindow::SParticleEditWindow()
 {
-    CenterRect = Rect;
+
 }
 
 SParticleEditWindow::~SParticleEditWindow()
@@ -243,11 +251,10 @@ void SParticleEditWindow::OnRender()
 
     if (ImGui::Begin("Particle Editor", &bIsOpen, ParentFlag))
     {
-        ImVec2 pos = ImGui::GetWindowPos();
-        ImVec2 size = ImGui::GetWindowSize();
-        Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
+        Rect = GetWindowRect();
         UParticleSystem& CurParticleSystem = State->PreviewParticle->ParticleSystem;
 
+        //상단 버튼 및 경로
         const char* PathStr = State->PreviewParticle == nullptr ? "None" : State->PreviewParticle->GetFilePath().c_str();
         ImGui::Text("Path %s", PathStr);
         if (ImGui::Button("New"))
@@ -292,17 +299,20 @@ void SParticleEditWindow::OnRender()
         }
 
 
+        //뷰포트
         ImVec2 ChildSize = Size * 0.5f;
         ImGui::BeginChild("Viewport", ChildSize);
+        ViewportRect = GetWindowRect();
+
         if (ImGui::IsWindowHovered())
         {
             HoveredWindowType = EHoveredWindowType::Viewport;
         }
         ImGui::Text("Viewport");
-        //World Rendering
         ImGui::EndChild();
         ImGui::SameLine();
 
+        //이미터
         ImGui::BeginChild("Emitter", ChildSize,0, ImGuiWindowFlags_HorizontalScrollbar);
         if (ImGui::IsWindowHovered())
         {
@@ -313,14 +323,15 @@ void SParticleEditWindow::OnRender()
         DrawEmitterView();
         DrawEmitterDropdown();
         DrawModuleDropdown();
-        //
         ImGui::EndChild();
 
+        //디테일
         ImGui::BeginChild("Detail", ChildSize);
         if (ImGui::IsWindowHovered())
         {
             HoveredWindowType = EHoveredWindowType::Detail;
         }
+        ImGui::Text("Emitter");
 
         if (State->SelectedModule)
         {
@@ -328,10 +339,11 @@ void SParticleEditWindow::OnRender()
         }
         ImGui::EndChild();
         ImGui::SameLine();
+
+
+        //커브 미구현
         ImGui::BeginChild("CurveEditor", ChildSize);
         ImGui::EndChild();
-
-      
         ImGui::End();
     }
 
@@ -353,9 +365,9 @@ void SParticleEditWindow::OnMouseMove(FVector2D MousePos)
 {
     if (!State || !State->Viewport) return;
 
-    if (CenterRect.Contains(MousePos))
+    if (ViewportRect.Contains(MousePos))
     {
-        FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
+        FVector2D LocalPos = MousePos - FVector2D(ViewportRect.Left, ViewportRect.Top);
         State->Viewport->ProcessMouseMove((int32)LocalPos.X, (int32)LocalPos.Y);
     }
 }
@@ -366,9 +378,9 @@ void SParticleEditWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
 
 
-    if (CenterRect.Contains(MousePos))
+    if (ViewportRect.Contains(MousePos))
     {
-        FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
+        FVector2D LocalPos = MousePos - FVector2D(ViewportRect.Left, ViewportRect.Top);
 
         // First, always try gizmo picking (pass to viewport)
         State->Viewport->ProcessMouseButtonDown((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
@@ -410,12 +422,12 @@ void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 
 void SParticleEditWindow::OnRenderViewport()
 {
-    if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
+    if (State && State->Viewport && ViewportRect.GetWidth() > 0 && ViewportRect.GetHeight() > 0)
     {
-        const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
-        const uint32 NewStartY = static_cast<uint32>(CenterRect.Top);
-        const uint32 NewWidth = static_cast<uint32>(CenterRect.Right - CenterRect.Left);
-        const uint32 NewHeight = static_cast<uint32>(CenterRect.Bottom - CenterRect.Top);
+        const uint32 NewStartX = static_cast<uint32>(ViewportRect.Left);
+        const uint32 NewStartY = static_cast<uint32>(ViewportRect.Top);
+        const uint32 NewWidth = static_cast<uint32>(ViewportRect.Right - ViewportRect.Left);
+        const uint32 NewHeight = static_cast<uint32>(ViewportRect.Bottom - ViewportRect.Top);
         State->Viewport->Resize(NewStartX, NewStartY, NewWidth, NewHeight);
 
         // 뷰포트 렌더링 (ImGui보다 먼저)

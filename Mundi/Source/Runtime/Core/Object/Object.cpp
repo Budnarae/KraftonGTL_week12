@@ -310,7 +310,10 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 					UClass* TypeClass = UClass::FindClass(Prop.ClassName);
 					if (TypeClass) 
 					{
-						(*object) = NewObject(TypeClass);
+						if ((*object) == nullptr)
+						{
+							(*object) = NewObject(TypeClass);
+						}
 						(*object)->Serialize(bInIsLoading, Json);
 					}
 				}
@@ -426,7 +429,10 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 					int idx = 0;
 					for (auto ElementJson : Json.ArrayRange())
 					{
-						pArray.emplace_back();
+						if (pArray.size() <= idx)
+						{
+							pArray.emplace_back();
+						}
 						if (UResourceBase* Resource = Cast<UResourceBase>(pArray[idx]))
 						{
 							FString ResourceTypeName;
@@ -443,7 +449,10 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 							UClass* TypeClass = UClass::FindClass(Prop.ClassName);
 							if (TypeClass) 
 							{
-								pArray[idx] = NewObject(TypeClass);
+								if (pArray[idx] == nullptr) 
+								{
+									pArray[idx] = NewObject(TypeClass);
+								}
 								pArray[idx]->Serialize(bInIsLoading, ElementJson);
 							}
 						}

@@ -14,6 +14,7 @@ ParticleViewerState* ParticleViewerBootstrap::CreateViewerState(const char* Name
     State->World = NewObject<UWorld>();
     State->World->SetWorldType(EWorldType::PreviewMinimal);  // Set as preview world for memory optimization
     State->World->Initialize();
+    State->World->GetGizmoActor()->SetActorActive(false);
     State->World->GetRenderSettings().DisableShowFlag(EEngineShowFlags::SF_EditorIcon);
 
     State->World->GetGizmoActor()->SetSpace(EGizmoSpace::Local);
@@ -24,7 +25,7 @@ ParticleViewerState* ParticleViewerBootstrap::CreateViewerState(const char* Name
     Client->SetWorld(State->World);
     Client->SetViewportType(EViewportType::Perspective);
     Client->SetViewMode(EViewMode::VMI_Lit_Phong);
-    Client->GetCamera()->SetActorLocation(FVector(3, 0, 2));
+    Client->GetCamera()->SetActorLocation(FVector(3, 0, 0));
 
     State->Client = Client;
     State->Viewport->SetViewportClient(Client);
