@@ -6,7 +6,7 @@
 
 UParticleLODLevel::UParticleLODLevel()
 {
-    // CreateRequiredModule();
+    CreateRequiredModule();
 }
 
 // SpawnModule 관련 함수

@@ -419,7 +419,7 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			case EPropertyType::ObjectPtr:
 			{
 				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
-				TArray<UObject*> pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
+				TArray<UObject*>& pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
 				if (bInIsLoading)
 				{
 					JSON Json = InOutHandle[Prop.Name];
