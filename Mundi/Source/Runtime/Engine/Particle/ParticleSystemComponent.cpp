@@ -7,6 +7,7 @@
 #include "ParticleLODLevel.h"
 #include "ParticleModuleTypeDataBase.h"
 #include "ParticleModuleTypeDataBeam.h"
+#include "ParticleModuleTypeDataRibbon.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
 #include "ResourceManager.h"
@@ -34,6 +35,18 @@ UParticleSystemComponent::~UParticleSystemComponent()
     {
         BeamIndexBuffer->Release();
         BeamIndexBuffer = nullptr;
+    }
+
+    // 리본 동적 버퍼 해제
+    if (RibbonVertexBuffer)
+    {
+        RibbonVertexBuffer->Release();
+        RibbonVertexBuffer = nullptr;
+    }
+    if (RibbonIndexBuffer)
+    {
+        RibbonIndexBuffer->Release();
+        RibbonIndexBuffer = nullptr;
     }
 }
 
@@ -109,6 +122,11 @@ void UParticleSystemComponent::PostDuplicate()
     BeamIndexBuffer = nullptr;
     BeamVertexBufferSize = 0;
     BeamIndexBufferSize = 0;
+
+    RibbonVertexBuffer = nullptr;
+    RibbonIndexBuffer = nullptr;
+    RibbonVertexBufferSize = 0;
+    RibbonIndexBufferSize = 0;
 }
 
 // Getters
@@ -329,6 +347,16 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
 
     ElapsedTime += DeltaTime;
 
+    // 현재 위치 저장
+    FVector CurrentLocation = GetWorldLocation();
+
+    // 이전 위치 초기화 (첫 프레임)
+    if (!bHasPreviousLocation)
+    {
+        PreviousWorldLocation = CurrentLocation;
+        bHasPreviousLocation = true;
+    }
+
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
         if (Instance)
@@ -337,15 +365,23 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
             Instance->Update(DeltaTime);
 
             // 2. 계산된 SpawnNum만큼 새 파티클 생성
+            // Increment = DeltaTime / SpawnNum으로 파티클들이 시간적으로 균등 분산
+            float Increment = (Instance->SpawnNum > 0) ? (DeltaTime / Instance->SpawnNum) : 0.0f;
+
+            // 이전 위치와 현재 위치를 전달하여 파티클 위치 보간
             Instance->SpawnParticles(
-                ElapsedTime,
-                0.01f,
-                Location,
+                ElapsedTime - DeltaTime,  // 이번 프레임의 시작 시간
+                Increment,
+                PreviousWorldLocation,    // 이전 프레임 위치
+                CurrentLocation,          // 현재 프레임 위치
                 Velocity,
                 nullptr
             );
         }
     }
+
+    // 이전 위치 업데이트
+    PreviousWorldLocation = CurrentLocation;
 }
 
 // 렌더링 관련 함수
@@ -612,6 +648,198 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             OutMeshBatchElements.Add(BatchElement);
 
             continue; // 빔 렌더링 완료, 스프라이트 렌더링 스킵
+        }
+
+        // Ribbon 타입이면 리본 렌더링
+        if (TypeDataModule && TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Ribbon)
+        {
+            UParticleModuleTypeDataRibbon* RibbonModule = static_cast<UParticleModuleTypeDataRibbon*>(TypeDataModule);
+
+            // 리본 포인트 계산 (파티클들로부터)
+            TArray<FVector> RibbonPoints;
+            TArray<float> RibbonWidths;
+            TArray<FLinearColor> RibbonColors;
+            RibbonModule->BuildRibbonFromParticles(Instance, GetWorldLocation(), RibbonPoints, RibbonWidths, RibbonColors);
+
+            if (RibbonPoints.Num() < 2)
+                continue;
+
+            // 1. 각 포인트에 대해 Right 벡터 계산 (카메라를 향하도록)
+            TArray<FVector> PointRightVectors;
+            PointRightVectors.SetNum(RibbonPoints.Num());
+
+            for (int32 i = 0; i < RibbonPoints.Num(); ++i)
+            {
+                FVector Forward;
+                if (i == 0)
+                    Forward = RibbonPoints[1] - RibbonPoints[0];
+                else if (i == RibbonPoints.Num() - 1)
+                    Forward = RibbonPoints[i] - RibbonPoints[i - 1];
+                else
+                    Forward = RibbonPoints[i + 1] - RibbonPoints[i - 1];
+
+                Forward = Forward.GetNormalized();
+
+                // 카메라를 향하는 Right 벡터
+                FVector ToCamera = (View->ViewLocation - RibbonPoints[i]).GetNormalized();
+                FVector Right = FVector::Cross(Forward, ToCamera);
+
+                // 폴백 처리
+                if (Right.Size() < 0.001f)
+                {
+                    Right = FVector::Cross(Forward, FVector(0, 0, 1));
+                    if (Right.Size() < 0.001f)
+                        Right = FVector::Cross(Forward, FVector(0, 1, 0));
+                }
+
+                PointRightVectors[i] = Right.GetNormalized();
+            }
+
+            // 2. 정점 데이터 생성
+            uint32 NumPoints = static_cast<uint32>(RibbonPoints.Num());
+            uint32 NumVertices = NumPoints * 2;
+            uint32 NumSegments = NumPoints - 1;
+            uint32 NumIndices = NumSegments * 6;
+
+            TArray<FBillboardVertex> Vertices;
+            TArray<uint32> Indices;
+            Vertices.SetNum(NumVertices);
+            Indices.SetNum(NumIndices);
+
+            // 텍스처 반복 계수
+            float TextureRepeat = RibbonModule->GetTextureRepeat();
+
+            // 정점 생성
+            for (uint32 i = 0; i < NumPoints; ++i)
+            {
+                FVector Point = RibbonPoints[i];
+                FVector Right = PointRightVectors[i];
+                float Width = RibbonWidths[i];
+                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1) * TextureRepeat;
+
+                // Bottom 정점 (V = 0)
+                Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
+                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+
+                // Top 정점 (V = 1)
+                Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
+                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+            }
+
+            // 인덱스 생성 (Triangle List)
+            for (uint32 i = 0; i < NumSegments; ++i)
+            {
+                uint32 BaseIndex = i * 6;
+                uint32 V0 = i * 2;
+                uint32 V1 = i * 2 + 1;
+                uint32 V2 = i * 2 + 2;
+                uint32 V3 = i * 2 + 3;
+
+                Indices[BaseIndex + 0] = V0;
+                Indices[BaseIndex + 1] = V1;
+                Indices[BaseIndex + 2] = V2;
+
+                Indices[BaseIndex + 3] = V1;
+                Indices[BaseIndex + 4] = V3;
+                Indices[BaseIndex + 5] = V2;
+            }
+
+            // 3. 동적 버퍼 생성/업데이트
+            D3D11RHI* RHIDevice = GEngine.GetRHIDevice();
+            ID3D11Device* Device = RHIDevice->GetDevice();
+
+            // 버텍스 버퍼
+            if (!RibbonVertexBuffer || RibbonVertexBufferSize < NumVertices)
+            {
+                if (RibbonVertexBuffer)
+                    RibbonVertexBuffer->Release();
+
+                D3D11_BUFFER_DESC VBDesc = {};
+                VBDesc.Usage = D3D11_USAGE_DYNAMIC;
+                VBDesc.ByteWidth = NumVertices * sizeof(FBillboardVertex);
+                VBDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+                VBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                Device->CreateBuffer(&VBDesc, nullptr, &RibbonVertexBuffer);
+                RibbonVertexBufferSize = NumVertices;
+            }
+
+            // 인덱스 버퍼
+            if (!RibbonIndexBuffer || RibbonIndexBufferSize < NumIndices)
+            {
+                if (RibbonIndexBuffer)
+                    RibbonIndexBuffer->Release();
+
+                D3D11_BUFFER_DESC IBDesc = {};
+                IBDesc.Usage = D3D11_USAGE_DYNAMIC;
+                IBDesc.ByteWidth = NumIndices * sizeof(uint32);
+                IBDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+                IBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                Device->CreateBuffer(&IBDesc, nullptr, &RibbonIndexBuffer);
+                RibbonIndexBufferSize = NumIndices;
+            }
+
+            // 버퍼 업데이트
+            ID3D11DeviceContext* Context = RHIDevice->GetDeviceContext();
+
+            D3D11_MAPPED_SUBRESOURCE MappedVB;
+            Context->Map(RibbonVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedVB);
+            memcpy(MappedVB.pData, Vertices.GetData(), NumVertices * sizeof(FBillboardVertex));
+            Context->Unmap(RibbonVertexBuffer, 0);
+
+            D3D11_MAPPED_SUBRESOURCE MappedIB;
+            Context->Map(RibbonIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedIB);
+            memcpy(MappedIB.pData, Indices.GetData(), NumIndices * sizeof(uint32));
+            Context->Unmap(RibbonIndexBuffer, 0);
+
+            // 4. BatchElement 생성
+            FMeshBatchElement BatchElement;
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = RibbonVertexBuffer;
+            BatchElement.IndexBuffer = RibbonIndexBuffer;
+            BatchElement.VertexStride = sizeof(FBillboardVertex);
+            BatchElement.IndexCount = NumIndices;
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+            BatchElement.WorldMatrix = FMatrix::Identity();
+
+            // 리본 색상 (머리 부분 색상 사용)
+            FLinearColor HeadColor = RibbonColors.Num() > 0 ? RibbonColors[RibbonColors.Num() - 1] : FLinearColor(1, 1, 1, 1);
+            BatchElement.InstanceColor = HeadColor;
+
+            BatchElement.UVStart = 0.0f;
+            BatchElement.UVEnd = 1.0f;
+
+            // 텍스처 설정
+            bool bUseTexture = RibbonModule->GetUseTexture();
+            BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+            if (bUseTexture && ParticleMaterial)
+            {
+                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                {
+                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            BatchElement.ObjectID = InternalIndex;
+            OutMeshBatchElements.Add(BatchElement);
+
+            continue; // 리본 렌더링 완료, 스프라이트 렌더링 스킵
         }
 
         // 6. 각 파티클에 대해 FMeshBatchElement 생성 (스프라이트)

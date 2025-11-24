@@ -108,4 +108,14 @@ private:
     ID3D11Buffer* BeamIndexBuffer = nullptr;
     uint32 BeamVertexBufferSize = 0;  // 현재 버퍼 용량 (정점 수)
     uint32 BeamIndexBufferSize = 0;   // 현재 버퍼 용량 (인덱스 수)
+
+    // 리본 렌더링용 동적 버퍼
+    ID3D11Buffer* RibbonVertexBuffer = nullptr;
+    ID3D11Buffer* RibbonIndexBuffer = nullptr;
+    uint32 RibbonVertexBufferSize = 0;
+    uint32 RibbonIndexBufferSize = 0;
+
+    // 리본 위치 보간을 위한 이전 프레임 위치
+    FVector PreviousWorldLocation = FVector::Zero();
+    bool bHasPreviousLocation = false;
 };

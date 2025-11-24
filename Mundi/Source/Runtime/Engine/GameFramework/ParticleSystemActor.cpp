@@ -12,6 +12,7 @@
 #include "../Particle/ParticleModuleColor.h"
 #include "../Particle/ParticleModuleSize.h"
 #include "../Particle/ParticleModuleTypeDataBeam.h"
+#include "../Particle/ParticleModuleTypeDataRibbon.h"
 #include "Material.h"
 #include "ResourceManager.h"
 
@@ -35,7 +36,7 @@ AParticleSystemActor::AParticleSystemActor()
 		// 2. Emitter 생성 (생성자에서 자동으로 LODLevel 배열이 생성됨)
 		UParticleEmitter* TestEmitter = NewObject<UParticleEmitter>();
 		TestEmitter->ObjectName = "TestEmitter";
-		TestEmitter->SetMaxParticleCount(100);
+		TestEmitter->SetMaxParticleCount(1000);  // SpawnRate(600) * Lifetime(1) 이상 필요
 
 		// 3. LOD Level 0에 접근 (이미 생성되어 있음)
 		UParticleLODLevel* TestLODLevel = TestEmitter->GetParticleLODLevelWithIndex(0);
@@ -67,53 +68,42 @@ AParticleSystemActor::AParticleSystemActor()
 					}
 				}
 
-				// 빔은 파티클이 필요 없으므로 SpawnRate 0
-				RequiredModule->SetSpawnRate(0.0f);  // 빔은 파티클 생성 안함
+				// 리본은 파티클이 필요하므로 SpawnRate 설정
+				RequiredModule->SetSpawnRate(600.0f);  // 초당 60개 (부드러운 리본)
 				RequiredModule->SetLifeTime(1.0f);
 				RequiredModule->SetEmitterDuration(0.0f); // 0 = 무한 루프
 				RequiredModule->SetEmitterDelay(0.0f);
 			}
 
-			/* 스프라이트 모듈 주석처리 - 빔 테스트용
-			// 5. Location Module 설정 (스폰 위치 분산)
+			// 5. Location Module 설정 (리본은 분산 없이 정확히 에미터 위치에서 스폰)
 			UParticleModuleLocation* LocationModule = NewObject<UParticleModuleLocation>();
 			if (LocationModule)
 			{
-				// 박스 형태로 스폰 영역 설정 (중심: 0, 반경: 50)
-				LocationModule->SetDistributionBox(FVector::Zero(), FVector(2.0f, 2.0f, 2.0f));
+				// 리본: 분산 0 - 모든 파티클이 에미터 위치에서 스폰되어야 경로가 리본이 됨
+				LocationModule->SetDistributionBox(FVector::Zero(), FVector::Zero());
 				TestLODLevel->AddSpawnModule(LocationModule);
 			}
 
-			// 6. Velocity Module 설정 (초기 속도)
+			// 6. Velocity Module 설정 (리본은 속도 0 - 에미터 이동으로 트레일 생성)
 			UParticleModuleVelocity* VelocityModule = NewObject<UParticleModuleVelocity>();
 			if (VelocityModule)
 			{
-				// 위쪽으로 솟아오르는 속도 설정 (Z축: 1~3 범위)
+				// 리본: 파티클이 제자리에 있어야 에미터 경로가 트레일이 됨
 				VelocityModule->SetVelocityRange(
-					FVector(-0.5f, -0.5f, 1.0f),  // Min: 약간의 수평 분산 + 위로
-					FVector(0.5f, 0.5f, 3.0f)     // Max: 약간의 수평 분산 + 위로
+					FVector(0.0f, 0.0f, 0.0f),  // Min
+					FVector(0.0f, 0.0f, 0.0f)   // Max
 				);
-
-				// 방사형 속도 추가 (바깥으로 퍼지는 효과)
-				VelocityModule->SetStartVelocityRadialMin(0.5f);
-				VelocityModule->SetStartVelocityRadialMax(1.5f);
 
 				TestLODLevel->AddSpawnModule(VelocityModule);
 			}
 
-			// 7. Spawn Module 설정 (스폰율 및 버스트)
+			// 7. Spawn Module 설정 (스폰율)
 			UParticleModuleSpawn* SpawnModule = NewObject<UParticleModuleSpawn>();
 			if (SpawnModule)
 			{
-				// 기본 스폰율: 초당 30~50개
-				SpawnModule->SetRateMin(30.0f);
-				SpawnModule->SetRateMax(50.0f);
-
-				// 시작 시 버스트: 0초에 20개 한번에 생성
-				SpawnModule->AddBurst(20, 0.0f);
-
-				// 1초에 추가 버스트: 10~30개 랜덤
-				SpawnModule->AddBurst(10, 30, 1.0f);
+				// 기본 스폰율: 초당 60개 (부드러운 리본을 위해 촘촘하게)
+				SpawnModule->SetRateMin(600.0f);
+				SpawnModule->SetRateMax(600.0f);
 
 				TestLODLevel->AddSpawnModule(SpawnModule);
 			}
@@ -122,8 +112,8 @@ AParticleSystemActor::AParticleSystemActor()
 			UParticleModuleLifetime* LifetimeModule = NewObject<UParticleModuleLifetime>();
 			if (LifetimeModule)
 			{
-				// 파티클 수명: 2~4초 랜덤
-				LifetimeModule->SetLifetimeRange(2.0f, 4.0f);
+				// 파티클 수명: 1초 (60개 포인트로 리본 형성)
+				LifetimeModule->SetLifetimeRange(1.0f, 1.0f);
 
 				TestLODLevel->AddSpawnModule(LifetimeModule);
 			}
@@ -132,29 +122,50 @@ AParticleSystemActor::AParticleSystemActor()
 			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
 			if (ColorModule)
 			{
-				// 주황~노랑 색상 범위 (불꽃 느낌)
+				// 파란~보라 색상 범위 (트레일 느낌)
 				ColorModule->SetColorRange(
-					FVector(1.0f, 0.3f, 0.0f),   // Min: 주황
-					FVector(1.0f, 0.8f, 0.2f)    // Max: 노랑
+					FVector(0.2f, 0.5f, 1.0f),   // Min: 파랑
+					FVector(0.8f, 0.3f, 1.0f)    // Max: 보라
 				);
 
-				// 알파: 0.8~1.0 (약간 반투명~불투명)
+				// 알파: 0.8~1.0
 				ColorModule->SetAlphaRange(0.8f, 1.0f);
 
 				TestLODLevel->AddSpawnModule(ColorModule);
 			}
 
-			// 10. Size Module 설정 (초기 크기)
+			// 10. Size Module 설정 (초기 크기 - 리본에서는 사용 안함)
 			UParticleModuleSize* SizeModule = NewObject<UParticleModuleSize>();
 			if (SizeModule)
 			{
-				// 파티클 크기: 0.1~0.3 유닛 (작은 파티클)
-				SizeModule->SetUniformSize(0.1f, 0.3f);
-
+				SizeModule->SetUniformSize(0.1f, 0.2f);
 				TestLODLevel->AddSpawnModule(SizeModule);
 			}
-			*/
 
+			// 11. Ribbon TypeData 설정 (리본 렌더링 테스트)
+			UParticleModuleTypeDataRibbon* RibbonModule = NewObject<UParticleModuleTypeDataRibbon>();
+			if (RibbonModule)
+			{
+				// 리본 기본 설정
+				RibbonModule->SetRibbonWidth(1.5f);                // 리본 너비 (더 굵게)
+				RibbonModule->SetFacingMode(ERibbonFacingMode::FaceCamera);  // 카메라 향함
+				RibbonModule->SetMaxParticlesPerRibbon(700);       // SpawnRate * Lifetime 이상 (600개 + 여유)
+
+				// 테이퍼링 (꼬리가 가늘어짐)
+				RibbonModule->SetTaperRibbon(true);
+				RibbonModule->SetTaperFactor(0.05f);               // 꼬리 5% 두께
+
+				// 리본 색상 (파티클 색상에 곱해짐)
+				RibbonModule->SetRibbonColor(FVector4(1.0f, 1.0f, 1.0f, 1.0f));
+
+				// 텍스처 설정
+				RibbonModule->SetTextureRepeat(3.0f);              // 텍스처 3번 반복
+				RibbonModule->SetUseTexture(false);                // 단색 테스트
+
+				TestLODLevel->SetTypeDataModule(RibbonModule);
+			}
+
+			/* Beam TypeData 주석처리 - 리본 테스트용
 			// 11. Beam TypeData 설정 (빔 렌더링 테스트)
 			UParticleModuleTypeDataBeam* BeamModule = NewObject<UParticleModuleTypeDataBeam>();
 			if (BeamModule)
@@ -185,6 +196,7 @@ AParticleSystemActor::AParticleSystemActor()
 
 				TestLODLevel->SetTypeDataModule(BeamModule);
 			}
+			*/
 		}
 
 		// Emitter를 ParticleSystem에 추가
@@ -204,6 +216,19 @@ AParticleSystemActor::AParticleSystemActor()
 void AParticleSystemActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 리본 테스트: 원형으로 이동하여 트레일 효과 확인
+	static float ElapsedTime = 0.0f;
+	ElapsedTime += DeltaTime;
+
+	float Radius = 5.0f;
+	float Speed = 2.0f;
+	FVector NewLocation;
+	NewLocation.X = Radius * cosf(ElapsedTime * Speed);
+	NewLocation.Y = Radius * sinf(ElapsedTime * Speed);
+	NewLocation.Z = 2.0f + sinf(ElapsedTime * Speed * 0.5f) * 1.0f;  // 위아래로도 약간 이동
+
+	SetActorLocation(NewLocation);
 }
 
 AParticleSystemActor::~AParticleSystemActor()

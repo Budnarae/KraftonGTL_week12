@@ -66,8 +66,9 @@ void UParticleModuleTypeDataRibbon::BuildRibbonFromParticles(
             continue;
 
         // Collect particle data for sorting
+        // 리본의 경우 Particle->Location이 이미 스폰 시점의 월드 좌표를 포함
         FRibbonParticleData Data;
-        Data.Location = Particle->Location + EmitterLocation;
+        Data.Location = Particle->Location;  // EmitterLocation 더하지 않음
         Data.Color = Particle->Color;
         Data.Width = Payload->Width > 0.0f ? Payload->Width : RibbonWidth;
         Data.SpawnTime = Payload->SpawnTime;

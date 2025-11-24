@@ -41,6 +41,18 @@ void UParticleEmitter::CacheEmitterModuleInfo()
         }
     }
 
+    // TypeDataModule의 PayloadSize도 포함 (Ribbon/Beam 등)
+    UParticleModuleTypeDataBase* TypeDataModule = LODLevel->GetTypeDataModule();
+    if (TypeDataModule)
+    {
+        int32 PayloadSize = TypeDataModule->GetRequiredPayloadSize();
+        if (PayloadSize > 0)
+        {
+            TypeDataModule->SetPayloadOffset(AccumulatedPayload);
+            AccumulatedPayload += PayloadSize;
+        }
+    }
+
     ParticleSize = sizeof(FBaseParticle) + AccumulatedPayload;
     // ParticleSize는 16 byte의 배수여야 하므로 padding을 부여한다.
     ParticleSize += ParticleSize % 16;
