@@ -177,8 +177,8 @@ public:
     // 2. 생성자/소멸자 (Minimal)
     // -------------------------------------------
     
-    FDynamicSpriteEmitterReplayDataBase();
-    virtual ~FDynamicSpriteEmitterReplayDataBase() {}
+    FDynamicSpriteEmitterReplayDataBase() = default;
+    virtual ~FDynamicSpriteEmitterReplayDataBase() = default;
 
     // -------------------------------------------
     // 3. 인터페이스 (Inherited/Override)

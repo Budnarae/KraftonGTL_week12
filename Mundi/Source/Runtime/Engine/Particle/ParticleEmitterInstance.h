@@ -3,6 +3,7 @@
 class UParticleEmitter;
 class UParticleSystemComponent;
 class UParticleLODLevel;
+struct FParticleEventInstancePayload;
 
 // 특정 UParticleEmitter 템플릿의 활성 시뮬레이션 상태를 담는 구조체
 struct FParticleEmitterInstance
@@ -67,11 +68,5 @@ public:
 
     void KillAllParticles();
 
-    float GetLifeTimeValue()
-    {
-        return SpriteTemplate->
-            GetCurrentLODLevelInstance()->
-            GetRequiredModule()->
-            GetLifeTime();
-    }
+    float GetLifeTimeValue();
 };

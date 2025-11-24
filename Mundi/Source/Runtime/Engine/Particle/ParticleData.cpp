@@ -2,6 +2,7 @@
 #include "ParticleData.h"
 
 #include "ParticleEmitter.h"
+#include "ParticleEmitterInstance.h"
 #include "ParticleModuleRequired.h"
 #include "ParticleHelper.h"
 #include "ParticleSystemComponent.h"

@@ -185,3 +185,11 @@ void FParticleEmitterInstance::KillAllParticles()
         ActiveParticles--;
     }
 }
+
+float FParticleEmitterInstance::GetLifeTimeValue()
+{
+    return SpriteTemplate->
+        GetCurrentLODLevelInstance()->
+        GetRequiredModule()->
+        GetLifeTime();
+}
