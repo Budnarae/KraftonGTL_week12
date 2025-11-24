@@ -300,7 +300,21 @@ struct FMeshParticleInstanceVertex;
 // 특정 UParticleEmitter 템플릿의 활성 시뮬레이션 상태를 담는 구조체
 struct FParticleEmitterInstance
 {
+    FParticleEmitterInstance() = default;
+    ~FParticleEmitterInstance();
+
+    // 복사 생성자 (Deep Copy)
+    FParticleEmitterInstance(const FParticleEmitterInstance& Other);
+
+    // 복사 대입 연산자 (Deep Copy)
+    FParticleEmitterInstance& operator=(const FParticleEmitterInstance& Other);
+
+private:
+    // 복사 헬퍼 함수
+    void CopyFrom(const FParticleEmitterInstance& Other);
+
 public:
+    
     // 템플릿 및 소유자 참조
     UParticleEmitter* SpriteTemplate{};
     UParticleSystemComponent* OwnerComponent{};
@@ -327,7 +341,7 @@ public:
     float Duration{};
     
     int32 ActiveParticles{};        // 현재 시뮬레이션 루프에서 실제 활성화된 파티클의 수 (현재 카운트).
-public:
+
     // 파티클 갱신 함수 (Update 모듈 호출)
     void Update(float DeltaTime);
     
@@ -343,6 +357,8 @@ public:
 
     // 파티클 소멸 함수
     void KillParticle(int32 Index);
+
+    void KillAllParticles();
 
     float GetLifeTimeValue()
     {

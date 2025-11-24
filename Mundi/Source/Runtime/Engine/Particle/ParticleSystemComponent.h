@@ -12,9 +12,15 @@ class UParticleSystemComponent : public UPrimitiveComponent
 {
 public:
     UParticleSystemComponent();
-    ~UParticleSystemComponent() = default;
+    ~UParticleSystemComponent();
 
     GENERATED_REFLECTION_BODY()
+
+    // ========================================================================
+    // 복사 관련 (Duplication)
+    // ========================================================================
+    void DuplicateSubObjects() override;
+    void PostDuplicate() override;
 
     // Getters
     UParticleSystem* GetTemplate() const;
