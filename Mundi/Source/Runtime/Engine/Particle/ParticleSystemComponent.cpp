@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "ParticleSystemComponent.h"
 
+#include "ParticleEmitterInstance.h"
 #include "Keyboard.h"
 #include "ParticleData.h"
 #include "ParticleHelper.h"
