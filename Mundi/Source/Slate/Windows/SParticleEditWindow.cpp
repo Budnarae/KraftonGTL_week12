@@ -4,6 +4,7 @@
 #include "FViewportClient.h"
 #include "Source/Runtime/Engine/ParticleEditor/ParticleViewerBootstrap.h"
 #include "USlateManager.h"
+#include "Source/Editor/PlatformProcess.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleRequired.h"
 #include "Source/Slate/Widgets/PropertyRenderer.h"
 #include "Source/Runtime/Engine/Particle/ParticleAsset.h"
@@ -157,13 +158,6 @@ void SParticleEditWindow::ResetModule()
 
 void SParticleEditWindow::CreateParticleEditor(const FString& Path)
 {
-    std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
-    UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
-    ParticleAsset->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
-    ParticleAsset->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
-    ParticleAsset->ParticleSystem.Emitters[1]->SetMaxParticleCount(3);
-    ParticleAsset->Save();
-
     auto* Viewer = USlateManager::GetInstance().FindViewer<SParticleEditWindow>();
     if (!Viewer || !Viewer->IsOpen())
     {
@@ -254,10 +248,42 @@ void SParticleEditWindow::OnRender()
         Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
         UParticleSystem& CurParticleSystem = State->PreviewParticle->ParticleSystem;
 
-        ImGui::Text("Path %s", State->PreviewParticle->GetFilePath().c_str());
+        const char* PathStr = State->PreviewParticle == nullptr ? "None" : State->PreviewParticle->GetFilePath().c_str();
+        ImGui::Text("Path %s", PathStr);
+        if (ImGui::Button("New"))
+        {
+            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
+            UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
+            ParticleAsset->Save();
+            State->PreviewParticle = ParticleAsset;
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Save"))
         {
+            if (State->PreviewParticle) 
+            {
+                State->PreviewParticle->Save();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load"))
+        {
+            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
+            const FWideString Extension = L".uasset";
+            const FWideString Description = L"Particle Files";
 
+            // Windows 파일 다이얼로그 열기
+            std::filesystem::path SelectedPath = FPlatformProcess::OpenLoadFileDialog(FolderPath.wstring(), Extension, Description);
+            if (SelectedPath.empty())
+            {
+                
+            }
+            else 
+            {
+                State->PreviewParticle = UResourceManager::GetInstance().Load<UParticleAsset>(SelectedPath.string());
+                State->SelectedEmitter = nullptr;
+                State->SelectedModule = nullptr;
+            }
         }
         ImGui::SameLine();
         if (ImGui::Button("Restart"))
@@ -423,6 +449,10 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitte
 
 void SParticleEditWindow::DrawEmitterView()
 {
+    if (State->PreviewParticle == nullptr)
+    {
+        return;
+    }
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HoveredColor);
     UParticleSystem& CurParticle = State->PreviewParticle->ParticleSystem;
