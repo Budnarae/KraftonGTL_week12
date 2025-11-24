@@ -127,6 +127,10 @@ void UParticleSystemComponent::PostDuplicate()
     RibbonIndexBuffer = nullptr;
     RibbonVertexBufferSize = 0;
     RibbonIndexBufferSize = 0;
+
+    // 거리 기반 스폰 상태 초기화
+    AccumulatedDistance = 0.0f;
+    bHasPreviousLocation = false;
 }
 
 // Getters
@@ -357,15 +361,28 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
         bHasPreviousLocation = true;
     }
 
+    // 이동 거리 계산
+    float MovedDistance = (CurrentLocation - PreviousWorldLocation).Size();
+
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
         if (Instance)
         {
-            // 1. Update 함수를 먼저 호출하여 SpawnNum 계산 및 기존 파티클 업데이트
+            // 기존 파티클 업데이트 (수명 체크 등)
             Instance->Update(DeltaTime);
 
-            // 2. 계산된 SpawnNum만큼 새 파티클 생성
-            // Increment = DeltaTime / SpawnNum으로 파티클들이 시간적으로 균등 분산
+            // 스폰 수 결정: 거리 기반 vs 시간 기반
+            if (DistancePerSpawn > 0.0f)
+            {
+                // 거리 기반 스폰
+                AccumulatedDistance += MovedDistance;
+                int32 SpawnsNeeded = static_cast<int32>(AccumulatedDistance / DistancePerSpawn);
+                AccumulatedDistance -= SpawnsNeeded * DistancePerSpawn;
+                Instance->SpawnNum = SpawnsNeeded;
+            }
+            // else: 시간 기반은 Update()에서 이미 SpawnNum 계산됨
+
+            // Increment 계산 (파티클들이 시간/공간적으로 균등 분산)
             float Increment = (Instance->SpawnNum > 0) ? (DeltaTime / Instance->SpawnNum) : 0.0f;
 
             // 이전 위치와 현재 위치를 전달하여 파티클 위치 보간

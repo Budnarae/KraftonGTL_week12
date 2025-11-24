@@ -37,6 +37,10 @@ public:
     void SetElapsedTime(float InElapsedTime);
     void SetCurrentLODLevel(const int32 InCurrentLODLevel);
 
+    // 거리 기반 스폰 설정 (0이면 시간 기반, > 0이면 거리 기반)
+    void SetDistancePerSpawn(float InDistance) { DistancePerSpawn = InDistance; }
+    float GetDistancePerSpawn() const { return DistancePerSpawn; }
+
     // SystemInstance 배열 관련 함수
     void AddEmitterInstance(FParticleEmitterInstance* Instance);
     bool RemoveEmitterInstance(FParticleEmitterInstance* Instance);
@@ -118,4 +122,8 @@ private:
     // 리본 위치 보간을 위한 이전 프레임 위치
     FVector PreviousWorldLocation = FVector::Zero();
     bool bHasPreviousLocation = false;
+
+    // 거리 기반 스폰 (0이면 시간 기반, > 0이면 해당 거리마다 1개 스폰)
+    float DistancePerSpawn = 0.0f;
+    float AccumulatedDistance = 0.0f;
 };

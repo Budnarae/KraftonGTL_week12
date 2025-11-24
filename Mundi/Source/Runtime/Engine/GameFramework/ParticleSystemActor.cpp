@@ -205,6 +205,10 @@ AParticleSystemActor::AParticleSystemActor()
 		// ParticleSystemComponent에 템플릿 설정
 		ParticleSystemComponent->SetTemplate(TestTemplate);
 
+		// 거리 기반 스폰 설정 (0.1 유닛마다 1개 파티클 스폰)
+		// 0이면 시간 기반 스폰 사용
+		ParticleSystemComponent->SetDistancePerSpawn(0.05f);
+
 		// 파티클 시스템 활성화
 		ParticleSystemComponent->Activate(false);
 	}
@@ -217,7 +221,9 @@ void AParticleSystemActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 리본 테스트: 원형으로 이동하여 트레일 효과 확인
+	// 플레이어에 어태치하거나 외부에서 위치를 제어할 때는 아래 코드가 필요 없음
+	// 아래는 독립 테스트용 원형 이동 코드 (필요시 주석 해제)
+	/*
 	static float ElapsedTime = 0.0f;
 	ElapsedTime += DeltaTime;
 
@@ -226,9 +232,10 @@ void AParticleSystemActor::Tick(float DeltaTime)
 	FVector NewLocation;
 	NewLocation.X = Radius * cosf(ElapsedTime * Speed);
 	NewLocation.Y = Radius * sinf(ElapsedTime * Speed);
-	NewLocation.Z = 2.0f + sinf(ElapsedTime * Speed * 0.5f) * 1.0f;  // 위아래로도 약간 이동
+	NewLocation.Z = 2.0f + sinf(ElapsedTime * Speed * 0.5f) * 1.0f;
 
 	SetActorLocation(NewLocation);
+	*/
 }
 
 AParticleSystemActor::~AParticleSystemActor()
