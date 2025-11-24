@@ -6,7 +6,53 @@
 class UParticleModuleRequired;
 class FViewport;
 class FViewportClient;
+class SParticleEditWindow;
 struct ID3D11Device;
+
+enum class EParticleEditorWindow
+{
+    None,
+    Viewport,
+    Emitter,
+    Detail
+};
+enum class EMenuActionType
+{
+    AddEmitter,
+    AddSpawnModule,
+    AddUpdateModule,
+};
+struct FMenuAction
+{
+    EMenuActionType MenuActionType;
+    int EmitterOffset;
+    FString ClassName;
+
+    static FMenuAction CreateSpawnModule(const FString& InClassName)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::AddSpawnModule;
+        Action.ClassName = InClassName;
+        return Action;
+    }
+    static FMenuAction CreateUpdateModule(const FString& InClassName)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::AddUpdateModule;
+        Action.ClassName = InClassName;
+        return Action;
+    }
+    static FMenuAction CreateAddEmitter(const int InEmitterOffset)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::AddEmitter;
+        Action.EmitterOffset = InEmitterOffset;
+        return Action;
+    }
+    void Action(SParticleEditWindow* ParticleEditWindow) const;
+private:
+    FMenuAction() = default;
+};
 
 class SParticleEditWindow : public SViewerWindowBase
 {
@@ -36,6 +82,15 @@ public:
 
     void OnRenderViewport();
 
+    UParticleSystem* GetParticleSystem()
+    {
+        return &State->PreviewParticle->ParticleSystem;
+    }
+    void AddEmitter(const int EmitterOffset);
+    void AddSpawnModule(const FString& ClassName);
+    void AddUpdateModule(const FString& ClassName);
+
+
 private:
 
     ParticleViewerState* State = nullptr;
@@ -44,14 +99,22 @@ private:
     float LeftPanelRatio = 0.25f;   // 25% of width
     float RightPanelRatio = 0.25f;  // 25% of width
 
+
+    EParticleEditorWindow HoveredWindow;
+    ImVec2 EmitterDropdownPos;
+    bool bEmitterDropdown = false;
+
     // Cached center region used for viewport sizing and input mapping
     FRect CenterRect;
 
     // UI Widgets (재사용 가능)
     FAssetBrowserWidget AssetBrowser;
-
+    
 
 private:
     void Save();
     void ReStart();
+
+    void DrawEmitterDropdown();
+
 };
