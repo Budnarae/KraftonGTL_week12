@@ -61,9 +61,13 @@ struct FParticleContext
     // 이 파티클을 소유하는 컴포넌트
     UParticleSystemComponent* Owner;
 
-    FParticleContext(FBaseParticle* InParticle, UParticleSystemComponent* InOwner)
+    // 파티클 인덱스 (이벤트 생성용)
+    int32 ParticleIndex;
+
+    FParticleContext(FBaseParticle* InParticle, UParticleSystemComponent* InOwner, int32 InParticleIndex = -1)
         : Particle(InParticle)
         , Owner(InOwner)
+        , ParticleIndex(InParticleIndex)
     {}
 };
 

@@ -1,9 +1,10 @@
 ﻿#include "ParticleSystem.h"           // 템플릿 정의
 #include "PrimitiveComponent.h"
+#include "ParticleEventTypes.h"
 #include "UParticleSystemComponent.generated.h"
 
 // 전방 선언: 실제 파티클 데이터를 담는 런타임 인스턴스 구조체
-//struct FParticleSystemInstance; 
+//struct FParticleSystemInstance;
 
 struct FParticleEmitterInstance; 
 
@@ -41,6 +42,24 @@ public:
     bool RemoveEmitterInstance(FParticleEmitterInstance* Instance);
     bool RemoveEmitterInstanceAt(int32 Index);
 
+    // Collision event 관련 함수
+    void AddCollisionEvent(const FParticleEventCollideData& CollideEvent);
+    void ClearCollisionEvents();
+    const TArray<FParticleEventCollideData>& GetCollisionEvents() const { return CollisionEvents; }
+
+    // Death event 관련 함수
+    void AddDeathEvent(const FParticleEventDeathData& DeathEvent);
+    void ClearDeathEvents();
+    const TArray<FParticleEventDeathData>& GetDeathEvents() const { return DeathEvents; }
+
+    // Spawn event 관련 함수
+    void AddSpawnEvent(const FParticleEventSpawnData& SpawnEvent);
+    void ClearSpawnEvents();
+    const TArray<FParticleEventSpawnData>& GetSpawnEvents() const { return SpawnEvents; }
+
+    // 모든 이벤트 클리어
+    void ClearAllEvents();
+
     // 렌더링 관련 함수
     void CollectMeshBatches(TArray<struct FMeshBatchElement>& OutMeshBatchElements, const struct FSceneView* View) override;
 
@@ -77,5 +96,10 @@ private:
     int32 CurrentLODLevel{};
 
     // 템플릿을 기반으로 실제 수많은 파티클의 데이터와 상태를 관리하는 내부 런타임 인스턴스
-    TArray<FParticleEmitterInstance*> EmitterInstances{}; 
+    TArray<FParticleEmitterInstance*> EmitterInstances{};
+
+    // 이번 틱에서 발생한 이벤트들
+    TArray<FParticleEventCollideData> CollisionEvents{};
+    TArray<FParticleEventDeathData> DeathEvents{};
+    TArray<FParticleEventSpawnData> SpawnEvents{};
 };

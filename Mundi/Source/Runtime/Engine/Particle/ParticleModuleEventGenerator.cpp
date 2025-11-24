@@ -8,13 +8,13 @@ UParticleModuleEventGenerator::UParticleModuleEventGenerator()
 {
 }
 
-void UParticleModuleEventGenerator::Spawn(FBaseParticle* Particle, float EmitterTime)
+void UParticleModuleEventGenerator::Spawn(FParticleContext& Context, float EmitterTime)
 {
     // Spawn events are generated externally when particles are created
     // This is just a placeholder for the module interface
 }
 
-void UParticleModuleEventGenerator::Update(FBaseParticle* Particle, float DeltaTime)
+void UParticleModuleEventGenerator::Update(FParticleContext& Context, float DeltaTime)
 {
     // Update events (like death) are generated when conditions are met
     // This is just a placeholder for the module interface

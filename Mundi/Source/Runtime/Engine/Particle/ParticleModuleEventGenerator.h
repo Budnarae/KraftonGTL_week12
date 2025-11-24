@@ -1,10 +1,12 @@
 #pragma once
 
 #include "ParticleModule.h"
+#include "ParticleData.h"
 #include "ParticleEventTypes.h"
 #include "UParticleModuleEventGenerator.generated.h"
 
 class UParticleSystemComponent;
+struct FParticleContext;
 
 /**
  * Event generator entry - defines what events to generate
@@ -40,8 +42,8 @@ public:
     GENERATED_REFLECTION_BODY()
 
     // UParticleModule interface
-    virtual void Spawn(FBaseParticle* Particle, float EmitterTime) override;
-    virtual void Update(FBaseParticle* Particle, float DeltaTime) override;
+    virtual void Spawn(FParticleContext& Context, float EmitterTime) override;
+    virtual void Update(FParticleContext& Context, float DeltaTime) override;
 
     // Generate spawn event
     void GenerateSpawnEvent(

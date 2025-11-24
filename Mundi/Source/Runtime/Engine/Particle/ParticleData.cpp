@@ -81,8 +81,8 @@ void FParticleEmitterInstance::Update(float DeltaTime)
     {
         DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
 
-        // FParticleContext 생성
-        FParticleContext Context(ParticleBase, OwnerComponent);
+        // FParticleContext 생성 (ParticleIndex 포함)
+        FParticleContext Context(ParticleBase, OwnerComponent, Index);
 
         UParticleModuleRequired* RequiredModule = \
             SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();

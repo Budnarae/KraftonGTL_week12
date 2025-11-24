@@ -1,11 +1,13 @@
 #pragma once
 
 #include "ParticleModule.h"
+#include "ParticleData.h"
 #include "UParticleModuleCollision.generated.h"
 
 class UParticleSystemComponent;
 class UWorld;
 struct FBaseParticle;
+struct FParticleContext;
 
 /**
  * Collision response type
@@ -30,17 +32,8 @@ public:
     GENERATED_REFLECTION_BODY()
 
     // UParticleModule interface
-    virtual void Spawn(FBaseParticle* Particle, float EmitterTime) override;
-    virtual void Update(FBaseParticle* Particle, float DeltaTime) override;
-
-    // Extended update with component context for collision queries
-    void UpdateWithContext(
-        FBaseParticle* Particle,
-        int32 ParticleIndex,
-        float DeltaTime,
-        UParticleSystemComponent* Component,
-        UWorld* World
-    );
+    virtual void Spawn(FParticleContext& Context, float EmitterTime) override;
+    virtual void Update(FParticleContext& Context, float DeltaTime) override;
 
     // Getters
     float GetDampingFactor() const { return DampingFactor; }

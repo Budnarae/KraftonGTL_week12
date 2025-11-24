@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "ParticleModuleCollision.h"
-#include "ParticleData.h"
 #include "ParticleSystemComponent.h"
 #include "ParticleEventTypes.h"
 #include "World.h"
+#include "Actor.h"
 #include "ShapeComponent.h"
 #include "Collision.h"
 #include "OBB.h"
@@ -13,26 +13,27 @@ UParticleModuleCollision::UParticleModuleCollision()
 {
 }
 
-void UParticleModuleCollision::Spawn(FBaseParticle* Particle, float EmitterTime)
+void UParticleModuleCollision::Spawn(FParticleContext& Context, float EmitterTime)
 {
     // Initialize collision state if needed
     // For now, no special spawn-time initialization required
 }
 
-void UParticleModuleCollision::Update(FBaseParticle* Particle, float DeltaTime)
+void UParticleModuleCollision::Update(FParticleContext& Context, float DeltaTime)
 {
-    // Basic update without context - collision checks require component context
-    // This is called when UpdateWithContext is not available
-}
+    FBaseParticle* Particle = Context.Particle;
+    UParticleSystemComponent* Component = Context.Owner;
 
-void UParticleModuleCollision::UpdateWithContext(
-    FBaseParticle* Particle,
-    int32 ParticleIndex,
-    float DeltaTime,
-    UParticleSystemComponent* Component,
-    UWorld* World)
-{
-    if (!Particle || !Component || !World)
+    if (!Particle || !Component)
+        return;
+
+    // Get World from owner component's actor
+    AActor* OwnerActor = Component->GetOwner();
+    if (!OwnerActor)
+        return;
+
+    UWorld* World = OwnerActor->GetWorld();
+    if (!World)
         return;
 
     // Calculate collision radius from particle size if not explicitly set
@@ -61,7 +62,7 @@ void UParticleModuleCollision::UpdateWithContext(
         // Generate collision event
         FParticleEventCollideData CollideEvent;
         CollideEvent.ParticleSystemComponent = Component;
-        CollideEvent.ParticleIndex = ParticleIndex;
+        CollideEvent.ParticleIndex = Context.ParticleIndex;
         CollideEvent.Location = HitLocation;
         CollideEvent.Velocity = Particle->Velocity;
         CollideEvent.Direction = Particle->Velocity.IsZero() ? FVector(1.0f, 0.0f, 0.0f) : Particle->Velocity.GetSafeNormal();

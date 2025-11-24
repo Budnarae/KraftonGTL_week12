@@ -192,6 +192,43 @@ bool UParticleSystemComponent::RemoveEmitterInstanceAt(int32 Index)
     return true;
 }
 
+void UParticleSystemComponent::AddCollisionEvent(const FParticleEventCollideData& CollideEvent)
+{
+    CollisionEvents.Add(CollideEvent);
+}
+
+void UParticleSystemComponent::ClearCollisionEvents()
+{
+    CollisionEvents.Empty();
+}
+
+void UParticleSystemComponent::AddDeathEvent(const FParticleEventDeathData& DeathEvent)
+{
+    DeathEvents.Add(DeathEvent);
+}
+
+void UParticleSystemComponent::ClearDeathEvents()
+{
+    DeathEvents.Empty();
+}
+
+void UParticleSystemComponent::AddSpawnEvent(const FParticleEventSpawnData& SpawnEvent)
+{
+    SpawnEvents.Add(SpawnEvent);
+}
+
+void UParticleSystemComponent::ClearSpawnEvents()
+{
+    SpawnEvents.Empty();
+}
+
+void UParticleSystemComponent::ClearAllEvents()
+{
+    ClearCollisionEvents();
+    ClearDeathEvents();
+    ClearSpawnEvents();
+}
+
 // 시뮬레이션 시작 명령 (파티클 생성 및 타이머 시작)
 void UParticleSystemComponent::Activate(bool bReset)
 {
@@ -265,6 +302,9 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
     // 임시 상수
     const static FVector Location = FVector(0, 0, 0);
     const static FVector Velocity = FVector(0, 0, 0.1f);
+
+    // 이전 틱의 collision events 클리어
+    ClearCollisionEvents();
 
     ElapsedTime += DeltaTime;
 
