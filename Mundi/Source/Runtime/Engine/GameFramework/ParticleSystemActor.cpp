@@ -142,6 +142,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(SizeModule);
 			}
 
+			/* Ribbon TypeData 주석처리 - 빔 테스트용
 			// 11. Ribbon TypeData 설정 (리본 렌더링 테스트)
 			UParticleModuleTypeDataRibbon* RibbonModule = NewObject<UParticleModuleTypeDataRibbon>();
 			if (RibbonModule)
@@ -164,39 +165,39 @@ AParticleSystemActor::AParticleSystemActor()
 
 				TestLODLevel->SetTypeDataModule(RibbonModule);
 			}
+			*/
 
-			/* Beam TypeData 주석처리 - 리본 테스트용
-			// 11. Beam TypeData 설정 (빔 렌더링 테스트)
+			// 11. Beam TypeData 설정 (빔 렌더링 테스트 - Target 모드)
 			UParticleModuleTypeDataBeam* BeamModule = NewObject<UParticleModuleTypeDataBeam>();
 			if (BeamModule)
 			{
-				// 빔 기본 설정
-				BeamModule->SetBeamMethod(EBeamMethod::Distance);  // 거리 기반 빔
-				BeamModule->SetBeamLength(20.0f);                  // 10 유닛 길이
-				BeamModule->SetBeamWidth(0.2f);                   // 빔 너비
-				BeamModule->SetSegmentCount(60);                   // 32개 세그먼트 (많은 꺾임)
+				// 빔 기본 설정 - Target 모드로 TestActor를 향함
+				BeamModule->SetBeamMethod(EBeamMethod::Distance);
+				//BeamModule->SetBeamMethod(EBeamMethod::Target);    // 타겟 기반 빔
+				BeamModule->SetBeamLength(10.0f);
+				BeamModule->SetBeamWidth(0.2f);                    // 빔 너비
+				BeamModule->SetSegmentCount(60);                   // 32개 세그먼트
 				BeamModule->SetTextureRepeat(1.0f);                // 텍스처 1번 반복
 
-				// 노이즈 설정 (각진 번개 효과)
-				BeamModule->SetNoiseAmplitude(2.0f);               // 노이즈 강도
+				// 노이즈 설정 (번개 효과)
+				BeamModule->SetNoiseAmplitude(0.5f);               // 노이즈 강도
 				BeamModule->SetNoiseFrequency(1.0f);
 
 				// 테이퍼링 (양 끝이 얇고 중간이 두꺼움)
 				BeamModule->SetTaperBeam(true);
-				BeamModule->SetTaperFactor(0.05f);                  // 끝단 5% 두께
+				BeamModule->SetTaperFactor(0.1f);                  // 끝단 10% 두께
 
-				// 새로운 번개 파라미터
-				BeamModule->SetBeamColor(FVector4(1.0f, 1.0f, 1.0f, 1.0f));  // 흰색 (텍스처 틴트)
-				BeamModule->SetJitterFrequency(30.0f);             // 초당 30번 지직거림
+				// 번개 파라미터
+				BeamModule->SetBeamColor(FVector4(0.5f, 0.8f, 1.0f, 1.0f));  // 파란색 번개
+				BeamModule->SetJitterFrequency(15.0f);             // 초당 15번 지직거림
 				BeamModule->SetDisplacementDecay(0.6f);            // 변위 감소율
 				BeamModule->SetGlowIntensity(1.5f);                // 밝기 1.5배
 
-				// 텍스처 사용 활성화
+				// 텍스처 사용
 				BeamModule->SetUseTexture(true);
 
 				TestLODLevel->SetTypeDataModule(BeamModule);
 			}
-			*/
 		}
 
 		// Emitter를 ParticleSystem에 추가
@@ -205,9 +206,8 @@ AParticleSystemActor::AParticleSystemActor()
 		// ParticleSystemComponent에 템플릿 설정
 		ParticleSystemComponent->SetTemplate(TestTemplate);
 
-		// 거리 기반 스폰 설정 (0.1 유닛마다 1개 파티클 스폰)
-		// 0이면 시간 기반 스폰 사용
-		ParticleSystemComponent->SetDistancePerSpawn(0.05f);
+		// 빔은 시간 기반 스폰 사용 (거리 기반 비활성화)
+		ParticleSystemComponent->SetDistancePerSpawn(0.0f);
 
 		// 파티클 시스템 활성화
 		ParticleSystemComponent->Activate(false);
@@ -221,21 +221,19 @@ void AParticleSystemActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 플레이어에 어태치하거나 외부에서 위치를 제어할 때는 아래 코드가 필요 없음
-	// 아래는 독립 테스트용 원형 이동 코드 (필요시 주석 해제)
-	/*
-	static float ElapsedTime = 0.0f;
-	ElapsedTime += DeltaTime;
-
-	float Radius = 5.0f;
-	float Speed = 2.0f;
-	FVector NewLocation;
-	NewLocation.X = Radius * cosf(ElapsedTime * Speed);
-	NewLocation.Y = Radius * sinf(ElapsedTime * Speed);
-	NewLocation.Z = 2.0f + sinf(ElapsedTime * Speed * 0.5f) * 1.0f;
-
-	SetActorLocation(NewLocation);
-	*/
+	// Beam Target Test Code - 웬만하면 삭제하지 마세요
+	//if (ParticleSystemComponent && !ParticleSystemComponent->GetBeamTargetActor())
+	//{
+	//	if (UWorld* World = GetWorld())
+	//	{
+	//		// "TestActor_1" 이름을 가진 액터를 찾아서 타겟으로 설정
+	//		AActor* TestActor = World->FindActorByName(FName("ATempCharacter_1"));
+	//		if (TestActor)
+	//		{
+	//			ParticleSystemComponent->SetBeamTargetActor(TestActor);
+	//		}
+	//	}
+	//}
 }
 
 AParticleSystemActor::~AParticleSystemActor()

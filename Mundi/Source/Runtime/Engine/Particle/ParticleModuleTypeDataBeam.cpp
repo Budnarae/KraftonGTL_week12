@@ -52,9 +52,51 @@ void UParticleModuleTypeDataBeam::CalculateBeamPoints(
         break;
     }
 
-    // 노이즈가 있으면 Midpoint Displacement 사용, 없으면 직선
+    // 노이즈가 있으면 연속 Perlin 노이즈 사용, 없으면 직선
     if (NoiseAmplitude > 0.0f)
     {
+        // 연속 Perlin 노이즈 방식 - 부드럽게 출렁이는 효과
+        int32 NumPoints = SegmentCount + 1;
+        OutPoints.Reserve(NumPoints);
+
+        // 빔 방향 벡터 계산
+        FVector BeamDir = (EndPoint - StartPoint).GetNormalized();
+
+        // 변위를 위한 수직 벡터들 계산
+        FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
+        FVector Right = FVector::Cross(BeamDir, WorldUp);
+        if (Right.Size() < 0.001f)
+        {
+            // 빔이 수직인 경우 대체 벡터 사용
+            Right = FVector::Cross(BeamDir, FVector(0.0f, 1.0f, 0.0f));
+        }
+        Right = Right.GetNormalized();
+        FVector Up = FVector::Cross(Right, BeamDir).GetNormalized();
+
+        for (int32 i = 0; i < NumPoints; ++i)
+        {
+            float T = static_cast<float>(i) / static_cast<float>(SegmentCount);
+            FVector BasePoint = StartPoint + (EndPoint - StartPoint) * T;
+
+            // Perlin 노이즈로 연속적 변위 (시간에 따라 부드럽게 변함)
+            float NoiseInputX = T * NoiseFrequency;
+            float NoiseInputTime = Time * JitterFrequency * 0.1f;  // JitterFrequency를 속도로 활용
+
+            float NoiseX = FNoiseGenerator::Perlin3D(NoiseInputX, NoiseInputTime, 0.0f);
+            float NoiseY = FNoiseGenerator::Perlin3D(NoiseInputX, NoiseInputTime, 100.0f);
+
+            // 양 끝은 변위 감소 (시작점과 끝점은 고정)
+            float EdgeFalloff = 4.0f * T * (1.0f - T);  // 0에서 시작, 0.5에서 최대, 1에서 0
+
+            // DisplacementDecay 적용 (끝으로 갈수록 감소)
+            float DecayFactor = std::pow(1.0f - T, DisplacementDecay);
+
+            FVector Displacement = (Right * NoiseX + Up * NoiseY) * NoiseAmplitude * EdgeFalloff * DecayFactor;
+
+            OutPoints.Add(BasePoint + Displacement);
+        }
+
+        /* Midpoint Displacement 방식 (지직거리는 번개 효과) - 필요시 주석 해제
         // SegmentCount를 depth로 변환 (depth=4 -> 16 세그먼트)
         // log2(SegmentCount)를 depth로 사용
         int32 Depth = 1;
@@ -79,6 +121,7 @@ void UParticleModuleTypeDataBeam::CalculateBeamPoints(
             OutPoints,
             DisplacementDecay
         );
+        */
     }
     else
     {

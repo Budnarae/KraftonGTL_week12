@@ -41,6 +41,14 @@ public:
     void SetDistancePerSpawn(float InDistance) { DistancePerSpawn = InDistance; }
     float GetDistancePerSpawn() const { return DistancePerSpawn; }
 
+    // 빔 타겟 액터 설정 (빔이 이 액터를 향함)
+    void SetBeamTargetActor(class AActor* InActor) { BeamTargetActor = InActor; }
+    AActor* GetBeamTargetActor() const { return BeamTargetActor; }
+
+    // 빔 소스 액터 설정 (빔이 이 액터에서 시작)
+    void SetBeamSourceActor(class AActor* InActor) { BeamSourceActor = InActor; }
+    AActor* GetBeamSourceActor() const { return BeamSourceActor; }
+
     // SystemInstance 배열 관련 함수
     void AddEmitterInstance(FParticleEmitterInstance* Instance);
     bool RemoveEmitterInstance(FParticleEmitterInstance* Instance);
@@ -126,4 +134,8 @@ private:
     // 거리 기반 스폰 (0이면 시간 기반, > 0이면 해당 거리마다 1개 스폰)
     float DistancePerSpawn = 0.0f;
     float AccumulatedDistance = 0.0f;
+
+    // 빔 타겟/소스 액터 (빔이 동적으로 이 액터들을 추적)
+    AActor* BeamTargetActor = nullptr;
+    AActor* BeamSourceActor = nullptr;
 };

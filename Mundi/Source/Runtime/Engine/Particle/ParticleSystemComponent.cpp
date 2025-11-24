@@ -15,6 +15,7 @@
 #include "Shader.h"
 #include "Quad.h"
 #include "Texture.h"
+#include "Actor.h"
 
 UParticleSystemComponent::UParticleSystemComponent()
 {
@@ -463,6 +464,17 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         if (TypeDataModule && TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Beam)
         {
             UParticleModuleTypeDataBeam* BeamModule = static_cast<UParticleModuleTypeDataBeam*>(TypeDataModule);
+
+            // 빔 타겟/소스 위치 동적 업데이트
+            if (BeamTargetActor && BeamModule->GetBeamMethod() == EBeamMethod::Target)
+            {
+                BeamModule->SetTargetPoint(BeamTargetActor->GetActorLocation());
+            }
+            if (BeamSourceActor)
+            {
+                // SourcePoint는 EmitterLocation 기준 로컬 좌표
+                BeamModule->SetSourcePoint(BeamSourceActor->GetActorLocation() - GetWorldLocation());
+            }
 
             // 빔 포인트 계산 (시간을 전달하여 동적 노이즈)
             TArray<FVector> BeamPoints;
