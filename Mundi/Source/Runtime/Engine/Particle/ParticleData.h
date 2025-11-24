@@ -262,35 +262,59 @@ struct FMeshParticleInstanceVertex;
 // ----------------------------------------------------
 // [A] 렌더링 타입별 다형성 데이터 (Dynamic Data Hierarchy)
 // ----------------------------------------------------
-//
-// // 1. Sprite 에미터의 기본 타입별 데이터 (추상)
-// struct FDynamicSpriteEmitterDataBase : public FDynamicEmitterDataBase
-// {
-//     void SortSpriteParticles(...) {}
-//     
-//     // Vertex Stride (Vertex 데이터 크기)를 반환하는 순수 가상 함수
-//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type /*InFeatureLevel*/) const = 0;
-// };
-//
-// // 2. 일반 Sprite 에미터의 구체적인 구현
-// struct FDynamicSpriteEmitterData : public FDynamicSpriteEmitterDataBase
-// {
-//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type InFeatureLevel) const override
-//     {
-//         return sizeof(FParticleSpriteVertex);
-//     }
-//     // ... 추가적인 스프라이트 전용 데이터
-// };
-//
-// // 3. Mesh 에미터의 구체적인 구현 (Vertex Stride 재정의)
-// struct FDynamicMeshEmitterData : public FDynamicSpriteEmitterData
-// {
-//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type /*InFeatureLevel*/) const override
-//     {
-//         return sizeof(FMeshParticleInstanceVertex);
-//     }
-//     // ... 추가적인 메시 전용 데이터
-// };
+
+// 전방 선언
+struct FParticleEmitterInstance;
+
+// ============================================================================
+// FDynamicSpriteEmitterData
+// ============================================================================
+// 스프라이트 에미터의 렌더링용 데이터 구조체입니다.
+// FParticleEmitterInstance로부터 렌더링에 필요한 정보를 추출하여 보관합니다.
+// 싱글 스레드 환경에서는 시뮬레이션 데이터를 직접 참조합니다.
+// ============================================================================
+struct FDynamicSpriteEmitterData
+{
+    FDynamicSpriteEmitterData() = default;
+    ~FDynamicSpriteEmitterData();
+
+    // UParticleSystem::Emitters 배열에서의 인덱스
+    int32 EmitterIndex = 0;
+
+    // 렌더링용 스냅샷 데이터
+    FDynamicSpriteEmitterReplayDataBase Source;
+
+    // ========================================================================
+    // 초기화 및 업데이트
+    // ========================================================================
+
+    // EmitterInstance로부터 렌더링 데이터 초기화/갱신
+    void Init(FParticleEmitterInstance* Instance, int32 Index);
+
+    // ========================================================================
+    // 파티클 정렬
+    // ========================================================================
+
+    // 카메라 위치 기준으로 파티클을 Back-to-Front 정렬
+    void SortParticles(const FVector& CameraPosition);
+
+    // ========================================================================
+    // 데이터 접근
+    // ========================================================================
+
+    // 스냅샷 데이터 반환
+    const FDynamicSpriteEmitterReplayDataBase& GetSource() const { return Source; }
+
+    // Vertex Stride 반환
+    int32 GetDynamicVertexStride() const { return sizeof(FParticleSpriteVertex); }
+
+    // ========================================================================
+    // 메모리 관리
+    // ========================================================================
+
+    // 할당된 인덱스 배열 해제
+    void Release();
+};
 
 // ----------------------------------------------------
 // [B] 런타임 에미터 코어 (FParticleEmitterInstance)

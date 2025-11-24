@@ -245,6 +245,9 @@ void UParticleSystemComponent::Activate(bool bReset)
 // 시뮬레이션 종료 명령
 void UParticleSystemComponent::Deactivate()
 {
+    // Dynamic Data 해제
+    ReleaseDynamicData();
+
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
         if (Instance)
@@ -258,6 +261,40 @@ void UParticleSystemComponent::Deactivate()
         }
     }
     EmitterInstances.clear();
+}
+
+// Dynamic Data 생성
+void UParticleSystemComponent::CreateDynamicData()
+{
+    // 기존 Dynamic Data 해제
+    ReleaseDynamicData();
+
+    // 각 EmitterInstance에 대해 Dynamic Data 생성
+    for (int32 i = 0; i < EmitterInstances.Num(); ++i)
+    {
+        FParticleEmitterInstance* Instance = EmitterInstances[i];
+        if (!Instance || Instance->ActiveParticles == 0)
+        {
+            continue;
+        }
+
+        FDynamicSpriteEmitterData* DynamicData = new FDynamicSpriteEmitterData();
+        DynamicData->Init(Instance, i);
+        DynamicEmitterData.Add(DynamicData);
+    }
+}
+
+// Dynamic Data 해제
+void UParticleSystemComponent::ReleaseDynamicData()
+{
+    for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
+    {
+        if (DynamicData)
+        {
+            delete DynamicData;
+        }
+    }
+    DynamicEmitterData.clear();
 }
 
 // [Tick Phase] 매 프레임 호출되어 DeltaTime만큼 시뮬레이션을 전진시킵니다. (가장 중요)
@@ -286,33 +323,42 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
             );
         }
     }
+
+    // 3. 시뮬레이션 완료 후 렌더링용 Dynamic Data 생성
+    CreateDynamicData();
 }
 
 // 렌더링 관련 함수
 void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& OutMeshBatchElements, const FSceneView* View)
 {
     // 1. 유효성 검사
-    if (!Template || EmitterInstances.empty())
+    if (!Template || DynamicEmitterData.empty())
     {
         return;
     }
 
-    // 2. 각 에미터 인스턴스를 순회
-    for (FParticleEmitterInstance* Instance : EmitterInstances)
+    // 2. 각 Dynamic Emitter Data를 순회
+    for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
     {
-        if (!Instance || Instance->ActiveParticles == 0)
+        if (!DynamicData)
         {
             continue;
         }
 
-        // 3. 렌더링에 필요한 리소스 준비
-        UParticleModuleRequired* RequiredModule = Instance->SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
-        if (!RequiredModule)
+        const FDynamicSpriteEmitterReplayDataBase& Source = DynamicData->GetSource();
+        if (Source.ActiveParticleCount == 0)
         {
             continue;
         }
 
-        UMaterial* ParticleMaterial = RequiredModule->GetMaterial();
+        // 3. 카메라 기준 파티클 정렬 (Back-to-Front for transparency)
+        if (View)
+        {
+            DynamicData->SortParticles(View->ViewLocation);
+        }
+
+        // 4. 렌더링에 필요한 리소스 준비
+        UMaterial* ParticleMaterial = Source.MaterialInterface;
         if (!ParticleMaterial)
         {
             UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No material found.");
@@ -326,7 +372,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        // 4. 공유 리소스 준비 (Billboard Quad)
+        // 5. 공유 리소스 준비 (Billboard Quad)
         UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
         if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
         {
@@ -334,7 +380,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        // 5. 셰이더 컴파일
+        // 6. 셰이더 컴파일
         FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ParticleMaterial->GetShaderMacros());
         if (!ShaderVariant)
         {
@@ -342,14 +388,20 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        // 6. 각 파티클에 대해 FMeshBatchElement 생성
+        // 7. 각 파티클에 대해 FMeshBatchElement 생성
         // TODO: 현재는 각 파티클마다 별도의 Draw Call을 생성 (최소 구현)
         // 추후 인스턴싱이나 동적 버퍼로 최적화 필요
-        for (int32 ParticleIndex = 0; ParticleIndex < Instance->ActiveParticles; ParticleIndex++)
-        {
-            DECLARE_PARTICLE_PTR(Particle, Instance->ParticleData + Instance->ParticleStride * ParticleIndex);
+        uint8* ParticleData = Source.DataContainer.ParticleData;
+        uint16* ParticleIndices = Source.DataContainer.ParticleIndices;
+        int32 ParticleStride = Source.ParticleStride;
 
-            // 7. FMeshBatchElement 생성
+        for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
+        {
+            // 정렬된 인덱스를 사용하여 파티클 접근
+            int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
+            DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
+
+            // 8. FMeshBatchElement 생성
             FMeshBatchElement BatchElement;
 
             // --- 정렬 키 ---

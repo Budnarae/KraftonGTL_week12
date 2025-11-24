@@ -3,9 +3,10 @@
 #include "UParticleSystemComponent.generated.h"
 
 // 전방 선언: 실제 파티클 데이터를 담는 런타임 인스턴스 구조체
-//struct FParticleSystemInstance; 
+//struct FParticleSystemInstance;
 
-struct FParticleEmitterInstance; 
+struct FParticleEmitterInstance;
+struct FDynamicSpriteEmitterData; 
 
 UCLASS(DisplayName="파티클 시스템 컴포넌트", Description="씬에 배치할 수 있는 파티클 컴포넌트입니다.")
 class UParticleSystemComponent : public UPrimitiveComponent
@@ -44,6 +45,10 @@ public:
     // 렌더링 관련 함수
     void CollectMeshBatches(TArray<struct FMeshBatchElement>& OutMeshBatchElements, const struct FSceneView* View) override;
 
+    // Dynamic Data 관리 함수
+    void CreateDynamicData();
+    void ReleaseDynamicData();
+
     // 시뮬레이션 시작 명령 (파티클 생성 및 타이머 시작)
     void Activate(bool bReset = false);
 
@@ -77,5 +82,8 @@ private:
     int32 CurrentLODLevel{};
 
     // 템플릿을 기반으로 실제 수많은 파티클의 데이터와 상태를 관리하는 내부 런타임 인스턴스
-    TArray<FParticleEmitterInstance*> EmitterInstances{}; 
+    TArray<FParticleEmitterInstance*> EmitterInstances{};
+
+    // 렌더링용 Dynamic Data (매 프레임 생성)
+    TArray<FDynamicSpriteEmitterData*> DynamicEmitterData{};
 };

@@ -1,2 +1,141 @@
 ﻿#include "pch.h"
 #include "ParticleData.h"
+
+#include "ParticleEmitter.h"
+#include "ParticleModuleRequired.h"
+#include "ParticleHelper.h"
+#include "ParticleSystemComponent.h"
+
+// ============================================================================
+// FDynamicSpriteEmitterData 구현
+// ============================================================================
+
+FDynamicSpriteEmitterData::~FDynamicSpriteEmitterData()
+{
+    Release();
+}
+
+// ----------------------------------------------------------------------------
+// Init - EmitterInstance로부터 렌더링 데이터 초기화
+// ----------------------------------------------------------------------------
+void FDynamicSpriteEmitterData::Init(FParticleEmitterInstance* Instance, int32 Index)
+{
+    if (!Instance)
+    {
+        return;
+    }
+
+    EmitterIndex = Index;
+
+    // 기본 정보 설정
+    Source.eEmitterType = EDET_Sprite;
+    Source.ActiveParticleCount = Instance->ActiveParticles;
+    Source.ParticleStride = Instance->ParticleStride;
+
+    // DataContainer 설정 (싱글 스레드이므로 직접 참조)
+    Source.DataContainer.ParticleData = Instance->ParticleData;
+    Source.DataContainer.ParticleDataNumBytes = Instance->ActiveParticles * Instance->ParticleStride;
+
+    // 인덱스 배열 할당/재할당
+    if (Source.DataContainer.ParticleIndices)
+    {
+        free(Source.DataContainer.ParticleIndices);
+        Source.DataContainer.ParticleIndices = nullptr;
+    }
+
+    if (Instance->ActiveParticles > 0)
+    {
+        Source.DataContainer.ParticleIndicesNumShorts = Instance->ActiveParticles;
+        Source.DataContainer.ParticleIndices = static_cast<uint16*>(
+            malloc(Instance->ActiveParticles * sizeof(uint16))
+        );
+
+        // 기본 순서로 인덱스 초기화
+        for (int32 i = 0; i < Instance->ActiveParticles; ++i)
+        {
+            Source.DataContainer.ParticleIndices[i] = static_cast<uint16>(i);
+        }
+    }
+
+    // 머티리얼 정보 설정
+    if (Instance->CurrentLODLevel && Instance->CurrentLODLevel->GetRequiredModule())
+    {
+        Source.MaterialInterface = Instance->CurrentLODLevel->GetRequiredModule()->GetMaterial();
+    }
+    else
+    {
+        Source.MaterialInterface = nullptr;
+    }
+
+    // 스케일 설정
+    if (Instance->OwnerComponent)
+    {
+        Source.Scale = Instance->OwnerComponent->GetWorldScale();
+    }
+    else
+    {
+        Source.Scale = FVector(1.0f, 1.0f, 1.0f);
+    }
+
+    // 정렬 모드 (기본값: 없음)
+    Source.SortMode = 0;
+}
+
+// ----------------------------------------------------------------------------
+// SortParticles - 카메라 거리 기준 Back-to-Front 정렬
+// ----------------------------------------------------------------------------
+void FDynamicSpriteEmitterData::SortParticles(const FVector& CameraPosition)
+{
+    if (Source.ActiveParticleCount <= 1 || !Source.DataContainer.ParticleIndices)
+    {
+        return;
+    }
+
+    uint8* ParticleData = Source.DataContainer.ParticleData;
+    int32 Stride = Source.ParticleStride;
+    uint16* Indices = Source.DataContainer.ParticleIndices;
+    int32 Count = Source.ActiveParticleCount;
+
+    // 각 파티클의 카메라 거리 제곱 계산
+    TArray<float> DistancesSq;
+    DistancesSq.SetNum(Count);
+
+    for (int32 i = 0; i < Count; ++i)
+    {
+        FBaseParticle* Particle = reinterpret_cast<FBaseParticle*>(ParticleData + i * Stride);
+        FVector Diff = Particle->Location - CameraPosition;
+        DistancesSq[i] = Diff.X * Diff.X + Diff.Y * Diff.Y + Diff.Z * Diff.Z;
+    }
+
+    // 인덱스 배열을 거리 기준으로 정렬 (먼 것부터 - Back-to-Front)
+    // 간단한 버블 정렬 (파티클 수가 많지 않을 때 적합)
+    for (int32 i = 0; i < Count - 1; ++i)
+    {
+        for (int32 j = 0; j < Count - i - 1; ++j)
+        {
+            if (DistancesSq[Indices[j]] < DistancesSq[Indices[j + 1]])
+            {
+                // Swap
+                uint16 Temp = Indices[j];
+                Indices[j] = Indices[j + 1];
+                Indices[j + 1] = Temp;
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Release - 할당된 메모리 해제
+// ----------------------------------------------------------------------------
+void FDynamicSpriteEmitterData::Release()
+{
+    if (Source.DataContainer.ParticleIndices)
+    {
+        free(Source.DataContainer.ParticleIndices);
+        Source.DataContainer.ParticleIndices = nullptr;
+    }
+
+    // ParticleData는 EmitterInstance가 소유하므로 여기서 해제하지 않음
+    Source.DataContainer.ParticleData = nullptr;
+    Source.ActiveParticleCount = 0;
+}
