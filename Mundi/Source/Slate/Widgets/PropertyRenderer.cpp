@@ -75,6 +75,10 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 		bChanged = RenderVectorProperty(Property, ObjectInstance);
 		break;
 
+	case EPropertyType::FQuat:
+		bChanged = RenderQuaternionProperty(Property, ObjectInstance);
+		break;
+
 	case EPropertyType::FLinearColor:
 		bChanged = RenderColorProperty(Property, ObjectInstance);
 		break;
@@ -511,6 +515,22 @@ bool UPropertyRenderer::RenderVectorProperty(const FProperty& Prop, void* Instan
 	return ImGui::DragFloat3(Prop.Name, &Value->X, 0.1f);
 }
 
+bool UPropertyRenderer::RenderQuaternionProperty(const FProperty& Prop, void* Instance)
+{
+	FQuat* Value = Prop.GetValuePtr<FQuat>(Instance);
+	FVector EulerDegree = Value->ToEulerZYXDeg();
+	bool bDrag = false;
+	if (ImGui::DragFloat3(Prop.Name, &EulerDegree.X, 0.1f))
+	{
+		bDrag = true;
+	}
+	FQuat EditedQuat = FQuat::MakeFromEulerZYX(EulerDegree);
+	Value->X = EditedQuat.X;
+	Value->Y = EditedQuat.Y;
+	Value->Z = EditedQuat.Z;
+	Value->W = EditedQuat.W;
+	return bDrag;
+}
 bool UPropertyRenderer::RenderColorProperty(const FProperty& Prop, void* Instance)
 {
 	FLinearColor* Value = Prop.GetValuePtr<FLinearColor>(Instance);

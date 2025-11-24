@@ -26,6 +26,7 @@ private:
 	static bool RenderInt32Property(const FProperty& Prop, void* Instance);
 	static bool RenderFloatProperty(const FProperty& Prop, void* Instance);
 	static bool RenderVectorProperty(const FProperty& Prop, void* Instance);
+	static bool RenderQuaternionProperty(const FProperty& Prop, void* Instance);
 	static bool RenderColorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderStringProperty(const FProperty& Prop, void* Instance);
 	static bool RenderNameProperty(const FProperty& Prop, void* Instance);

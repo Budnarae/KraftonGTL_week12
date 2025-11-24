@@ -3,6 +3,7 @@
 #include "Color.h"
 #include "StaticMesh.h"
 #include "Texture.h"
+#include "Source/Runtime/Core/Math/Statistics.h"
 #include <type_traits>
 
 // ===== 타입 자동 감지 템플릿 =====
@@ -33,6 +34,12 @@ struct TPropertyTypeTraits
 			return EPropertyType::Texture;
 		else if constexpr (std::is_same_v<T, UStaticMesh>)
 			return EPropertyType::StaticMesh;
+		else if constexpr (std::is_same_v<T, FQuat>)
+			return EPropertyType::FQuat;
+		else if constexpr (std::is_same_v <T, FRawDistribution<float>>)
+			return EPropertyType::RawDistribution_Float;
+		else if constexpr (std::is_same_v <T, FRawDistribution<FVector>>)
+			return EPropertyType::RawDistribution_FVector;
 		//else if constexpr (std::is_same_v<T, USound>)
 		//	return EPropertyType::Sound;
 		else
