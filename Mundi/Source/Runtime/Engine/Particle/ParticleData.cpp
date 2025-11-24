@@ -4,8 +4,9 @@
 #include "ParticleEmitter.h"
 #include "ParticleEmitterInstance.h"
 #include "ParticleModuleRequired.h"
-#include "ParticleHelper.h"
 #include "ParticleSystemComponent.h"
+
+#include <algorithm>
 
 // ============================================================================
 // FDynamicSpriteEmitterData 구현
@@ -99,7 +100,7 @@ void FDynamicSpriteEmitterData::SortParticles(const FVector& CameraPosition)
 
     // 각 파티클의 카메라 거리 제곱 계산
     TArray<float> DistancesSq;
-    DistancesSq.SetNum(Count);
+    DistancesSq.resize(Count);
 
     for (int32 i = 0; i < Count; ++i)
     {
@@ -109,20 +110,11 @@ void FDynamicSpriteEmitterData::SortParticles(const FVector& CameraPosition)
     }
 
     // 인덱스 배열을 거리 기준으로 정렬 (먼 것부터 - Back-to-Front)
-    // 간단한 버블 정렬 (파티클 수가 많지 않을 때 적합)
-    for (int32 i = 0; i < Count - 1; ++i)
+    // std::sort 사용 - O(n log n) 복잡도
+    std::sort(Indices, Indices + Count, [&DistancesSq](uint16 A, uint16 B)
     {
-        for (int32 j = 0; j < Count - i - 1; ++j)
-        {
-            if (DistancesSq[Indices[j]] < DistancesSq[Indices[j + 1]])
-            {
-                // Swap
-                uint16 Temp = Indices[j];
-                Indices[j] = Indices[j + 1];
-                Indices[j + 1] = Temp;
-            }
-        }
-    }
+        return DistancesSq[A] > DistancesSq[B]; // 내림차순 (먼 것부터)
+    });
 }
 
 // ----------------------------------------------------------------------------
