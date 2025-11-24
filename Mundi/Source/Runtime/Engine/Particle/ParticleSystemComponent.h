@@ -102,4 +102,10 @@ private:
     TArray<FParticleEventCollideData> CollisionEvents{};
     TArray<FParticleEventDeathData> DeathEvents{};
     TArray<FParticleEventSpawnData> SpawnEvents{};
+
+    // 빔 렌더링용 동적 버퍼
+    ID3D11Buffer* BeamVertexBuffer = nullptr;
+    ID3D11Buffer* BeamIndexBuffer = nullptr;
+    uint32 BeamVertexBufferSize = 0;  // 현재 버퍼 용량 (정점 수)
+    uint32 BeamIndexBufferSize = 0;   // 현재 버퍼 용량 (인덱스 수)
 };

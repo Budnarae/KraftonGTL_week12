@@ -162,12 +162,12 @@ AParticleSystemActor::AParticleSystemActor()
 				// 빔 기본 설정
 				BeamModule->SetBeamMethod(EBeamMethod::Distance);  // 거리 기반 빔
 				BeamModule->SetBeamLength(20.0f);                  // 10 유닛 길이
-				BeamModule->SetBeamWidth(0.5f);                   // 빔 너비
+				BeamModule->SetBeamWidth(0.2f);                   // 빔 너비
 				BeamModule->SetSegmentCount(60);                   // 32개 세그먼트 (많은 꺾임)
 				BeamModule->SetTextureRepeat(1.0f);                // 텍스처 1번 반복
 
 				// 노이즈 설정 (각진 번개 효과)
-				BeamModule->SetNoiseAmplitude(0.8f);               // 노이즈 강도
+				BeamModule->SetNoiseAmplitude(2.0f);               // 노이즈 강도
 				BeamModule->SetNoiseFrequency(1.0f);
 
 				// 테이퍼링 (양 끝이 얇고 중간이 두꺼움)
