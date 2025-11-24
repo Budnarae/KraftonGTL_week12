@@ -1,8 +1,11 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleModuleLifetime.h"
 
 #include "ParticleData.h"
 #include "ParticleSystemComponent.h"
+
+IMPLEMENT_CLASS(UParticleModuleLifetime)
+
 
 // ============================================================================
 // 생성자

@@ -10,6 +10,10 @@
 #include "Source/Runtime/Engine/Particle/ParticleSystem.h"
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleColor.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleLifeTime.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleLocation.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleSize.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleVelocity.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -60,7 +64,27 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
         {"초기컬러", FMenuAction::CreateSpawnModule(UParticleModuleColor::StaticClass()->Name)},
         {"컬러 오버 라이프", FMenuAction::CreateUpdateModule(UParticleModuleColor::StaticClass()->Name)},
     }
+    },
+    {"수명",
+    {
+        {"수명", FMenuAction::CreateSpawnModule(UParticleModuleLifetime::StaticClass()->Name)},
     }
+    },
+    {"위치",
+    {
+        {"초기 위치", FMenuAction::CreateSpawnModule(UParticleModuleLocation::StaticClass()->Name)},
+    }
+    },
+    {"크기",
+    {
+        {"초기 크기", FMenuAction::CreateSpawnModule(UParticleModuleSize::StaticClass()->Name)},
+    }
+    },
+    {"속도",
+    {
+        {"초기 속도", FMenuAction::CreateSpawnModule(UParticleModuleVelocity::StaticClass()->Name)},
+    }
+    },
 };
 
 
@@ -270,6 +294,11 @@ void SParticleEditWindow::OnRender()
         if (ImGui::IsWindowHovered())
         {
             HoveredWindowType = EHoveredWindowType::Detail;
+        }
+
+        if (State->SelectedModule)
+        {
+            UPropertyRenderer::RenderAllProperties(State->SelectedModule);
         }
         ImGui::EndChild();
         ImGui::SameLine();
