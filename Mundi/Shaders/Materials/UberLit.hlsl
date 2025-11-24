@@ -2,12 +2,17 @@
 // Filename:      UberLit.hlsl
 // Description:   오브젝트 표면 렌더링을 위한 기본 Uber 셰이더.
 //                Extends StaticMeshShader with full lighting support (Gouraud, Lambert, Phong)
+//                Particle Sprite 인스턴싱 지원 (PARTICLE_SPRITE 매크로)
+// Force Recompile: 1
 //================================================================================================
 
 // --- 조명 모델 선택 ---
 // #define LIGHTING_MODEL_GOURAUD 1
 // #define LIGHTING_MODEL_LAMBERT 1
 // #define LIGHTING_MODEL_PHONG 1
+
+// --- 파티클 스프라이트 모드 ---
+// #define PARTICLE_SPRITE 1
 
 // --- Material 구조체 (OBJ 머티리얼 정보) ---
 // 주의: SPECULAR_COLOR 매크로에서 사용하므로 include 전에 정의 필요
@@ -72,6 +77,20 @@ cbuffer FLightShadowmBufferType : register(b5)
     float2 ShadowPadding;
 };
 
+// --- 파티클 인스턴스 데이터 (GPU 인스턴싱용) ---
+#ifdef PARTICLE_SPRITE
+struct FParticleInstanceData
+{
+    float3 Position;    // 월드 위치
+    float Rotation;     // 회전 각도 (라디안)
+    float2 Size;        // 파티클 크기 (Width, Height)
+    float2 Padding;     // 16바이트 정렬
+    float4 Color;       // 파티클 색상 (RGBA)
+};
+
+StructuredBuffer<FParticleInstanceData> g_ParticleInstances : register(t12);
+#endif
+
 // --- Material.SpecularColor 지원 매크로 ---
 // LightingCommon.hlsl의 CalculateSpecular에서 Material.SpecularColor를 사용하도록 설정
 // 금속 재질의 컬러 Specular 지원
@@ -102,6 +121,14 @@ SamplerState g_VSMSampler : register(s3);
 #endif
 
 // --- 셰이더 입출력 구조체 ---
+#ifdef PARTICLE_SPRITE
+// 파티클 스프라이트용 간소화된 입력 (FBillboardVertex와 일치)
+struct VS_INPUT
+{
+    float3 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
+};
+#else
 struct VS_INPUT
 {
     float3 Position : POSITION;
@@ -109,12 +136,13 @@ struct VS_INPUT
     float2 TexCoord : TEXCOORD0;
     float4 Tangent : TANGENT0;
     float4 Color : COLOR;
-    
+
 #ifdef ENABLE_GPU_SKINNING
     uint4 BoneIndices : BLENDINDICES;
     float4 BoneWeights : BLENDWEIGHT;
 #endif
 };
+#endif
 
 struct PS_INPUT
 {
@@ -135,10 +163,58 @@ struct PS_OUTPUT
 //================================================================================================
 // 버텍스 셰이더 (Vertex Shader)
 //================================================================================================
-PS_INPUT mainVS(VS_INPUT Input)
+PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
 {
     PS_INPUT Out;
-   
+
+#ifdef PARTICLE_SPRITE
+    // ========================================================================
+    // 파티클 스프라이트 빌보드 처리
+    // ========================================================================
+    FParticleInstanceData particle = g_ParticleInstances[InstanceID];
+
+    // 로컬 위치에 파티클 크기 적용
+    float3 scaledPos = Input.Position * float3(particle.Size.x, particle.Size.y, 1.0f);
+
+    // 회전 적용 (Z축 기준)
+    float cosR = cos(particle.Rotation);
+    float sinR = sin(particle.Rotation);
+    float3 rotatedPos;
+    rotatedPos.x = scaledPos.x * cosR - scaledPos.y * sinR;
+    rotatedPos.y = scaledPos.x * sinR + scaledPos.y * cosR;
+    rotatedPos.z = scaledPos.z;
+
+    // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
+    float3 posAligned = mul(float4(rotatedPos, 0.0f), InverseViewMatrix).xyz;
+
+    // 월드 위치 = 파티클 위치 + 정렬된 오프셋
+    float4 worldPos = float4(particle.Position + posAligned, 1.0f);
+    Out.WorldPos = worldPos.xyz;
+
+    // 뷰/프로젝션 변환
+    float4 viewPos = mul(worldPos, ViewMatrix);
+    Out.Position = mul(viewPos, ProjectionMatrix);
+
+    // 파티클은 카메라를 바라보므로 노멀은 카메라 방향
+    float3 worldNormal = normalize(CameraPosition - Out.WorldPos);
+    Out.Normal = worldNormal;
+
+    // TBN 매트릭스 (파티클용 간소화)
+    float3 Tangent = mul(float4(1, 0, 0, 0), InverseViewMatrix).xyz;
+    float3 BiTangent = mul(float4(0, 1, 0, 0), InverseViewMatrix).xyz;
+    row_major float3x3 TBN;
+    TBN._m00_m01_m02 = Tangent;
+    TBN._m10_m11_m12 = BiTangent;
+    TBN._m20_m21_m22 = worldNormal;
+    Out.TBN = TBN;
+
+    Out.TexCoord = Input.TexCoord;
+    Out.Color = particle.Color;
+
+    return Out;
+#else
+    // 일반 메시 처리 (PARTICLE_SPRITE가 아닌 경우)
+
 #ifdef ENABLE_GPU_SKINNING
     float3 LocalPos = SkinPosition(Input.Position, Input.BoneIndices, Input.BoneWeights);
     float3 LocalNormal = SkinNormal(Input.Normal, Input.BoneIndices, Input.BoneWeights);
@@ -148,7 +224,7 @@ PS_INPUT mainVS(VS_INPUT Input)
     float3 LocalNormal = Input.Normal;
     float4 LocalTangent = Input.Tangent;
 #endif
-    
+
     // 위치를 월드 공간으로 먼저 변환
     float4 worldPos = mul(float4(LocalPos, 1.0f), WorldMatrix);
     Out.WorldPos = worldPos.xyz;
@@ -243,6 +319,7 @@ PS_INPUT mainVS(VS_INPUT Input)
 #endif
 
     return Out;
+#endif // PARTICLE_SPRITE
 }
 
 //================================================================================================
@@ -486,6 +563,14 @@ PS_OUTPUT mainPS(PS_INPUT Input)
     float3 viewDir = normalize(CameraPosition - Input.WorldPos);
     float4 baseColor = Input.Color;
 
+#ifdef PARTICLE_SPRITE
+    // 파티클: VS에서 전달된 색상 사용, 텍스처가 있으면 곱함
+    if (bHasTexture)
+    {
+        baseColor.rgb *= texColor.rgb;
+        baseColor.a *= texColor.a;
+    }
+#else
     // 텍스처가 있으면 텍스처로 시작
     if (bHasTexture)
     {
@@ -501,6 +586,7 @@ PS_OUTPUT mainPS(PS_INPUT Input)
         // 텍스처와 머티리얼 모두 없음, LerpColor와 블렌드
         baseColor.rgb = lerp(baseColor.rgb, LerpColor.rgb, LerpColor.a);
     }
+#endif
 
     float3 litColor = float3(0.0f, 0.0f, 0.0f);
 

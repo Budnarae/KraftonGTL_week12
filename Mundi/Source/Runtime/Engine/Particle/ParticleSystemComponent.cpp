@@ -5,6 +5,7 @@
 #include "Keyboard.h"
 #include "ParticleData.h"
 #include "ParticleHelper.h"
+#include "ParticleInstanceBuffer.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
 #include "ResourceManager.h"
@@ -337,7 +338,10 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         return;
     }
 
-    // 2. 각 Dynamic Emitter Data를 순회
+    // 2. 모든 에미터의 파티클 인스턴스 데이터 수집
+    TArray<FParticleInstanceData> AllInstanceData;
+    UMaterial* FirstMaterial = nullptr;
+
     for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
     {
         if (!DynamicData)
@@ -351,112 +355,124 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        // 3. 카메라 기준 파티클 정렬 (Back-to-Front for transparency)
+        // 카메라 기준 파티클 정렬 (Back-to-Front for transparency)
         if (View)
         {
             DynamicData->SortParticles(View->ViewLocation);
         }
 
-        // 4. 렌더링에 필요한 리소스 준비
-        UMaterial* ParticleMaterial = Source.MaterialInterface;
-        if (!ParticleMaterial)
+        // 첫 번째 유효한 머티리얼 저장
+        if (!FirstMaterial && Source.MaterialInterface)
         {
-            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No material found.");
-            continue;
+            FirstMaterial = Source.MaterialInterface;
         }
 
-        UShader* ShaderToUse = ParticleMaterial->GetShader();
-        if (!ShaderToUse)
-        {
-            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No shader found.");
-            continue;
-        }
-
-        // 5. 공유 리소스 준비 (Billboard Quad)
-        UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
-        if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
-        {
-            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Billboard quad not found.");
-            continue;
-        }
-
-        // 6. 셰이더 컴파일
-        FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ParticleMaterial->GetShaderMacros());
-        if (!ShaderVariant)
-        {
-            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Shader compilation failed.");
-            continue;
-        }
-
-        // 7. 각 파티클에 대해 FMeshBatchElement 생성
-        // TODO: 현재는 각 파티클마다 별도의 Draw Call을 생성 (최소 구현)
-        // 추후 인스턴싱이나 동적 버퍼로 최적화 필요
+        // 인스턴스 데이터 수집
         uint8* ParticleData = Source.DataContainer.ParticleData;
         uint16* ParticleIndices = Source.DataContainer.ParticleIndices;
         int32 ParticleStride = Source.ParticleStride;
+        FVector ComponentLocation = GetWorldLocation();
 
         for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
         {
-            // 정렬된 인덱스를 사용하여 파티클 접근
             int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
             DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
 
-            // 8. FMeshBatchElement 생성
-            FMeshBatchElement BatchElement;
-
-            // --- 정렬 키 ---
-            BatchElement.VertexShader = ShaderVariant->VertexShader;
-            BatchElement.PixelShader = ShaderVariant->PixelShader;
-            BatchElement.InputLayout = ShaderVariant->InputLayout;
-            BatchElement.Material = ParticleMaterial;
-            BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
-            BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
-            BatchElement.VertexStride = ParticleQuad->GetVertexStride();
-
-            // --- 드로우 데이터 ---
-            BatchElement.IndexCount = ParticleQuad->GetIndexCount();
-            BatchElement.StartIndex = 0;
-            BatchElement.BaseVertexIndex = 0;
-            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-            // --- 인스턴스 데이터 ---
-            // 파티클 위치 = 로컬 파티클 위치 + 컴포넌트 월드 위치
-            FVector WorldParticleLocation = Particle->Location + GetWorldLocation();
-            FMatrix ScaleMatrix = FMatrix::MakeScale(Particle->Size);
-            FMatrix TranslationMatrix = FMatrix::MakeTranslation(WorldParticleLocation);
-            BatchElement.WorldMatrix = ScaleMatrix * TranslationMatrix;
-
-            // 파티클 색상
-            BatchElement.InstanceColor = Particle->Color;
-
-            // Material의 텍스처 가져오기 (Diffuse 텍스처)
-            UTexture* DiffuseTexture = nullptr;
-            if (ParticleMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
-            {
-                DiffuseTexture = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
-            }
-
-            // 텍스처가 없으면 기본 텍스처 사용 (테스트용)
-            if (!DiffuseTexture)
-            {
-                DiffuseTexture = UResourceManager::GetInstance().Load<UTexture>(GDataDir + "/Textures/grass.jpg");
-            }
-
-            if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
-            {
-                BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
-            }
-            else
-            {
-                BatchElement.InstanceShaderResourceView = nullptr;
-            }
-
-            // 오브젝트 ID (선택 시스템용)
-            BatchElement.ObjectID = InternalIndex;
-
-            OutMeshBatchElements.Add(BatchElement);
+            FParticleInstanceData InstanceData;
+            InstanceData.FillFromParticle(Particle, ComponentLocation);
+            AllInstanceData.Add(InstanceData);
         }
     }
+
+    // 3. 인스턴스가 없으면 종료
+    if (AllInstanceData.empty() || !FirstMaterial)
+    {
+        return;
+    }
+
+    // 4. 공유 버퍼 매니저에 데이터 업로드
+    FParticleInstanceBufferManager& BufferManager = FParticleInstanceBufferManager::Get();
+    ID3D11ShaderResourceView* InstanceSRV = BufferManager.UpdateAndGetSRV(AllInstanceData);
+    if (!InstanceSRV)
+    {
+        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to update instance buffer.");
+        return;
+    }
+
+    // 5. 렌더링 리소스 준비
+    // 파티클은 UberLit.hlsl을 사용 (PARTICLE_SPRITE 매크로 지원)
+    UShader* ShaderToUse = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
+    if (!ShaderToUse)
+    {
+        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to load UberLit shader.");
+        return;
+    }
+
+    UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
+    if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
+    {
+        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Billboard quad not found.");
+        return;
+    }
+
+    // 6. 셰이더 매크로 설정 (PARTICLE_SPRITE 활성화)
+    TArray<FShaderMacro> ShaderMacros;
+    ShaderMacros.push_back({"PARTICLE_SPRITE", "1"});
+    ShaderMacros.push_back({"LIGHTING_MODEL_PHONG", "1"});
+
+    FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ShaderMacros);
+    if (!ShaderVariant)
+    {
+        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Shader compilation failed.");
+        return;
+    }
+
+    // 7. 단일 FMeshBatchElement 생성 (인스턴싱)
+    FMeshBatchElement BatchElement;
+
+    // --- 정렬 키 ---
+    BatchElement.VertexShader = ShaderVariant->VertexShader;
+    BatchElement.PixelShader = ShaderVariant->PixelShader;
+    BatchElement.InputLayout = ShaderVariant->InputLayout;
+    BatchElement.Material = FirstMaterial;
+    BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
+    BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
+    BatchElement.VertexStride = ParticleQuad->GetVertexStride();
+
+    // --- 드로우 데이터 ---
+    BatchElement.IndexCount = ParticleQuad->GetIndexCount();
+    BatchElement.StartIndex = 0;
+    BatchElement.BaseVertexIndex = 0;
+    BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+    // --- 인스턴싱 데이터 ---
+    BatchElement.InstanceCount = static_cast<uint32>(AllInstanceData.size());
+    BatchElement.ParticleInstanceSRV = InstanceSRV;
+
+    // --- 인스턴스 데이터 ---
+    BatchElement.WorldMatrix = FMatrix::Identity();
+    BatchElement.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // 텍스처
+    UTexture* DiffuseTexture = nullptr;
+    if (FirstMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
+    {
+        DiffuseTexture = FirstMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
+    }
+    if (!DiffuseTexture)
+    {
+        DiffuseTexture = UResourceManager::GetInstance().Load<UTexture>(GDataDir + "/Textures/grass.jpg");
+    }
+
+    if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
+    {
+        BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
+    }
+
+    // 오브젝트 ID
+    BatchElement.ObjectID = InternalIndex;
+
+    OutMeshBatchElements.Add(BatchElement);
 }
 
 // // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)

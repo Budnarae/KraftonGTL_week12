@@ -142,10 +142,144 @@ CollectMeshBatches() - 카메라 기준 정렬, FMeshBatchElement 생성
 
 ---
 
-## 7. 향후 구현 과제
+## 7. GPU 인스턴싱 구현 가이드
 
-1. **DX11 동적 버퍼 구현**: GPU로 파티클 데이터 업로드
-2. **인스턴싱**: 단일 Draw Call로 최적화
-3. **메시/빔/리본 에미터**: 다양한 파티클 타입 지원
-4. **고급 정렬 모드**: SortMode에 따른 다양한 정렬 방식
-5. **LOD 시스템**: 거리에 따른 파티클 품질 조절
+### 7.1 셰이더 구조 (완료)
+
+**UberLit.hlsl**에 `PARTICLE_SPRITE` 매크로 지원이 추가되었습니다:
+
+```hlsl
+// 파티클 인스턴스 데이터 구조체
+struct FParticleInstanceData
+{
+    float3 Position;    // 월드 위치
+    float Rotation;     // 회전 각도 (라디안)
+    float2 Size;        // 파티클 크기
+    float2 Padding;     // 16바이트 정렬
+    float4 Color;       // 파티클 색상
+};
+
+StructuredBuffer<FParticleInstanceData> g_ParticleInstances : register(t12);
+```
+
+### 7.2 C++ 측 구현 필요 사항
+
+**ParticleSystemComponent**에 다음을 추가해야 합니다:
+
+```cpp
+// 멤버 변수
+ID3D11Buffer* ParticleInstanceBuffer = nullptr;
+ID3D11ShaderResourceView* ParticleInstanceSRV = nullptr;
+int32 MaxInstanceCount = 0;
+
+// 버퍼 생성 (Activate에서 호출)
+void CreateInstanceBuffer(int32 MaxParticles)
+{
+    D3D11RHI* RHI = GetRHI();
+    RHI->CreateStructuredBuffer(
+        sizeof(FParticleInstanceData),
+        MaxParticles,
+        nullptr,
+        &ParticleInstanceBuffer
+    );
+    RHI->CreateStructuredBufferSRV(ParticleInstanceBuffer, &ParticleInstanceSRV);
+    MaxInstanceCount = MaxParticles;
+}
+
+// 버퍼 해제 (Deactivate에서 호출)
+void ReleaseInstanceBuffer()
+{
+    if (ParticleInstanceSRV) { ParticleInstanceSRV->Release(); ParticleInstanceSRV = nullptr; }
+    if (ParticleInstanceBuffer) { ParticleInstanceBuffer->Release(); ParticleInstanceBuffer = nullptr; }
+}
+```
+
+### 7.3 CollectMeshBatches 수정
+
+인스턴싱 렌더링을 위해 `CollectMeshBatches`를 수정해야 합니다:
+
+```cpp
+void UParticleSystemComponent::CollectMeshBatches(...)
+{
+    // 1. 인스턴스 데이터 수집
+    TArray<FParticleInstanceData> InstanceData;
+    for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
+    {
+        const auto& Source = DynamicData->GetSource();
+        for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
+        {
+            int32 ParticleIndex = Source.DataContainer.ParticleIndices[i];
+            FBaseParticle* Particle = GetParticle(Source, ParticleIndex);
+
+            FParticleInstanceData Data;
+            Data.FillFromParticle(Particle, GetWorldLocation());
+            InstanceData.Add(Data);
+        }
+    }
+
+    // 2. StructuredBuffer 업데이트
+    D3D11RHI* RHI = GetRHI();
+    RHI->UpdateStructuredBuffer(
+        ParticleInstanceBuffer,
+        InstanceData.data(),
+        InstanceData.size() * sizeof(FParticleInstanceData)
+    );
+
+    // 3. 단일 FMeshBatchElement 생성
+    FMeshBatchElement BatchElement;
+    // ... 셰이더, 버퍼 설정 ...
+
+    // 4. 인스턴싱 설정
+    BatchElement.InstanceCount = InstanceData.size();
+    BatchElement.ParticleInstanceSRV = ParticleInstanceSRV;  // t12에 바인딩
+
+    // 5. 셰이더 매크로 설정
+    TArray<FShaderMacro> Macros = ParticleMaterial->GetShaderMacros();
+    Macros.Add({"PARTICLE_SPRITE", "1"});
+    // 조명 모델도 설정
+    Macros.Add({"LIGHTING_MODEL_PHONG", "1"});
+
+    OutMeshBatchElements.Add(BatchElement);
+}
+```
+
+### 7.4 DrawIndexedInstanced 호출
+
+렌더러에서 `InstanceCount > 1`인 경우 `DrawIndexedInstanced` 사용:
+
+```cpp
+if (BatchElement.InstanceCount > 1)
+{
+    DeviceContext->DrawIndexedInstanced(
+        BatchElement.IndexCount,
+        BatchElement.InstanceCount,
+        BatchElement.StartIndex,
+        BatchElement.BaseVertexIndex,
+        0  // StartInstanceLocation
+    );
+}
+else
+{
+    DeviceContext->DrawIndexed(...);
+}
+```
+
+### 7.5 셰이더 리소스 바인딩
+
+`ParticleInstanceSRV`를 t12 슬롯에 바인딩:
+
+```cpp
+if (BatchElement.ParticleInstanceSRV)
+{
+    DeviceContext->VSSetShaderResources(12, 1, &BatchElement.ParticleInstanceSRV);
+}
+```
+
+---
+
+## 8. 향후 구현 과제
+
+1. **메시/빔/리본 에미터**: 다양한 파티클 타입 지원
+2. **고급 정렬 모드**: SortMode에 따른 다양한 정렬 방식
+3. **LOD 시스템**: 거리에 따른 파티클 품질 조절
+4. **GPU 기반 정렬**: Compute Shader를 사용한 정렬

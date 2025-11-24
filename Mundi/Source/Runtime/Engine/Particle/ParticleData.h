@@ -257,6 +257,45 @@ struct FParticleSpriteVertex
     }
 };
 
+// GPU 인스턴싱용 파티클 인스턴스 데이터 (셰이더와 일치해야 함)
+// HLSL StructuredBuffer와 정확히 일치하도록 패킹 지정
+#pragma pack(push, 4)
+struct FParticleInstanceData
+{
+    float PositionX;        // 4 bytes
+    float PositionY;        // 4 bytes
+    float PositionZ;        // 4 bytes
+    float Rotation;         // 4 bytes  -> 16 bytes
+    float SizeX;            // 4 bytes
+    float SizeY;            // 4 bytes
+    float PaddingX;         // 4 bytes
+    float PaddingY;         // 4 bytes  -> 16 bytes
+    float ColorR;           // 4 bytes
+    float ColorG;           // 4 bytes
+    float ColorB;           // 4 bytes
+    float ColorA;           // 4 bytes  -> 16 bytes
+    // Total: 48 bytes
+
+    // FBaseParticle로부터 데이터 채우기
+    void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation)
+    {
+        FVector WorldPos = Particle->Location + ComponentLocation;
+        PositionX = WorldPos.X;
+        PositionY = WorldPos.Y;
+        PositionZ = WorldPos.Z;
+        Rotation = Particle->Rotation;
+        SizeX = Particle->Size.X;
+        SizeY = Particle->Size.Y;
+        PaddingX = 0.0f;
+        PaddingY = 0.0f;
+        ColorR = Particle->Color.R;
+        ColorG = Particle->Color.G;
+        ColorB = Particle->Color.B;
+        ColorA = Particle->Color.A;
+    }
+};
+#pragma pack(pop)
+
 struct FMeshParticleInstanceVertex;
 
 // ----------------------------------------------------
