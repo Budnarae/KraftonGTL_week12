@@ -14,7 +14,7 @@ public:
     static constexpr int32 REQUIRED_MODULE_PAYLOAD_SIZE = 48;
 
     UParticleModuleRequired();
-    ~UParticleModuleRequired() = default;
+    ~UParticleModuleRequired();
 
     GENERATED_REFLECTION_BODY()
 

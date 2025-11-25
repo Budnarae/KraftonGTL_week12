@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
     <FxCompile Include="Shaders\PostProcess\GammaCorrection_PS.hlsl">
@@ -884,7 +884,76 @@
     <ClCompile Include="Generated\UParticleSystem.generated.cpp">
       <Filter>Generated</Filter>
     </ClCompile>
-  <ClCompile Include="Generated\AParticleSystemActor.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleLocation.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleColor.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleLifetime.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleSize.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleSpawn.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleVelocity.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\AParticleEventManager.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleCollision.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\ABeamParticleActor.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\ARibbonParticleActor.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
+    <ClCompile Include="Generated\AParticleSystemActor.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleLocation.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleColor.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleLifetime.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleSize.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleSpawn.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleVelocity.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\AParticleEventManager.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleCollision.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\ABeamParticleActor.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Generated\ARibbonParticleActor.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Runtime\Core\Math\Statistics.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEmitterInstance.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleHelper.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleInstanceBuffer.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleColor.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleLifetime.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleLocation.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSize.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleVariable.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleCollision.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEventManager.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleEventGenerator.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\PCG\NoiseGenerator.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\PCG\PlacementDistribution.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.cpp" />
+  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generated\USoundAnimNotify.generated.h">
       <Filter>Generated</Filter>
@@ -1874,7 +1943,76 @@
     <ClInclude Include="Generated\UParticleSystem.generated.h">
       <Filter>Generated</Filter>
     </ClInclude>
-  <ClInclude Include="Generated\AParticleSystemActor.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleLocation.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleColor.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleLifetime.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleSize.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleSpawn.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleVelocity.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\AParticleEventManager.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleCollision.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\AProceduralPlacementVolume.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ABeamParticleActor.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\ARibbonParticleActor.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
+    <ClInclude Include="Generated\AParticleSystemActor.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleLocation.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleColor.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleLifetime.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleSize.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleSpawn.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleVelocity.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\AParticleEventManager.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleCollision.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\AProceduralPlacementVolume.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\ABeamParticleActor.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\ARibbonParticleActor.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Runtime\Core\Math\Statistics.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEmitterInstance.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleHelper.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleInstanceBuffer.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleColor.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleLifetime.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleLocation.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSize.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleVariable.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleCollision.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEventManager.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleEventGenerator.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEventTypes.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.h" />
+    <ClInclude Include="Source\Runtime\Engine\PCG\NoiseGenerator.h" />
+    <ClInclude Include="Source\Runtime\Engine\PCG\PlacementDistribution.h" />
+    <ClInclude Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.h" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py">
       <Filter>Tools\CodeGenerator</Filter>
@@ -1888,6 +2026,7 @@
     <None Include="Tools\CodeGenerator\property_generator.py">
       <Filter>Tools\CodeGenerator</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">

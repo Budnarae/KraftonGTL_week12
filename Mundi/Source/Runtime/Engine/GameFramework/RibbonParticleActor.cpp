@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "RibbonParticleActor.h"
 #include "../Particle/ParticleSystemComponent.h"
 #include "../Particle/ParticleSystem.h"
@@ -103,11 +103,9 @@ ARibbonParticleActor::ARibbonParticleActor()
 			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
 			if (ColorModule)
 			{
-				ColorModule->SetColorRange(
-					FVector(0.2f, 0.5f, 1.0f),   // Min: 파랑
-					FVector(0.8f, 0.3f, 1.0f)    // Max: 보라
-				);
-				ColorModule->SetAlphaRange(0.8f, 1.0f);
+				// 리본은 모든 파티클이 동일한 색상을 가져야 세그먼트 간 색상 차이가 없음
+				// SetColorRange는 각 파티클마다 랜덤 색상을 부여하므로 SetFixedColor 사용
+				ColorModule->SetFixedColor(FVector(0.5f, 0.4f, 1.0f), 1.0f);  // 파랑-보라 중간색
 				LODLevel->AddSpawnModule(ColorModule);
 			}
 
@@ -131,12 +129,12 @@ ARibbonParticleActor::ARibbonParticleActor()
 				RibbonModule->SetTaperRibbon(true);
 				RibbonModule->SetTaperFactor(0.1f);   // 10%까지 (덜 극단적)
 
-				// 리본 색상
+				// 리본 색상 (파티클 색상에 곱해짐)
 				RibbonModule->SetRibbonColor(FVector4(1.0f, 1.0f, 1.0f, 1.0f));
 
-				// 텍스처 설정
-				RibbonModule->SetTextureRepeat(5.0f);  // 더 많은 반복
-				RibbonModule->SetUseTexture(true);
+				// 텍스처 설정 - 단색 사용 (텍스처 경계 문제 방지)
+				RibbonModule->SetTextureRepeat(1.0f);
+				RibbonModule->SetUseTexture(false);
 
 				LODLevel->SetTypeDataModule(RibbonModule);
 			}
