@@ -4,7 +4,6 @@
 #include "FViewportClient.h"
 #include "Source/Runtime/Engine/ParticleEditor/ParticleViewerBootstrap.h"
 #include "USlateManager.h"
-#include "Source/Editor/PlatformProcess.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleRequired.h"
 #include "Source/Slate/Widgets/PropertyRenderer.h"
 #include "Source/Runtime/Engine/Particle/ParticleAsset.h"
@@ -99,9 +98,9 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
 
 void SParticleEditWindow::AddEmitter(const int EmitterOffset)
 {
-    if (State->PreviewParticle)
+    if (State->CachedParticle)
     {
-        State->PreviewParticle->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
+        State->CachedParticle->AddEmitter(NewObject<UParticleEmitter>());
     }
 }
 void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
@@ -133,7 +132,7 @@ void SParticleEditWindow::RemoveEmitter()
 {
     if (State->SelectedEmitter)
     {
-        State->PreviewParticle->ParticleSystem.RemoveEmitter(State->SelectedEmitter);
+        State->CachedParticle->RemoveEmitter(State->SelectedEmitter);
         State->SelectedEmitter = nullptr;
         State->SelectedModule = nullptr;
     }
@@ -224,7 +223,11 @@ bool SParticleEditWindow::Initialize(float StartX, float StartY, float Width, fl
 }    
 void SParticleEditWindow::LoadAsset(const FString& AssetPath)
 {
-    State->PreviewParticle = UResourceManager::GetInstance().Load<UParticleAsset>(AssetPath);
+    if (AssetPath.empty() == false) 
+    {
+        State->LoadCachedParticle(AssetPath);
+    }
+    
 }
 void SParticleEditWindow::OnRender()
 {
@@ -252,44 +255,30 @@ void SParticleEditWindow::OnRender()
     if (ImGui::Begin("Particle Editor", &bIsOpen, ParentFlag))
     {
         Rect = GetWindowRect();
-        UParticleSystem& CurParticleSystem = State->PreviewParticle->ParticleSystem;
 
         //상단 버튼 및 경로
-        const char* PathStr = State->PreviewParticle == nullptr ? "None" : State->PreviewParticle->GetFilePath().c_str();
-        ImGui::Text("Path %s", PathStr);
+        ImGui::Text("Path %s", State->GetPathConstChar());
         if (ImGui::Button("New"))
         {
-            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
-            UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
-            ParticleAsset->Save();
-            State->PreviewParticle = ParticleAsset;
+            UParticleAsset* Asset = UParticleAsset::CreateAutoName(UParticleAsset::FolderPath.string());
+            State->LoadCachedParticle(Asset->GetFilePath());
         }
         ImGui::SameLine();
         if (ImGui::Button("Save"))
         {
-            if (State->PreviewParticle) 
+            //현재 캐쉬를 파일에 저장하고 파일을 다시 읽어옴
+            if (State->CachedParticle) 
             {
-                State->PreviewParticle->Save();
+                UParticleAsset::Save(State->ParticlePath, State->CachedParticle);
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Load"))
         {
-            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
-            const FWideString Extension = L".uasset";
-            const FWideString Description = L"Particle Files";
-
-            // Windows 파일 다이얼로그 열기
-            std::filesystem::path SelectedPath = FPlatformProcess::OpenLoadFileDialog(FolderPath.wstring(), Extension, Description);
-            if (SelectedPath.empty())
+            FWideString FilePath = UResourceBase::OpenFileDialogGetPath(UParticleAsset::FolderPath, UParticleAsset::Extension, UParticleAsset::Desc);
+            if (FilePath.empty() == false)
             {
-                
-            }
-            else 
-            {
-                State->PreviewParticle = UResourceManager::GetInstance().Load<UParticleAsset>(SelectedPath.string());
-                State->SelectedEmitter = nullptr;
-                State->SelectedModule = nullptr;
+                State->LoadCachedParticle(WideToUTF8(FilePath));
             }
         }
         ImGui::SameLine();
@@ -331,8 +320,17 @@ void SParticleEditWindow::OnRender()
         {
             HoveredWindowType = EHoveredWindowType::Detail;
         }
-        ImGui::Text("Emitter");
-
+        ImGui::Text("Detail");
+        if (State->SelectedEmitter) 
+        {
+            static char buf[128] = "";
+            const FString& Name = State->SelectedEmitter->GetEmitterName();
+            strncpy_s(buf, Name.c_str(), sizeof(buf));
+            if (ImGui::InputText("EmitterName", buf, sizeof(buf)))
+            {
+                State->SelectedEmitter->SetEmitterName(buf);
+            }
+        }
         if (State->SelectedModule)
         {
             UPropertyRenderer::RenderAllProperties(State->SelectedModule);
@@ -461,14 +459,14 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitte
 
 void SParticleEditWindow::DrawEmitterView()
 {
-    if (State->PreviewParticle == nullptr)
+    if (State->CachedParticle == nullptr)
     {
         return;
     }
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HoveredColor);
-    UParticleSystem& CurParticle = State->PreviewParticle->ParticleSystem;
-    TArray<UParticleEmitter*> Emitters = CurParticle.GetEmitters();
+    UParticleSystem* CurParticle = State->CachedParticle;
+    TArray<UParticleEmitter*> Emitters = CurParticle->GetEmitters();
     for (UParticleEmitter* Emitter : Emitters)
     {
         UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);

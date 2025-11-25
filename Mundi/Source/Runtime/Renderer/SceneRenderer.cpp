@@ -168,9 +168,12 @@ void FSceneRenderer::RenderLitPath()
         RHIDevice->ClearDepthBuffer(1.0f, 0);
     }
 
-	// Base Pass
+	// Base Pass (Opaque)
 	RenderOpaquePass(View->RenderSettings->GetViewMode());
 	RenderDecalPass();
+
+	// Transparent Pass (Particles)
+	RenderTransparentPass(View->RenderSettings->GetViewMode());
 }
 
 void FSceneRenderer::RenderWireframePath()
@@ -946,7 +949,7 @@ void FSceneRenderer::PerformFrustumCulling()
 
 void FSceneRenderer::RenderOpaquePass(EViewMode InRenderViewMode)
 {
-	// --- 1. 수집 (Collect) ---
+	// --- 1. 수집 (Collect) - 불투명 객체만 ---
 	MeshBatchElements.Empty();
 	for (UMeshComponent* MeshComponent : Proxies.Meshes)
 	{
@@ -958,10 +961,11 @@ void FSceneRenderer::RenderOpaquePass(EViewMode InRenderViewMode)
 		BillboardComponent->CollectMeshBatches(MeshBatchElements, View);
 	}
 
-	for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
-	{
-		ParticleSystemComponent->CollectMeshBatches(MeshBatchElements, View);
-	}
+	// 파티클은 투명 패스에서 렌더링하므로 제외
+	// for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
+	// {
+	// 	ParticleSystemComponent->CollectMeshBatches(MeshBatchElements, View);
+	// }
 
 	for (UTextRenderComponent* TextRenderComponent : Proxies.Texts)
 	{
@@ -974,6 +978,36 @@ void FSceneRenderer::RenderOpaquePass(EViewMode InRenderViewMode)
 
 	// --- 3. 그리기 (Draw) ---
 	DrawMeshBatches(MeshBatchElements, true);
+}
+
+void FSceneRenderer::RenderTransparentPass(EViewMode InRenderViewMode)
+{
+	// --- 1. 수집 (Collect) - 파티클 등 투명 객체 ---
+	MeshBatchElements.Empty();
+	for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
+	{
+		ParticleSystemComponent->CollectMeshBatches(MeshBatchElements, View);
+	}
+
+	if (MeshBatchElements.empty())
+		return;
+
+	// --- 2. 투명도 렌더링 상태 설정 ---
+	// 알파 블렌딩 활성화
+	RHIDevice->OMSetBlendState(true);
+	// 깊이 쓰기 비활성화, 깊이 테스트만 수행
+	RHIDevice->OMSetDepthStencilState(EComparisonFunc::LessEqualReadOnly);
+
+	// --- 3. 정렬 (Back-to-Front for alpha blending) ---
+	// 카메라로부터의 거리 기준으로 역순 정렬
+	MeshBatchElements.Sort();
+
+	// --- 4. 그리기 (Draw) ---
+	DrawMeshBatches(MeshBatchElements, true);
+
+	// --- 5. 상태 복구 ---
+	RHIDevice->OMSetBlendState(false);
+	RHIDevice->OMSetDepthStencilState(EComparisonFunc::LessEqual);
 }
 
 void FSceneRenderer::RenderDecalPass()

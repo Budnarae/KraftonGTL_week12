@@ -4,16 +4,9 @@
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
 #include <filesystem>
 
-//const FWideString BaseDir = UTF8ToWide(GContentDir) + L"/Particle";
-//const FWideString Extension = L".uaaset";
-//const FWideString Description = L"Particle Files";
-//FWideString DefaultFileName = L"NewParticle";
-//
-//// Windows 파일 다이얼로그 열기
-//std::filesystem::path SelectedPath = FPlatformProcess::OpenSaveFileDialog(BaseDir, Extension, Description, DefaultFileName);
-//if (SelectedPath.empty())
-//return false;
-
+const std::filesystem::path UParticleAsset::FolderPath = GContentDir + "/Resources/Particle";
+const FWideString UParticleAsset::Extension = L".uasset";
+const FWideString UParticleAsset::Desc = L"Particle Files";
 IMPLEMENT_ASSET_CLASS(UParticleAsset)
 
 void UParticleAsset::LoadAllDatas()
@@ -37,9 +30,14 @@ void UParticleAsset::LoadAllDatas()
         }
     }
 }
-UParticleAsset* UParticleAsset::Create(const FString& FolderPath)
+
+/// <summary>
+/// 현재 폴더에 NewParticle 이름 안겹치게 생성
+/// </summary>
+/// <param name="FolderPath"></param>
+/// <returns></returns>
+UParticleAsset* UParticleAsset::CreateAutoName(const FString& FolderPath)
 {
-    UParticleAsset* ParticleAsset = NewObject<UParticleAsset>();
 	std::filesystem::path TotalPath = FolderPath + "/NewParticle.uasset";
 	uint32 idx = 0;
 	while (true) 
@@ -60,16 +58,37 @@ UParticleAsset* UParticleAsset::Create(const FString& FolderPath)
 	}
 
 	FString PathStr = TotalPath.string();
-	UResourceManager::GetInstance().Add<UParticleAsset>(PathStr, ParticleAsset);
-    ParticleAsset->Save();
+	return Create(PathStr);
+}
+UParticleAsset* UParticleAsset::Create(const FString& InFilePath)
+{
+	UParticleAsset* ParticleAsset = NewObject<UParticleAsset>();
+	UResourceManager::GetInstance().Add<UParticleAsset>(InFilePath, ParticleAsset);
+	ParticleAsset->Save();
 	return ParticleAsset;
+}
+
+
+void UParticleAsset::Save(const FString& InFilePath, UParticleSystem* InParticle)
+{
+	if (InParticle == nullptr)
+	{
+		return;
+	}
+
+	//Json 저장
+	JSON Json;
+	InParticle->Serialize(false, Json);
+	bool bSuccess = FJsonSerializer::SaveJsonToFile(Json, UTF8ToWide(InFilePath));
+
+	//Json 파일 강제로 다시 로드해오기
+	UResourceManager::GetInstance().ForceLoad<UParticleAsset>(InFilePath);
 }
 
 void UParticleAsset::Load(const FString& InFilePath, ID3D11Device* InDevice)
 {
 	JSON OutJson;
 	FJsonSerializer::LoadJsonFromFile(OutJson, UTF8ToWide(InFilePath));
-	auto temp = &ParticleSystem.Emitters;
 	ParticleSystem.Serialize(true, OutJson);
 }
 bool UParticleAsset::Save(const FString& InFilePath) 
@@ -86,3 +105,12 @@ bool UParticleAsset::Save(const FString& InFilePath)
 	return bSuccess;
 }
 
+//복사본을 획득하는 함수
+//기존 Duplication은 얕은복사고 깊은복사에필요
+//깊은복사 다 하는건 시간이 없으니 파일을 다시 읽는걸로 하자
+void UParticleAsset::GetDeepDuplicated(UParticleSystem* OutParticleSystem) const
+{
+	JSON OutJson;
+	FJsonSerializer::LoadJsonFromFile(OutJson, UTF8ToWide(GetFilePath()));
+	OutParticleSystem->Serialize(true, OutJson);
+}

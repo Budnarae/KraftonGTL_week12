@@ -48,6 +48,9 @@ public:
 	template<typename T, typename... Args>
 	T* Load(const FString& InFilePath, Args&&... InArgs);
 
+	template<typename T, typename... Args>
+	T* ForceLoad(const FString& InFilePath, Args&&... InArgs);
+
 	template<typename T>
 	bool Add(const FString& InFilePath, UObject* InObject);
 
@@ -215,6 +218,34 @@ inline T* UResourceManager::Load(const FString& InFilePath, Args && ...InArgs)
 		Resources[typeIndex][PathWithoutExt] = Resource;
 		return Resource;
 	}
+}
+template<typename T, typename ...Args>
+inline T* UResourceManager::ForceLoad(const FString& InFilePath, Args && ...InArgs)
+{
+	if (InFilePath.empty())
+	{
+		return nullptr;
+	}
+
+	// 경로 정규화: 모든 백슬래시를 슬래시로 변환하여 일관성 유지
+	FString NormalizedPath = NormalizePath(InFilePath);
+	FString PathWithoutExt = RemoveExtension(NormalizedPath);
+
+	uint8 typeIndex = static_cast<uint8>(GetResourceType<T>());
+	T* Resource = nullptr;
+	auto iter = Resources[typeIndex].find(PathWithoutExt);
+	if (iter != Resources[typeIndex].end())
+	{
+		Resource = static_cast<T*>((*iter).second);
+	}
+	else
+	{
+		Resource = NewObject<T>();
+	}
+	Resource->Load(NormalizedPath, Device, std::forward<Args>(InArgs)...);
+	Resource->SetFilePath(NormalizedPath);
+	Resources[typeIndex][PathWithoutExt] = Resource;
+	return Resource;
 }
 
 template<>

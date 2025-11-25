@@ -53,6 +53,7 @@ private:
     // 1. 데이터 멤버 (Data Members)
     // -------------------------------------------
 
+    UPROPERTY(EditAnywhere, Category = "Emitter")
     FString EmitterName;
 
     inline static constexpr int32 INVALID = -1;
