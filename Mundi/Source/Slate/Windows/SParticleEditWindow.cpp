@@ -382,16 +382,17 @@ void SParticleEditWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 
         // First, always try gizmo picking (pass to viewport)
         State->Viewport->ProcessMouseButtonDown((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
-
-        UE_LOG("%d", Button);
-
     }
 }
 
 void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
     if (!State || !State->Viewport) return;
-
+    if (ViewportRect.Contains(MousePos))
+    {
+        FVector2D LocalPos = MousePos - FVector2D(ViewportRect.Left, ViewportRect.Top);
+        State->Viewport->ProcessMouseButtonUp((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
+    }
     switch (HoveredWindowType)
     {
     case EHoveredWindowType::Viewport:
