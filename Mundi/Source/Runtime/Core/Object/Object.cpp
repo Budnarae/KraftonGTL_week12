@@ -327,46 +327,46 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			if (bInIsLoading)
 			{
 				JSON Json = InOutHandle[Prop.Name];
-				
-				if (UResourceBase* Resource = Cast<UResourceBase>(*object))
+				FString ClassName;
+				FJsonSerializer::ReadString(Json, "ClassName", ClassName);
+				if (ClassName.empty() == false)
 				{
-					FString ResourceTypeName;
-					FString Path;
-					FJsonSerializer::ReadString(Json, "ResourceType", ResourceTypeName);
-					FJsonSerializer::ReadString(Json, "Path", Path);
-					if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
+					UClass* TypeClass = UClass::FindClass(ClassName);
+					
+					if (TypeClass) 
 					{
-						UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
-					}
-				}
-				else
-				{
-					FString ClassName;
-					FJsonSerializer::ReadString(Json, "ClassName", ClassName);
-					if (ClassName.empty() == false) 
-					{
-						UClass* TypeClass = UClass::FindClass(ClassName);
-						if (TypeClass)
+						if (TypeClass->IsChildOf(UResourceBase::StaticClass()))
 						{
-							if ((*object) == nullptr)
+							//리소스인 경우
+							FString Path;
+							FJsonSerializer::ReadString(Json, "Path", Path);
+							if (Path.empty() == false)
 							{
-								(*object) = NewObject(TypeClass);
+								UResourceBase* Resource = reinterpret_cast<UResourceBase*>(*object);
+								UResourceBase::LoadAsset(Resource, ClassName, Path);
 							}
+						}
+						else
+						{
+							if ((*object) != nullptr)
+							{
+								DeleteObject((*object));
+							}
+							(*object) = NewObject(TypeClass);
 							(*object)->Serialize(bInIsLoading, Json);
 						}
-					}		
+					}
 				}
 			}
 			else
-			{
-			
+			{	
 				JSON Json = json::Object();
 
 				if (*object != nullptr)
 				{
 					if (UResourceBase* Resource = Cast<UResourceBase>(*object))
 					{
-						Json["ResourceType"] = Prop.ClassName;
+						Json["ClassName"] = Resource->GetClass()->Name;
 						Json["Path"] = Resource->GetFilePath();
 					}
 					else
@@ -464,6 +464,31 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
 				TArray<UObject*>& pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
 
+				//UClass* TypeClass = UClass::FindClass(ClassName);
+
+		
+				//	if (TypeClass->IsChildOf(UResourceBase::StaticClass()))
+				//	{
+				//		//리소스인 경우
+				//		FString Path;
+				//		FJsonSerializer::ReadString(Json, "Path", Path);
+				//		if (Path.empty() == false)
+				//		{
+				//			UResourceBase* Resource = reinterpret_cast<UResourceBase*>(*object);
+				//			UResourceBase::LoadAsset(Resource, ClassName, Path);
+				//		}
+				//	}
+				//	else
+				//	{
+				//		if ((*object) != nullptr)
+				//		{
+				//			DeleteObject((*object));
+				//		}
+				//		(*object) = NewObject(TypeClass);
+				//		(*object)->Serialize(bInIsLoading, Json);
+				//	}
+				//}
+
 				if (bInIsLoading)
 				{
 					//기존에 차있거나, 생성자에서 자동 생성한 목록 제거
@@ -477,30 +502,28 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 					for (auto ElementJson : Json.ArrayRange())
 					{
 						pArray.emplace_back();
-						if (UResourceBase* Resource = Cast<UResourceBase>(pArray[idx]))
+						FString ClassName;
+						FJsonSerializer::ReadString(ElementJson, "ClassName", ClassName);
+						if (ClassName.empty() == false)
 						{
-							FString ResourceTypeName;
-							FString Path;
-							FJsonSerializer::ReadString(ElementJson, "ResourceType", ResourceTypeName);
-							FJsonSerializer::ReadString(ElementJson, "Path", Path);
-							if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
+							UClass* TypeClass = UClass::FindClass(ClassName);
+							if (TypeClass)
 							{
-								UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
-							}
-						}
-						else
-						{
-							FString ClassName;
-							FJsonSerializer::ReadString(ElementJson, "ClassName", ClassName);
-							if (ClassName.empty() == false) 
-							{
-								UClass* TypeClass = UClass::FindClass(ClassName);
-								if (TypeClass)
+								if (TypeClass->IsChildOf(UResourceBase::StaticClass()))
 								{
-									if (pArray[idx] == nullptr)
+									//리소스인 경우
+									FString Path;
+									FJsonSerializer::ReadString(Json, "Path", Path);
+									if (Path.empty() == false)
 									{
-										pArray[idx] = NewObject(TypeClass);
+										UResourceBase* Resource = reinterpret_cast<UResourceBase*>(pArray[idx]);
+										UResourceBase::LoadAsset(Resource, ClassName, Path);
 									}
+								}
+								else
+								{
+									//무조건null임
+									pArray[idx] = NewObject(TypeClass);
 									pArray[idx]->Serialize(bInIsLoading, ElementJson);
 								}
 							}
@@ -515,7 +538,7 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 						JSON ElementJson = json::Object();
 						if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
 						{
-							ElementJson["ResourceType"] = Prop.ClassName;
+							ElementJson["ClassName"] = Prop.ClassName;
 							ElementJson["Path"] = Resource->GetFilePath();
 						}
 						else

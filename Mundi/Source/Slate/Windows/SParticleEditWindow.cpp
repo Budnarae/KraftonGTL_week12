@@ -260,8 +260,7 @@ void SParticleEditWindow::OnRender()
         ImGui::Text("Path %s", State->GetPathConstChar());
         if (ImGui::Button("New"))
         {
-            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
-            UParticleAsset* Asset = UParticleAsset::CreateAutoName(FolderPath.string());
+            UParticleAsset* Asset = UParticleAsset::CreateAutoName(UParticleAsset::FolderPath.string());
             State->LoadCachedParticle(Asset->GetFilePath());
         }
         ImGui::SameLine();
