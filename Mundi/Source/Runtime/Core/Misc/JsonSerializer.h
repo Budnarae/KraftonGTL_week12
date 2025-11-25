@@ -18,6 +18,7 @@
 #include "Enums.h"
 #include "Source/Runtime/Core/Math/Statistics.h"
 #include "nlohmann/json.hpp"  // 사용하는 JSON 라이브러리
+#include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
 
 namespace json { class JSON; }
 using JSON = json::JSON;
@@ -282,11 +283,28 @@ public:
 		return false;
 	}
 
+	static bool ReadParticleBurst(const JSON& InJson, const FString& InKey, FParticleBurst& OutValue)
+	{
+		if (InJson.hasKey(InKey))
+		{
+			const JSON& StructJson = InJson.at(InKey);
+			if (StructJson.JSONType() == JSON::Class::Array && StructJson.size() == 4)
+			{
+				OutValue = {
+						static_cast<int32>(StructJson.at(0).ToInt()),
+						static_cast<int32>(StructJson.at(1).ToInt()),
+						static_cast<float>(StructJson.at(2).ToFloat()),
+				};
+				return true;
+			}
+		}
+		return false;
+	}
 	/**
 	 * @brief JSON 객체에서 키를 찾아 FVector4 값을 안전하게 읽어옵니다.
 	 * @return 성공하면 true, 실패하면 false를 반환합니다.
 	 */
-	static bool ReadVector4(const JSON& InJson, const FString& InKey, FVector4& OutValue, const FVector4& InDefaultValue = FVector4(0,0,0,0), bool bInUseLog = true)
+	static bool ReadVector4(const JSON& InJson, const FString& InKey, FVector4& OutValue, const FVector4& InDefaultValue = FVector4(0, 0, 0, 0), bool bInUseLog = true)
 	{
 		if (InJson.hasKey(InKey))
 		{
@@ -331,7 +349,7 @@ public:
 			{
 				const JSON& MinJson = RawDistributionJson.at("Min");
 				const JSON& MaxJson = RawDistributionJson.at("Max");
-				
+
 				OutValue.Min = {
 						static_cast<float>(MinJson.at(0).ToFloat()),
 						static_cast<float>(MinJson.at(1).ToFloat()),
@@ -352,6 +370,13 @@ public:
 	//====================================================================================
 	// Converting To JSON
 	//====================================================================================
+
+	static JSON ParticleBurstToJson(const FParticleBurst& InStruct)
+	{
+		JSON VectorArray = JSON::Make(JSON::Class::Array);
+		VectorArray.append(InStruct.Count, InStruct.CountLow, InStruct.Time);
+		return VectorArray;
+	}
 
 	static JSON VectorToJson(const FVector& InVector)
 	{
@@ -409,7 +434,7 @@ public:
 	static void AddUObject(const bool bInIsLoading, JSON& InOutHandle, UObject* InObject)
 	{
 		JSON ObjectJson = json::Object();
-		if (InObject != nullptr) 
+		if (InObject != nullptr)
 		{
 			InObject->Serialize(bInIsLoading, ObjectJson);
 		}

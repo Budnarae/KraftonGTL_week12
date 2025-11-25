@@ -320,6 +320,23 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
+		case EPropertyType::FParticleBurst:
+		{
+			FParticleBurst* Value = Prop.GetValuePtr<FParticleBurst>(this);
+			if (bInIsLoading)
+			{
+				FParticleBurst ReadValue;
+				if (FJsonSerializer::ReadParticleBurst(InOutHandle, Prop.Name, ReadValue))
+				{
+					*Value = ReadValue;
+				}
+			}
+			else
+			{
+				InOutHandle[Prop.Name] = FJsonSerializer::ParticleBurstToJson(*Value);
+			}
+			break;
+		}
 		case EPropertyType::ObjectPtr:
 		{
 			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;

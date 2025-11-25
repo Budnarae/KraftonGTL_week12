@@ -50,6 +50,7 @@ void UResourceManager::Initialize(ID3D11Device* InDevice, ID3D11DeviceContext* I
     CreateTextBillboardTexture();
     CreateDefaultShader();
     CreateDefaultMaterial();
+    FObjManager::Preload();
     UParticleAsset::LoadAllDatas();
 
     // 파티클 인스턴스 버퍼 초기화

@@ -195,8 +195,6 @@ bool UGameEngine::Startup(HINSTANCE hInstance)
     // 매니저 초기화
     INPUT.Initialize(HWnd);
 
-    FObjManager::Preload();
-
     // Preload audio assets
     FAudioDevice::Preload();
 

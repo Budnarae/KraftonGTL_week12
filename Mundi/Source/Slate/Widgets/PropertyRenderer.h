@@ -60,6 +60,7 @@ private:
 	static bool RenderQuaternionProperty(const FProperty& Prop, void* Instance);
 	static bool RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance);
 	static bool RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance);
+	static bool RenderFParticleBurstProperty(const FProperty& Prop, void* Instance);
 	static bool RenderColorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderStringProperty(const FProperty& Prop, void* Instance);
 	static bool RenderNameProperty(const FProperty& Prop, void* Instance);

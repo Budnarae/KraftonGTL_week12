@@ -14,6 +14,7 @@
 #include "Source/Runtime/Engine/Particle/ParticleModuleLocation.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSize.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleVelocity.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
 #include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
@@ -92,6 +93,11 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     {"속도",
     {
         {"초기 속도", FMenuAction::CreateSpawnModule(UParticleModuleVelocity::StaticClass()->Name)},
+    }
+    },
+    {"스폰",
+    {
+        {"스폰", FMenuAction::CreateSpawnModule(UParticleModuleSpawn::StaticClass()->Name)},
     }
     },
 };

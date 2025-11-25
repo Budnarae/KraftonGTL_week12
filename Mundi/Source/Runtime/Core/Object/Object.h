@@ -11,6 +11,7 @@ namespace json { class JSON; }
 using JSON = json::JSON;
 
 // 전방 선언/외부 심볼 (네 프로젝트 환경 유지)
+struct FParticleBurst;
 class UObject;
 class UWorld;
 // ── UClass: 간단한 타입 디스크립터 ─────────────────────────────

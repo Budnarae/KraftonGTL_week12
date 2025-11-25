@@ -18,6 +18,7 @@
 #include "SkeletalMeshComponent.h"
 #include "USlateManager.h"
 #include "ImGui/imgui_curve.hpp"
+#include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
 #include "PathUtils.h"
 
 // 정적 멤버 변수 초기화
@@ -131,7 +132,9 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 	case EPropertyType::RawDistribution_FVector:
 		bChanged = RenderRawDistributionFVectorProperty(Property, ObjectInstance);
 		break;
-
+	case EPropertyType::FParticleBurst:
+		bChanged = RenderFParticleBurstProperty(Property, ObjectInstance);
+		break;
 	case EPropertyType::Array:
 		switch (Property.InnerType)
 		{
@@ -565,12 +568,33 @@ bool UPropertyRenderer::RenderRawDistributionFVectorProperty(const FProperty& Pr
 	}
 	if (ImGui::DragFloat3("Max", &Value->Max.X, 0.1f))
 	{
-		bDrag |= true;
+		bDrag = true;
 	}
 
 	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
 	return bDrag;
 }
+
+bool UPropertyRenderer::RenderFParticleBurstProperty(const FProperty& Prop, void* Instance)
+{
+	FParticleBurst* Value = Prop.GetValuePtr<FParticleBurst>(Instance);
+	bool bDrag = false;
+	ImGui::Text(Prop.Name);
+	if (ImGui::DragInt("Count", &Value->Count))
+	{
+		bDrag = true;
+	}
+	if (ImGui::DragInt("CountLow", &Value->CountLow))
+	{
+		bDrag = true;
+	}
+	if (ImGui::DragFloat("Time", &Value->Time))
+	{
+		bDrag = true;
+	}
+	return bDrag;
+}
+
 bool UPropertyRenderer::RenderColorProperty(const FProperty& Prop, void* Instance)
 {
 	FLinearColor* Value = Prop.GetValuePtr<FLinearColor>(Instance);

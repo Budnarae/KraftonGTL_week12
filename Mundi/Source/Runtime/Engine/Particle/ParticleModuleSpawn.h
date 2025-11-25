@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "UParticleModuleSpawn.generated.h"
 #include "Statistics.h"
+#include "Vector.h"
 
 // ============================================================================
 // FParticleBurst - 버스트 스폰 정보
@@ -196,6 +197,6 @@ private:
     // - {Count=30, Time=0.5} → 2.5초에 30개
     // - {Count=20, Time=1.0} → 5초에 20개
     // ------------------------------------------------------------------------
-    UPROPERTY(EditAnywhere, Category="[버스트]", Tooltip="버스트 스폰 목록")
+    UPROPERTY(EditAnywhere, Category="[버스트a]", Tooltip="버스트 스폰 목록")
     TArray<FParticleBurst> BurstList{};
 };
