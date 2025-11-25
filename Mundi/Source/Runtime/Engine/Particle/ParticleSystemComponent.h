@@ -7,7 +7,7 @@
 //struct FParticleSystemInstance;
 
 struct FParticleEmitterInstance;
-struct FDynamicSpriteEmitterData; 
+struct FDynamicEmitterRenderData; 
 
 UCLASS(DisplayName="파티클 시스템 컴포넌트", Description="씬에 배치할 수 있는 파티클 컴포넌트입니다.")
 class UParticleSystemComponent : public UPrimitiveComponent
@@ -68,6 +68,13 @@ public:
     void CreateDynamicData();
     void ReleaseDynamicData();
 
+private:
+    // 타입별 렌더링 헬퍼 함수
+    void RenderSpriteParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterial* Material, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
+    void RenderMeshParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterial* Material, class UStaticMesh* Mesh, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
+
+public:
+
     // 시뮬레이션 시작 명령 (파티클 생성 및 타이머 시작)
     void Activate(bool bReset = false);
 
@@ -104,7 +111,8 @@ private:
     TArray<FParticleEmitterInstance*> EmitterInstances{};
 
     // 렌더링용 Dynamic Data (매 프레임 생성)
-    TArray<FDynamicSpriteEmitterData*> DynamicEmitterData{};
+    // 다형성: FDynamicSpriteEmitterData 또는 FDynamicMeshEmitterData 등이 들어감
+    TArray<FDynamicEmitterRenderData*> DynamicEmitterData{};
 
     // 이번 틱에서 발생한 이벤트들
     TArray<FParticleEventCollideData> CollisionEvents{};

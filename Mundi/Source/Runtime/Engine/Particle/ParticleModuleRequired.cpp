@@ -13,7 +13,7 @@ void UParticleModuleRequired::Spawn(FParticleContext& Context, float EmitterTime
     if (!Particle) return;
 
     // 파티클의 기본 크기 설정 (테스트용으로 고정값 사용)
-    Particle->Size = FVector(10.0f, 10.0f, 1.0f);
+    Particle->Size = FVector(1.0f, 1.0f, 1.0f);
     Particle->BaseSize = Particle->Size;
 
     // 파티클의 기본 색상 설정 (테스트용으로 밝은 노란색)

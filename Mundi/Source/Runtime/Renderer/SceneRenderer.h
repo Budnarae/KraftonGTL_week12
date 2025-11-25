@@ -105,6 +105,9 @@ private:
 	/** @brief 불투명(Opaque) 객체들을 렌더링하는 패스입니다. */
 	void RenderOpaquePass(EViewMode InRenderViewMode);
 
+	/** @brief 투명(Transparent) 객체들을 렌더링하는 패스입니다 (파티클 등). */
+	void RenderTransparentPass(EViewMode InRenderViewMode);
+
 	void DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, bool bClearListAfterDraw);
 
 	/** @brief 데칼(Decal)을 렌더링하는 패스입니다. */

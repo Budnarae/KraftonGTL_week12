@@ -50,6 +50,9 @@ void FParticleEmitterInstance::CopyFrom(const FParticleEmitterInstance& Other)
     CurrentLODLevelIndex = Other.CurrentLODLevelIndex;
     CurrentLODLevel = Other.CurrentLODLevel;
 
+    // 에미터 타입 복사
+    EmitterType = Other.EmitterType;
+
     // 메모리 관리 변수 복사
     MaxActiveParticles = Other.MaxActiveParticles;
     ParticleStride = Other.ParticleStride;
