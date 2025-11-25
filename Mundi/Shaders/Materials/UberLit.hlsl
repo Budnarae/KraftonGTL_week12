@@ -321,7 +321,12 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
 
 #elif LIGHTING_MODEL_PHONG
     // Phong Shading: 픽셀별 계산을 위해 픽셀 셰이더로 데이터 전달
+#ifdef PARTICLE_MESH
+    // PARTICLE_MESH: InstanceColor가 LerpColor로 전달됨 (버텍스에 Color 없음)
+    Out.Color = LerpColor;
+#else
     Out.Color = Input.Color;
+#endif
 
 #else
     // 조명 모델 미정의 - 정점 색상을 그대로 전달
@@ -574,7 +579,7 @@ PS_OUTPUT mainPS(PS_INPUT Input)
     float3 viewDir = normalize(CameraPosition - Input.WorldPos);
     float4 baseColor = Input.Color;
 
-#ifdef PARTICLE_SPRITE
+#if defined(PARTICLE_SPRITE) || defined(PARTICLE_MESH)
     // 파티클: VS에서 전달된 색상 사용, 텍스처가 있으면 곱함
     if (bHasTexture)
     {

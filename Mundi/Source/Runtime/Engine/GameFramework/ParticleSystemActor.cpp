@@ -120,12 +120,12 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(LifetimeModule);
 			}
 
-			// 9. Color Module
+			// 9. Color Module (랜덤 투명도 적용)
 			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
 			if (ColorModule)
 			{
 				ColorModule->SetColorRange(FVector(0.5f, 0.8f, 1.0f), FVector(0.8f, 1.0f, 1.0f));
-				ColorModule->SetAlphaRange(1.0f, 1.0f);
+				ColorModule->SetAlphaRange(0.1f, 0.9f);  // 랜덤 투명도 (0.1 ~ 0.9)
 				TestLODLevel->AddSpawnModule(ColorModule);
 			}
 
@@ -255,7 +255,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(LifetimeModule);
 			}
 
-			// 9. Color Module 설정 (초기 색상)
+			// 9. Color Module 설정 (초기 색상, 랜덤 투명도)
 			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
 			if (ColorModule)
 			{
@@ -265,8 +265,8 @@ AParticleSystemActor::AParticleSystemActor()
 					FVector(1.0f, 0.8f, 0.2f)    // Max: 노랑
 				);
 
-				// 알파: 0.8~1.0 (약간 반투명~불투명)
-				ColorModule->SetAlphaRange(0.8f, 1.0f);
+				// 알파: 0.4~0.9 (랜덤 투명도)
+				ColorModule->SetAlphaRange(0.4f, 0.9f);
 
 				TestLODLevel->AddSpawnModule(ColorModule);
 			}
