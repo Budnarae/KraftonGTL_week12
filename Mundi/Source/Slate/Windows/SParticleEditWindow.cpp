@@ -44,6 +44,22 @@ FRect GetWindowRect()
     return Rect;
 }
 
+fs::path GetPathFromContent(const fs::path& fullPath)
+{
+    fs::path result;
+    bool found = false;
+
+    for (const auto& part : fullPath)
+    {
+        if (!found && part == "Content")
+            found = true;
+        if (found)
+            result /= part;
+    }
+
+    return result; // Content 폴더부터 끝까지
+}
+
 void FMenuAction::Action(SParticleEditWindow* ParticleEditWindow) const
 {
     switch (MenuActionType)
@@ -283,6 +299,7 @@ void SParticleEditWindow::OnRender()
 
             // Windows 파일 다이얼로그 열기
             std::filesystem::path SelectedPath = FPlatformProcess::OpenLoadFileDialog(FolderPath.wstring(), Extension, Description);
+            SelectedPath = GetPathFromContent(SelectedPath);
             if (SelectedPath.empty())
             {
                 
