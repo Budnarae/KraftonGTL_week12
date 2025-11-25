@@ -14,6 +14,7 @@
 #include "Source/Runtime/Engine/Particle/ParticleModuleLocation.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSize.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleVelocity.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -98,9 +99,9 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
 
 void SParticleEditWindow::AddEmitter(const int EmitterOffset)
 {
-    if (State->CachedParticle)
+    if (State->GetCachedParticle())
     {
-        State->CachedParticle->AddEmitter(NewObject<UParticleEmitter>());
+        State->GetCachedParticle()->AddEmitter(NewObject<UParticleEmitter>());
     }
 }
 void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
@@ -132,7 +133,7 @@ void SParticleEditWindow::RemoveEmitter()
 {
     if (State->SelectedEmitter)
     {
-        State->CachedParticle->RemoveEmitter(State->SelectedEmitter);
+        State->GetCachedParticle()->RemoveEmitter(State->SelectedEmitter);
         State->SelectedEmitter = nullptr;
         State->SelectedModule = nullptr;
     }
@@ -267,9 +268,9 @@ void SParticleEditWindow::OnRender()
         if (ImGui::Button("Save"))
         {
             //현재 캐쉬를 파일에 저장하고 파일을 다시 읽어옴
-            if (State->CachedParticle) 
+            if (State->GetCachedParticle()) 
             {
-                UParticleAsset::Save(State->ParticlePath, State->CachedParticle);
+                UParticleAsset::Save(State->ParticlePath, State->GetCachedParticle());
             }
         }
         ImGui::SameLine();
@@ -352,7 +353,10 @@ void SParticleEditWindow::OnUpdate(float DeltaSeconds)
 {
     if (!State || !State->Viewport)
         return;
-
+    if (State->World)
+    {
+        State->World->Tick(DeltaSeconds);
+    }
     if (State && State->Client)
     {
         State->Client->Tick(DeltaSeconds);
@@ -460,13 +464,13 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitte
 
 void SParticleEditWindow::DrawEmitterView()
 {
-    if (State->CachedParticle == nullptr)
+    if (State->GetCachedParticle() == nullptr)
     {
         return;
     }
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HoveredColor);
-    UParticleSystem* CurParticle = State->CachedParticle;
+    UParticleSystem* CurParticle = State->GetCachedParticle();
     TArray<UParticleEmitter*> Emitters = CurParticle->GetEmitters();
     for (UParticleEmitter* Emitter : Emitters)
     {

@@ -3,6 +3,9 @@
 #include "FViewport.h"
 #include "ParticleViewerState.h"
 #include "Source/Runtime/Renderer/FParticleViewerViewportClient.h"
+#include "Source/Runtime/Engine/GameFramework/ParticleSystemActor.h"
+#include "Source/Runtime/Engine/GameFramework/AmbientLightActor.h"
+#include "Source/Runtime/Engine/Components/AmbientLightComponent.h"
 #include "CameraActor.h"
 
 ParticleViewerState* ParticleViewerBootstrap::CreateViewerState(const char* Name, UWorld* InWorld, ID3D11Device* InDevice)
@@ -31,6 +34,8 @@ ParticleViewerState* ParticleViewerBootstrap::CreateViewerState(const char* Name
     State->Viewport->SetViewportClient(Client);
     State->World->SetEditorCameraActor(Client->GetCamera());
 
+    State->ParticleActor = State->World->SpawnActor<AParticleSystemActor>();
+    State->ParticleActor->SetTickInEditor(true);
     return State;
 }
 
