@@ -694,6 +694,9 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             bool bUseTexture = BeamModule->GetUseTexture();
             BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
 
+            // 빔은 CLAMP 샘플러 사용 (텍스처 경계 아티팩트 방지)
+            BatchElement.SamplerType = 1;
+
             // 텍스처 설정
             if (bUseTexture && ParticleMaterial)
             {
@@ -889,6 +892,9 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             // 텍스처 설정
             bool bUseTexture = RibbonModule->GetUseTexture();
             BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+            // 리본은 CLAMP 샘플러 사용 (텍스처 경계 아티팩트 방지)
+            BatchElement.SamplerType = 1;
 
             if (bUseTexture && ParticleMaterial)
             {
