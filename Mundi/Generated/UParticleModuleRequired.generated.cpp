@@ -35,7 +35,7 @@ const bool UParticleModuleRequired::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleModuleRequired)
     MARK_AS_COMPONENT("필수 파티클 모듈", "파티클 렌더링에 필수적인 요소들을 포함하는 모듈입니다.")
-    ADD_PROPERTY_MATERIAL(UMaterial*, Material, "Assets", true)
+    ADD_PROPERTY_MATERIAL(UMaterialInterface*, Material, "Assets", true)
     ADD_PROPERTY_STATICMESH(UStaticMesh*, Mesh, "Assets", true)
     ADD_PROPERTY(FVector, EmitterOrigin, "Basic", true)
     ADD_PROPERTY(FQuat, EmitterRotation, "Basic", true)

@@ -3,6 +3,7 @@
 
 #include "ParticleEmitter.h"
 #include "ParticleEmitterInstance.h"
+#include "ParticleSystemComponent.h"
 #include "ParticleModuleRequired.h"
 #include "ParticleModuleTypeDataBase.h"
 #include "ParticleHelper.h"

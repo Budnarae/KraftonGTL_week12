@@ -19,39 +19,31 @@
 #include "Texture.h"
 #include "StaticMesh.h"
 #include "Actor.h"
+#include "D3D11RHI.h"
 
 UParticleSystemComponent::UParticleSystemComponent()
 {
     bCanEverTick = true;
+    // BeamBuffers, RibbonBuffers는 TMap으로 자동 초기화됨
 }
 
 UParticleSystemComponent::~UParticleSystemComponent()
 {
     Deactivate();
 
-    // 빔 동적 버퍼 해제
-    if (BeamVertexBuffer)
+    // 모든 Beam 버퍼 해제
+    for (auto& Pair : BeamBuffers)
     {
-        BeamVertexBuffer->Release();
-        BeamVertexBuffer = nullptr;
+        delete Pair.second;
     }
-    if (BeamIndexBuffer)
-    {
-        BeamIndexBuffer->Release();
-        BeamIndexBuffer = nullptr;
-    }
+    BeamBuffers.clear();
 
-    // 리본 동적 버퍼 해제
-    if (RibbonVertexBuffer)
+    // 모든 Ribbon 버퍼 해제
+    for (auto& Pair : RibbonBuffers)
     {
-        RibbonVertexBuffer->Release();
-        RibbonVertexBuffer = nullptr;
+        delete Pair.second;
     }
-    if (RibbonIndexBuffer)
-    {
-        RibbonIndexBuffer->Release();
-        RibbonIndexBuffer = nullptr;
-    }
+    RibbonBuffers.clear();
 }
 
 // ============================================================================
@@ -104,6 +96,14 @@ void UParticleSystemComponent::DuplicateSubObjects()
         // 새 인스턴스를 배열에 추가
         EmitterInstances.Add(NewInstance);
     }
+
+    // ------------------------------------------------------------------------
+    // D3D 버퍼는 복사되면 안 됨 - 원본과 공유를 끊고 빈 맵으로 초기화
+    // ------------------------------------------------------------------------
+    // 얕은 복사로 원본의 포인터가 복사되었으므로, 여기서 클리어하여 원본과 분리
+    // (delete 하지 않음 - 원본의 버퍼이므로)
+    BeamBuffers.clear();
+    RibbonBuffers.clear();
 }
 
 // ----------------------------------------------------------------------------
@@ -121,16 +121,8 @@ void UParticleSystemComponent::PostDuplicate()
     // 복사본은 처음부터 시작하도록 경과 시간 초기화
     ElapsedTime = 0.0f;
 
-    // D3D 버퍼는 복사되면 안 되므로 nullptr로 초기화 (복사본이 자체 버퍼 생성)
-    BeamVertexBuffer = nullptr;
-    BeamIndexBuffer = nullptr;
-    BeamVertexBufferSize = 0;
-    BeamIndexBufferSize = 0;
-
-    RibbonVertexBuffer = nullptr;
-    RibbonIndexBuffer = nullptr;
-    RibbonVertexBufferSize = 0;
-    RibbonIndexBufferSize = 0;
+    // D3D 버퍼는 DuplicateSubObjects에서 이미 클리어됨
+    // 필요 시 CollectMeshBatches에서 자동 생성됨
 
     // 거리 기반 스폰 상태 초기화
     AccumulatedDistance = 0.0f;
@@ -309,6 +301,18 @@ void UParticleSystemComponent::Activate(bool bReset)
         Instance->CurrentLODLevelIndex = CurrentLODLevel;
         Instance->CurrentLODLevel = Emitter->GetCurrentLODLevelInstance();
 
+        // EmitterType 설정 (TypeDataModule에서 가져옴)
+        UParticleModuleTypeDataBase* TypeDataModule = Instance->CurrentLODLevel ?
+            Instance->CurrentLODLevel->GetTypeDataModule() : nullptr;
+        if (TypeDataModule)
+        {
+            Instance->EmitterType = TypeDataModule->GetEmitterType();
+        }
+        else
+        {
+            Instance->EmitterType = EDET_Sprite;  // TypeDataModule이 없으면 기본 Sprite
+        }
+
         // 메모리 관리 및 상태 변수
         Instance->MaxActiveParticles = Emitter->GetMaxParticleCount();
         Instance->ParticleStride = Emitter->GetRequiredMemorySize();
@@ -380,8 +384,14 @@ void UParticleSystemComponent::CreateDynamicData()
             DynamicData = MeshData;
             break;
         }
+        case EDET_Beam:
+        case EDET_Ribbon:
+        {
+            // Beam/Ribbon은 CollectMeshBatches에서 직접 렌더링하므로
+            // DynamicData 생성하지 않고 스킵
+            continue;
+        }
         default:
-            // 미구현 타입 (Beam, Ribbon 등)
             UE_LOG("[CreateDynamicData][Warning] Unsupported emitter type: %d", (int)Instance->EmitterType);
             continue;
         }
@@ -410,7 +420,6 @@ void UParticleSystemComponent::ReleaseDynamicData()
 void UParticleSystemComponent::TickComponent(float DeltaTime)
 {
     // 임시 상수
-    const static FVector Location = FVector(0, 0, 0);
     const static FVector Velocity = FVector(0, 0, 0.1f);
 
     // 이전 틱의 collision events 클리어
@@ -418,23 +427,54 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
 
     ElapsedTime += DeltaTime;
 
+    // 현재 위치 저장
+    FVector CurrentLocation = GetWorldLocation();
+
+    // 이전 위치 초기화 (첫 프레임)
+    if (!bHasPreviousLocation)
+    {
+        PreviousWorldLocation = CurrentLocation;
+        bHasPreviousLocation = true;
+    }
+
+    // 이동 거리 계산
+    float MovedDistance = (CurrentLocation - PreviousWorldLocation).Size();
+
     for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
         if (Instance)
         {
-            // 1. Update 함수를 먼저 호출하여 SpawnNum 계산 및 기존 파티클 업데이트
+            // 기존 파티클 업데이트 (수명 체크 등)
             Instance->Update(DeltaTime);
 
-            // 2. 계산된 SpawnNum만큼 새 파티클 생성
+            // 스폰 수 결정: 거리 기반 vs 시간 기반
+            if (DistancePerSpawn > 0.0f)
+            {
+                // 거리 기반 스폰
+                AccumulatedDistance += MovedDistance;
+                int32 SpawnsNeeded = static_cast<int32>(AccumulatedDistance / DistancePerSpawn);
+                AccumulatedDistance -= SpawnsNeeded * DistancePerSpawn;
+                Instance->SpawnNum = SpawnsNeeded;
+            }
+            // else: 시간 기반은 Update()에서 이미 SpawnNum 계산됨
+
+            // Increment 계산 (파티클들이 시간/공간적으로 균등 분산)
+            float Increment = (Instance->SpawnNum > 0) ? (DeltaTime / Instance->SpawnNum) : 0.0f;
+
+            // 이전 위치와 현재 위치를 전달하여 파티클 위치 보간
             Instance->SpawnParticles(
-                ElapsedTime,
-                0.01f,
-                Location,
+                ElapsedTime - DeltaTime,  // 이번 프레임의 시작 시간
+                Increment,
+                PreviousWorldLocation,    // 이전 프레임 위치
+                CurrentLocation,          // 현재 프레임 위치
                 Velocity,
                 nullptr
             );
         }
     }
+
+    // 이전 위치 업데이트
+    PreviousWorldLocation = CurrentLocation;
 
     // 3. 시뮬레이션 완료 후 렌더링용 Dynamic Data 생성
     CreateDynamicData();
@@ -444,17 +484,384 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
 void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& OutMeshBatchElements, const FSceneView* View)
 {
     // 1. 유효성 검사
-    if (!Template || DynamicEmitterData.empty())
+    if (!Template || EmitterInstances.empty())
     {
         return;
     }
 
-    // 2. 타입별로 데이터 수집 (Sprite / Mesh 분리)
+    // RHI 유효성 검사 (종료 시 크래시 방지)
+    D3D11RHI* RHIDevice = GEngine.GetRHIDevice();
+    if (!RHIDevice || !RHIDevice->GetDevice() || !RHIDevice->GetDeviceContext())
+    {
+        return;
+    }
+
+    // ========================================================================
+    // 2. Beam/Ribbon 에미터 렌더링 (EmitterInstances 직접 순회)
+    // ========================================================================
+    for (int32 EmitterIndex = 0; EmitterIndex < EmitterInstances.Num(); ++EmitterIndex)
+    {
+        FParticleEmitterInstance* Instance = EmitterInstances[EmitterIndex];
+        if (!Instance)
+        {
+            continue;
+        }
+
+        // TypeDataModule 체크
+        UParticleLODLevel* LODLevel = Instance->SpriteTemplate->GetCurrentLODLevelInstance();
+        UParticleModuleTypeDataBase* TypeDataModule = LODLevel ? LODLevel->GetTypeDataModule() : nullptr;
+
+        if (!TypeDataModule)
+        {
+            continue;  // Sprite/Mesh는 아래에서 DynamicEmitterData로 처리
+        }
+
+        EDynamicEmitterType EmitterType = TypeDataModule->GetEmitterType();
+
+        // 렌더링에 필요한 리소스 준비
+        UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+        if (!RequiredModule)
+        {
+            continue;
+        }
+
+        UMaterialInterface* ParticleMaterial = RequiredModule->GetMaterial();
+        if (!ParticleMaterial)
+        {
+            continue;
+        }
+
+        UShader* ShaderToUse = ParticleMaterial->GetShader();
+        if (!ShaderToUse)
+        {
+            continue;
+        }
+
+        FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ParticleMaterial->GetShaderMacros());
+        if (!ShaderVariant)
+        {
+            continue;
+        }
+
+        // Beam 타입 렌더링
+        if (EmitterType == EDynamicEmitterType::EDET_Beam)
+        {
+            UParticleModuleTypeDataBeam* BeamModule = static_cast<UParticleModuleTypeDataBeam*>(TypeDataModule);
+
+            // 빔 타겟/소스 위치 동적 업데이트
+            if (BeamTargetActor && BeamModule->GetBeamMethod() == EBeamMethod::Target)
+            {
+                BeamModule->SetTargetPoint(BeamTargetActor->GetActorLocation());
+            }
+            if (BeamSourceActor)
+            {
+                BeamModule->SetSourcePoint(BeamSourceActor->GetActorLocation() - GetWorldLocation());
+            }
+
+            // 빔 포인트 계산
+            TArray<FVector> BeamPoints;
+            TArray<float> BeamWidths;
+            BeamModule->CalculateBeamPoints(GetWorldLocation(), BeamPoints, BeamWidths, ElapsedTime);
+
+            if (BeamPoints.Num() < 2)
+                continue;
+
+            // 각 포인트에 대해 Right 벡터 계산
+            TArray<FVector> PointRightVectors;
+            PointRightVectors.SetNum(BeamPoints.Num());
+
+            for (int32 i = 0; i < BeamPoints.Num(); ++i)
+            {
+                FVector Forward = FVector::Zero();
+
+                if (i > 0)
+                    Forward += (BeamPoints[i] - BeamPoints[i - 1]).GetNormalized();
+                if (i < BeamPoints.Num() - 1)
+                    Forward += (BeamPoints[i + 1] - BeamPoints[i]).GetNormalized();
+
+                if (Forward.Size() < 0.001f)
+                    Forward = FVector(1, 0, 0);
+                else
+                    Forward = Forward.GetNormalized();
+
+                FVector ToCamera = (View->ViewLocation - BeamPoints[i]).GetNormalized();
+                FVector Right = FVector::Cross(Forward, ToCamera);
+
+                if (Right.Size() < 0.001f)
+                {
+                    Right = FVector::Cross(Forward, FVector(0, 0, 1));
+                    if (Right.Size() < 0.001f)
+                        Right = FVector::Cross(Forward, FVector(0, 1, 0));
+                }
+
+                PointRightVectors[i] = Right.GetNormalized();
+            }
+
+            // 정점 데이터 생성
+            uint32 NumPoints = static_cast<uint32>(BeamPoints.Num());
+            uint32 NumVertices = NumPoints * 2;
+            uint32 NumSegments = NumPoints - 1;
+            uint32 NumIndices = NumSegments * 6;
+
+            TArray<FBillboardVertex> Vertices;
+            TArray<uint32> Indices;
+            Vertices.SetNum(NumVertices);
+            Indices.SetNum(NumIndices);
+
+            for (uint32 i = 0; i < NumPoints; ++i)
+            {
+                FVector Point = BeamPoints[i];
+                FVector Right = PointRightVectors[i];
+                float Width = BeamWidths[i];
+                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1);
+
+                Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
+                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+
+                Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
+                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+            }
+
+            for (uint32 i = 0; i < NumSegments; ++i)
+            {
+                uint32 BaseIndex = i * 6;
+                uint32 V0 = i * 2;
+                uint32 V1 = i * 2 + 1;
+                uint32 V2 = i * 2 + 2;
+                uint32 V3 = i * 2 + 3;
+
+                Indices[BaseIndex + 0] = V0;
+                Indices[BaseIndex + 1] = V1;
+                Indices[BaseIndex + 2] = V2;
+                Indices[BaseIndex + 3] = V1;
+                Indices[BaseIndex + 4] = V3;
+                Indices[BaseIndex + 5] = V2;
+            }
+
+            // 에미터별 버퍼 가져오기 (없으면 생성)
+            FDynamicMeshBuffer*& BeamBuffer = BeamBuffers[EmitterIndex];
+            if (!BeamBuffer)
+            {
+                BeamBuffer = new FDynamicMeshBuffer();
+            }
+
+            // 동적 버퍼 업데이트
+            if (!BeamBuffer->Update(Vertices, Indices))
+            {
+                UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to update Beam buffer for emitter %d.", EmitterIndex);
+                continue;
+            }
+
+            // BatchElement 생성
+            FMeshBatchElement BatchElement;
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = BeamBuffer->GetVertexBuffer();
+            BatchElement.IndexBuffer = BeamBuffer->GetIndexBuffer();
+            BatchElement.VertexStride = BeamBuffer->GetVertexStride();
+            BatchElement.IndexCount = BeamBuffer->GetIndexCount();
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            BatchElement.WorldMatrix = FMatrix::Identity();
+
+            FVector4 BeamColor = BeamModule->GetBeamColor();
+            float GlowIntensity = BeamModule->GetGlowIntensity();
+            BatchElement.InstanceColor = FLinearColor(
+                BeamColor.X * GlowIntensity,
+                BeamColor.Y * GlowIntensity,
+                BeamColor.Z * GlowIntensity,
+                BeamColor.W
+            );
+
+            BatchElement.UVStart = 0.0f;
+            BatchElement.UVEnd = 1.0f;
+
+            bool bUseTexture = BeamModule->GetUseTexture();
+            BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+            if (bUseTexture && ParticleMaterial)
+            {
+                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                {
+                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            BatchElement.ObjectID = InternalIndex;
+            OutMeshBatchElements.Add(BatchElement);
+            continue;
+        }
+
+        // Ribbon 타입 렌더링
+        if (EmitterType == EDynamicEmitterType::EDET_Ribbon)
+        {
+            UParticleModuleTypeDataRibbon* RibbonModule = static_cast<UParticleModuleTypeDataRibbon*>(TypeDataModule);
+
+            TArray<FVector> RibbonPoints;
+            TArray<float> RibbonWidths;
+            TArray<FLinearColor> RibbonColors;
+            RibbonModule->BuildRibbonFromParticles(Instance, GetWorldLocation(), RibbonPoints, RibbonWidths, RibbonColors);
+
+            if (RibbonPoints.Num() < 2)
+                continue;
+
+            TArray<FVector> PointRightVectors;
+            PointRightVectors.SetNum(RibbonPoints.Num());
+
+            for (int32 i = 0; i < RibbonPoints.Num(); ++i)
+            {
+                FVector Forward;
+                if (i == 0)
+                    Forward = RibbonPoints[1] - RibbonPoints[0];
+                else if (i == RibbonPoints.Num() - 1)
+                    Forward = RibbonPoints[i] - RibbonPoints[i - 1];
+                else
+                    Forward = RibbonPoints[i + 1] - RibbonPoints[i - 1];
+
+                Forward = Forward.GetNormalized();
+
+                FVector ToCamera = (View->ViewLocation - RibbonPoints[i]).GetNormalized();
+                FVector Right = FVector::Cross(Forward, ToCamera);
+
+                if (Right.Size() < 0.001f)
+                {
+                    Right = FVector::Cross(Forward, FVector(0, 0, 1));
+                    if (Right.Size() < 0.001f)
+                        Right = FVector::Cross(Forward, FVector(0, 1, 0));
+                }
+
+                PointRightVectors[i] = Right.GetNormalized();
+            }
+
+            uint32 NumPoints = static_cast<uint32>(RibbonPoints.Num());
+            uint32 NumVertices = NumPoints * 2;
+            uint32 NumSegments = NumPoints - 1;
+            uint32 NumIndices = NumSegments * 6;
+
+            TArray<FBillboardVertex> Vertices;
+            TArray<uint32> Indices;
+            Vertices.SetNum(NumVertices);
+            Indices.SetNum(NumIndices);
+
+            float TextureRepeat = RibbonModule->GetTextureRepeat();
+
+            for (uint32 i = 0; i < NumPoints; ++i)
+            {
+                FVector Point = RibbonPoints[i];
+                FVector Right = PointRightVectors[i];
+                float Width = RibbonWidths[i];
+                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1) * TextureRepeat;
+                FLinearColor VertexColor = RibbonColors[i];
+
+                Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
+                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+                Vertices[i * 2].Color = VertexColor;
+
+                Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
+                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+                Vertices[i * 2 + 1].Color = VertexColor;
+            }
+
+            for (uint32 i = 0; i < NumSegments; ++i)
+            {
+                uint32 BaseIndex = i * 6;
+                uint32 V0 = i * 2;
+                uint32 V1 = i * 2 + 1;
+                uint32 V2 = i * 2 + 2;
+                uint32 V3 = i * 2 + 3;
+
+                Indices[BaseIndex + 0] = V0;
+                Indices[BaseIndex + 1] = V1;
+                Indices[BaseIndex + 2] = V2;
+                Indices[BaseIndex + 3] = V1;
+                Indices[BaseIndex + 4] = V3;
+                Indices[BaseIndex + 5] = V2;
+            }
+
+            // 에미터별 버퍼 가져오기 (없으면 생성)
+            FDynamicMeshBuffer*& RibbonBuffer = RibbonBuffers[EmitterIndex];
+            if (!RibbonBuffer)
+            {
+                RibbonBuffer = new FDynamicMeshBuffer();
+            }
+
+            // 동적 버퍼 업데이트
+            if (!RibbonBuffer->Update(Vertices, Indices))
+            {
+                UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to update Ribbon buffer for emitter %d.", EmitterIndex);
+                continue;
+            }
+
+            FMeshBatchElement BatchElement;
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = RibbonBuffer->GetVertexBuffer();
+            BatchElement.IndexBuffer = RibbonBuffer->GetIndexBuffer();
+            BatchElement.VertexStride = RibbonBuffer->GetVertexStride();
+            BatchElement.IndexCount = RibbonBuffer->GetIndexCount();
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            BatchElement.WorldMatrix = FMatrix::Identity();
+            BatchElement.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
+            BatchElement.UVStart = 0.0f;
+            BatchElement.UVEnd = 1.0f;
+
+            bool bUseTexture = RibbonModule->GetUseTexture();
+            BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+            if (bUseTexture && ParticleMaterial)
+            {
+                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                {
+                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            BatchElement.ObjectID = InternalIndex;
+            OutMeshBatchElements.Add(BatchElement);
+            continue;
+        }
+    }
+
+    // ========================================================================
+    // 3. Sprite/Mesh 에미터 렌더링 (DynamicEmitterData 사용)
+    // ========================================================================
+    if (DynamicEmitterData.empty())
+    {
+        return;
+    }
+
+    // 타입별로 데이터 수집 (Sprite / Mesh 분리)
     TArray<FParticleInstanceData> SpriteInstanceData;
     TArray<FParticleInstanceData> MeshInstanceData;
-    UMaterial* SpriteMaterial = nullptr;
-    UMaterial* MeshMaterial = nullptr;
+    UMaterialInterface* SpriteMaterial = nullptr;
+    UMaterialInterface* MeshMaterial = nullptr;
     UStaticMesh* MeshToRender = nullptr;
+
+    // 컴포넌트 위치 캐싱
+    const FVector ComponentLocation = GetWorldLocation();
 
     for (FDynamicEmitterRenderData* DynamicData : DynamicEmitterData)
     {
@@ -480,9 +887,6 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             }
         }
 
-            BatchElement.ObjectID = InternalIndex;
-            OutMeshBatchElements.Add(BatchElement);
-
         // 타입별 분기
         if (Source.eEmitterType == EDET_Sprite)
         {
@@ -502,6 +906,10 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             }
 
             // 스프라이트 인스턴스 데이터 수집
+            const uint16* ParticleIndices = Source.DataContainer.ParticleIndices;
+            const uint8* ParticleData = Source.DataContainer.ParticleData;
+            const int32 ParticleStride = Source.ParticleStride;
+
             for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
             {
                 int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
@@ -539,6 +947,10 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             }
 
             // 메시 인스턴스 데이터 수집
+            const uint16* ParticleIndices = Source.DataContainer.ParticleIndices;
+            const uint8* ParticleData = Source.DataContainer.ParticleData;
+            const int32 ParticleStride = Source.ParticleStride;
+
             for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
             {
                 int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
@@ -567,7 +979,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
 // 스프라이트 파티클 렌더링 (GPU 인스턴싱)
 void UParticleSystemComponent::RenderSpriteParticles(
     const TArray<FParticleInstanceData>& InstanceData,
-    UMaterial* Material,
+    UMaterialInterface* Material,
     TArray<FMeshBatchElement>& OutMeshBatchElements)
 {
     // 1. 공유 버퍼 매니저에 데이터 업로드
@@ -631,7 +1043,7 @@ void UParticleSystemComponent::RenderSpriteParticles(
 // 메시 파티클 렌더링 (개별 드로우)
 void UParticleSystemComponent::RenderMeshParticles(
     const TArray<FParticleInstanceData>& InstanceData,
-    UMaterial* Material,
+    UMaterialInterface* Material,
     UStaticMesh* Mesh,
     TArray<FMeshBatchElement>& OutMeshBatchElements)
 {

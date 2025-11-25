@@ -1,6 +1,7 @@
 ﻿#include "ParticleSystem.h"           // 템플릿 정의
 #include "PrimitiveComponent.h"
 #include "ParticleEventTypes.h"
+#include "DynamicMeshBuffer.h"
 #include "UParticleSystemComponent.generated.h"
 
 // 전방 선언: 실제 파티클 데이터를 담는 런타임 인스턴스 구조체
@@ -82,8 +83,8 @@ public:
 
 private:
     // 타입별 렌더링 헬퍼 함수
-    void RenderSpriteParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterial* Material, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
-    void RenderMeshParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterial* Material, class UStaticMesh* Mesh, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
+    void RenderSpriteParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterialInterface* Material, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
+    void RenderMeshParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterialInterface* Material, class UStaticMesh* Mesh, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
 
 public:
 
@@ -131,17 +132,9 @@ private:
     TArray<FParticleEventDeathData> DeathEvents{};
     TArray<FParticleEventSpawnData> SpawnEvents{};
 
-    // 빔 렌더링용 동적 버퍼
-    ID3D11Buffer* BeamVertexBuffer = nullptr;
-    ID3D11Buffer* BeamIndexBuffer = nullptr;
-    uint32 BeamVertexBufferSize = 0;  // 현재 버퍼 용량 (정점 수)
-    uint32 BeamIndexBufferSize = 0;   // 현재 버퍼 용량 (인덱스 수)
-
-    // 리본 렌더링용 동적 버퍼
-    ID3D11Buffer* RibbonVertexBuffer = nullptr;
-    ID3D11Buffer* RibbonIndexBuffer = nullptr;
-    uint32 RibbonVertexBufferSize = 0;
-    uint32 RibbonIndexBufferSize = 0;
+    // 빔/리본 렌더링용 동적 버퍼 (에미터 인덱스별로 관리)
+    TMap<int32, FDynamicMeshBuffer*> BeamBuffers;
+    TMap<int32, FDynamicMeshBuffer*> RibbonBuffers;
 
     // 리본 위치 보간을 위한 이전 프레임 위치
     FVector PreviousWorldLocation = FVector::Zero();
