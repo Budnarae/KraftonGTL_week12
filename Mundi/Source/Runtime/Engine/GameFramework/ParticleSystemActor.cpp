@@ -29,6 +29,7 @@ AParticleSystemActor::AParticleSystemActor()
 	// TEST CODE - MESH EMITTER
 	// 메시 에미터 기능 테스트
 	// ============================================================
+	
 	{
 		// 1. ParticleSystem 템플릿 생성
 		UParticleSystem* TestTemplate = NewObject<UParticleSystem>();
@@ -133,7 +134,7 @@ AParticleSystemActor::AParticleSystemActor()
 			Instance->EmitterType = EDET_Mesh;
 
 			// 렌더링할 메시 로드 (apple_mid 사용)
-			UStaticMesh* MeshToUse = UResourceManager::GetInstance().Load<UStaticMesh>(GResourceDir + "/apple_mid.umesh");
+			UStaticMesh* MeshToUse = UResourceManager::GetInstance().Load<UStaticMesh>(GResourceDir + "/bitten_apple_mid.umesh");
 			if (MeshToUse)
 			{
 				Instance->MeshToDraw = MeshToUse;
@@ -147,12 +148,13 @@ AParticleSystemActor::AParticleSystemActor()
 			}
 		}
 	}
+	
 	// ============================================================
 	// END OF MESH EMITTER TEST CODE
 	// ============================================================
 
 	// ============================================================
-	// SPRITE EMITTER TEST CODE (주석 처리)
+	// SPRITE EMITTER TEST CODE
 	// 스프라이트 에미터를 테스트하려면 위의 메시 에미터 코드를 주석 처리하고
 	// 아래 코드의 주석을 해제하세요.
 	// ============================================================

@@ -467,15 +467,20 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             // 메시 에미터 데이터 캐스팅
             FDynamicMeshEmitterData* MeshEmitterData = static_cast<FDynamicMeshEmitterData*>(DynamicData);
 
-            // 메시 머티리얼 및 메시 저장 (캐스팅 필요)
-            const FDynamicMeshEmitterReplayDataBase& MeshSource = static_cast<const FDynamicMeshEmitterReplayDataBase&>(Source);
-            if (!MeshMaterial && MeshSource.MaterialInterface)
-            {
-                MeshMaterial = MeshSource.MaterialInterface;
-            }
+            // 메시 저장
             if (!MeshToRender && MeshEmitterData->StaticMesh)
             {
                 MeshToRender = MeshEmitterData->StaticMesh;
+            }
+
+            // 메시의 머티리얼 사용 (StaticMesh의 GroupInfo에서 가져옴)
+            if (!MeshMaterial && MeshToRender && MeshToRender->HasMaterial())
+            {
+                const TArray<FGroupInfo>& GroupInfos = MeshToRender->GetMeshGroupInfo();
+                if (!GroupInfos.empty() && !GroupInfos[0].InitialMaterialName.empty())
+                {
+                    MeshMaterial = UResourceManager::GetInstance().Load<UMaterial>(GroupInfos[0].InitialMaterialName);
+                }
             }
 
             // 메시 인스턴스 데이터 수집
@@ -560,21 +565,8 @@ void UParticleSystemComponent::RenderSpriteParticles(
     BatchElement.WorldMatrix = FMatrix::Identity();
     BatchElement.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    // 텍스처
-    UTexture* DiffuseTexture = nullptr;
-    if (Material->HasTexture(EMaterialTextureSlot::Diffuse))
-    {
-        DiffuseTexture = Material->GetTexture(EMaterialTextureSlot::Diffuse);
-    }
-    if (!DiffuseTexture)
-    {
-        DiffuseTexture = UResourceManager::GetInstance().Load<UTexture>(GDataDir + "/Textures/grass.jpg");
-    }
-
-    if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
-    {
-        BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
-    }
+    // Material의 텍스처 시스템을 사용 (InstanceShaderResourceView 설정하지 않음)
+    // 렌더러가 Material에서 자동으로 텍스처를 조회합니다
 
     BatchElement.ObjectID = InternalIndex;
 
@@ -651,16 +643,8 @@ void UParticleSystemComponent::RenderMeshParticles(
         MeshBatch.InstanceCount = 1;
         MeshBatch.ParticleInstanceSRV = nullptr;
 
-        // 텍스처
-        UTexture* DiffuseTexture = nullptr;
-        if (Material->HasTexture(EMaterialTextureSlot::Diffuse))
-        {
-            DiffuseTexture = Material->GetTexture(EMaterialTextureSlot::Diffuse);
-        }
-        if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
-        {
-            MeshBatch.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
-        }
+        // Material의 텍스처 시스템을 사용 (InstanceShaderResourceView 설정하지 않음)
+        // 렌더러가 Material에서 자동으로 텍스처를 조회합니다
 
         MeshBatch.ObjectID = InternalIndex;
 
