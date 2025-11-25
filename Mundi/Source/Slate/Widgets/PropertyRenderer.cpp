@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "PropertyRenderer.h"
-#include "ImGui/imgui.h"
 #include "Vector.h"
 #include "Color.h"
 #include "SceneComponent.h"
@@ -125,6 +124,12 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 
 	case EPropertyType::Curve:
 		bChanged = RenderCurveProperty(Property, ObjectInstance);
+		break;
+	case EPropertyType::RawDistribution_Float:
+		bChanged = RenderRawDistributionFloatProperty(Property, ObjectInstance);
+		break;
+	case EPropertyType::RawDistribution_FVector:
+		bChanged = RenderRawDistributionFVectorProperty(Property, ObjectInstance);
 		break;
 
 	case EPropertyType::Array:
@@ -529,6 +534,41 @@ bool UPropertyRenderer::RenderQuaternionProperty(const FProperty& Prop, void* In
 	Value->Y = EditedQuat.Y;
 	Value->Z = EditedQuat.Z;
 	Value->W = EditedQuat.W;
+	return bDrag;
+}
+
+bool UPropertyRenderer::RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance)
+{
+	FRawDistribution<float>* Value = Prop.GetValuePtr<FRawDistribution<float>>(Instance);
+	bool bDrag = false;
+	ImGui::Text(Prop.Name);
+	if (ImGui::DragFloat("Min", &Value->Min, 0.1f))
+	{
+		bDrag = true;
+	}
+	if (ImGui::DragFloat("Max", &Value->Max, 0.1f))
+	{
+		bDrag |= true;
+	}
+
+	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
+	return bDrag;
+}
+bool UPropertyRenderer::RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance)
+{
+	FRawDistribution<FVector>* Value = Prop.GetValuePtr<FRawDistribution<FVector>>(Instance);
+	bool bDrag = false;
+	ImGui::Text(Prop.Name);
+	if (ImGui::DragFloat3("Min", &Value->Min.X, 0.1f))
+	{
+		bDrag = true;
+	}
+	if (ImGui::DragFloat3("Max", &Value->Max.X, 0.1f))
+	{
+		bDrag |= true;
+	}
+
+	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
 	return bDrag;
 }
 bool UPropertyRenderer::RenderColorProperty(const FProperty& Prop, void* Instance)

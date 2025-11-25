@@ -16,6 +16,7 @@
 #include "GlobalConsole.h"
 #include "Vector.h"
 #include "Enums.h"
+#include "Source/Runtime/Core/Math/Statistics.h"
 #include "nlohmann/json.hpp"  // 사용하는 JSON 라이브러리
 
 namespace json { class JSON; }
@@ -313,6 +314,41 @@ public:
 		return false;
 	}
 
+	template<typename T>
+	static bool ReadRawDistribution(const JSON& InJson, const FString& InKey, FRawDistribution<T>& OutValue)
+	{
+		if (InJson.hasKey(InKey))
+		{
+			const JSON& RawDistributionJson = InJson.at(InKey);
+			OutValue.Mode = static_cast<EDistributionMode>(RawDistributionJson.at("Mode").ToInt());
+
+			if constexpr (std::is_same_v<T, float>)
+			{
+				OutValue.Min = RawDistributionJson.at("Min").ToFloat();
+				OutValue.Max = RawDistributionJson.at("Max").ToFloat();
+			}
+			else if constexpr (std::is_same_v<T, FVector>)
+			{
+				const JSON& MinJson = RawDistributionJson.at("Min");
+				const JSON& MaxJson = RawDistributionJson.at("Max");
+				
+				OutValue.Min = {
+						static_cast<float>(MinJson.at(0).ToFloat()),
+						static_cast<float>(MinJson.at(1).ToFloat()),
+						static_cast<float>(MinJson.at(2).ToFloat()),
+				};
+				OutValue.Max = {
+						static_cast<float>(MaxJson.at(0).ToFloat()),
+						static_cast<float>(MaxJson.at(1).ToFloat()),
+						static_cast<float>(MaxJson.at(2).ToFloat()),
+				};
+			}
+			return true;
+		}
+		return false;
+	}
+
+
 	//====================================================================================
 	// Converting To JSON
 	//====================================================================================
@@ -336,6 +372,24 @@ public:
 		JSON VectorArray = JSON::Make(JSON::Class::Array);
 		VectorArray.append(InFloat);
 		return VectorArray;
+	}
+
+	template<typename T>
+	static JSON RawDistributionToJson(const FRawDistribution<T>& RawDistribution)
+	{
+		JSON DistributionJson = json::Object();
+		if constexpr (std::is_same_v<T, float>)
+		{
+			DistributionJson["Min"] = RawDistribution.Min;
+			DistributionJson["Max"] = RawDistribution.Max;
+		}
+		else if constexpr (std::is_same_v<T, FVector>)
+		{
+			DistributionJson["Min"] = VectorToJson(RawDistribution.Min);
+			DistributionJson["Max"] = VectorToJson(RawDistribution.Max);
+		}
+		DistributionJson["Mode"] = static_cast<int>(RawDistribution.Mode);
+		return DistributionJson;
 	}
 
 	template<typename T>

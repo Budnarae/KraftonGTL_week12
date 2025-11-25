@@ -286,6 +286,40 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
+		case EPropertyType::RawDistribution_Float:
+		{
+			FRawDistribution<float>* Value = Prop.GetValuePtr<FRawDistribution<float>>(this);
+			if (bInIsLoading)
+			{
+				FRawDistribution<float> ReadValue;
+				if (FJsonSerializer::ReadRawDistribution(InOutHandle, Prop.Name, ReadValue))
+				{
+					*Value = ReadValue;
+				}
+			}
+			else
+			{
+				InOutHandle[Prop.Name] = FJsonSerializer::RawDistributionToJson(*Value);
+			}
+			break;
+		}
+		case EPropertyType::RawDistribution_FVector:
+		{
+			FRawDistribution<FVector>* Value = Prop.GetValuePtr<FRawDistribution<FVector>>(this);
+			if (bInIsLoading)
+			{
+				FRawDistribution<FVector> ReadValue;
+				if (FJsonSerializer::ReadRawDistribution(InOutHandle, Prop.Name, ReadValue))
+				{
+					*Value = ReadValue;
+				}
+			}
+			else
+			{
+				InOutHandle[Prop.Name] = FJsonSerializer::RawDistributionToJson(*Value);
+			}
+			break;
+		}
 		case EPropertyType::ObjectPtr:
 		{
 			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
