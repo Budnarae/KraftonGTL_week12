@@ -202,13 +202,24 @@ bool UShader::CompileVariantInternal(ID3D11Device* InDevice, const FString& InSh
 	FWideString WFilePath = UTF8ToWide(InShaderPath);
 
 	// --- 1. D3D_SHADER_MACRO* 형태로 변환 ---
-	TArray<D3D_SHADER_MACRO> Defines;
-	TArray<TPair<FString, FString>> MacroStrings; // 포인터 유효성 유지를 위한 저장소
-	MacroStrings.reserve(InMacros.Num());
+	// std::vector 사용하여 메모리 안정성 보장
+	std::vector<std::string> MacroNames;
+	std::vector<std::string> MacroValues;
+	MacroNames.reserve(InMacros.Num());
+	MacroValues.reserve(InMacros.Num());
+
 	for (const FShaderMacro& Macro : InMacros)
 	{
-		MacroStrings.emplace_back(Macro.Name.ToString(), Macro.Definition.ToString());
-		Defines.push_back({ MacroStrings.back().first.c_str(), MacroStrings.back().second.c_str() });
+		MacroNames.push_back(Macro.Name.ToString());
+		MacroValues.push_back(Macro.Definition.ToString());
+	}
+
+	// 포인터 배열 생성
+	std::vector<D3D_SHADER_MACRO> Defines;
+	Defines.reserve(MacroNames.size() + 1);
+	for (size_t i = 0; i < MacroNames.size(); ++i)
+	{
+		Defines.push_back({ MacroNames[i].c_str(), MacroValues[i].c_str() });
 	}
 	Defines.push_back({ NULL, NULL }); // 배열의 끝을 알리는 NULL 터미네이터
 
@@ -325,7 +336,14 @@ void UShader::CreateInputLayout(ID3D11Device* Device, const FString& InShaderPat
 		return false;
 	};
 
-	if (HasMacro("ENABLE_GPU_SKINNING"))
+	// PARTICLE_SPRITE 매크로가 있으면 FBillboardVertex용 간소화된 레이아웃 사용
+	if (HasMacro("PARTICLE_SPRITE"))
+	{
+		descArray.clear();
+		descArray.Add({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+		descArray.Add({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 });
+	}
+	else if (HasMacro("ENABLE_GPU_SKINNING"))
 	{
 		const UINT BoneIndexOffset = static_cast<UINT>(offsetof(FSkinnedVertex, BoneIndices));
 		const UINT BoneWeightOffset = static_cast<UINT>(offsetof(FSkinnedVertex, BoneWeights));
