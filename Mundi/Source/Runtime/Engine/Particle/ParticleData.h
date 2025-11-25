@@ -226,7 +226,6 @@ public:
 };
 
 // 외부 UObject 클래스들에 대한 전방 선언
-class UParticleSystemComponent;
 class UParticleLODLevel;
 struct FParticleEventInstancePayload;
 enum class ERHIFeatureLevel : int32; // 렌더링 피처 레벨 정의
@@ -262,36 +261,21 @@ struct FParticleSpriteVertex
 #pragma pack(push, 4)
 struct FParticleInstanceData
 {
-    float PositionX;        // 4 bytes
-    float PositionY;        // 4 bytes
-    float PositionZ;        // 4 bytes
-    float Rotation;         // 4 bytes  -> 16 bytes
-    float SizeX;            // 4 bytes
-    float SizeY;            // 4 bytes
-    float PaddingX;         // 4 bytes
-    float PaddingY;         // 4 bytes  -> 16 bytes
-    float ColorR;           // 4 bytes
-    float ColorG;           // 4 bytes
-    float ColorB;           // 4 bytes
-    float ColorA;           // 4 bytes  -> 16 bytes
+    FVector Position;       // 12 bytes (float3 in HLSL)
+    float Rotation;         // 4 bytes  -> 16 bytes total
+    FVector2D Size;         // 8 bytes (float2 in HLSL)
+    FVector2D Padding;      // 8 bytes  -> 16 bytes total
+    FLinearColor Color;     // 16 bytes (float4 in HLSL)
     // Total: 48 bytes
 
     // FBaseParticle로부터 데이터 채우기
     void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation)
     {
-        FVector WorldPos = Particle->Location + ComponentLocation;
-        PositionX = WorldPos.X;
-        PositionY = WorldPos.Y;
-        PositionZ = WorldPos.Z;
+        Position = Particle->Location + ComponentLocation;
         Rotation = Particle->Rotation;
-        SizeX = Particle->Size.X;
-        SizeY = Particle->Size.Y;
-        PaddingX = 0.0f;
-        PaddingY = 0.0f;
-        ColorR = Particle->Color.R;
-        ColorG = Particle->Color.G;
-        ColorB = Particle->Color.B;
-        ColorA = Particle->Color.A;
+        Size = FVector2D(Particle->Size.X, Particle->Size.Y);
+        Padding = FVector2D(0.0f, 0.0f);
+        Color = Particle->Color;
     }
 };
 #pragma pack(pop)
