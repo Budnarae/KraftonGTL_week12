@@ -320,23 +320,6 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
-		case EPropertyType::FParticleBurst:
-		{
-			FParticleBurst* Value = Prop.GetValuePtr<FParticleBurst>(this);
-			if (bInIsLoading)
-			{
-				FParticleBurst ReadValue;
-				if (FJsonSerializer::ReadParticleBurst(InOutHandle, Prop.Name, ReadValue))
-				{
-					*Value = ReadValue;
-				}
-			}
-			else
-			{
-				InOutHandle[Prop.Name] = FJsonSerializer::ParticleBurstToJson(*Value);
-			}
-			break;
-		}
 		case EPropertyType::ObjectPtr:
 		{
 			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
@@ -481,31 +464,6 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
 				TArray<UObject*>& pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
 
-				//UClass* TypeClass = UClass::FindClass(ClassName);
-
-		
-				//	if (TypeClass->IsChildOf(UResourceBase::StaticClass()))
-				//	{
-				//		//리소스인 경우
-				//		FString Path;
-				//		FJsonSerializer::ReadString(Json, "Path", Path);
-				//		if (Path.empty() == false)
-				//		{
-				//			UResourceBase* Resource = reinterpret_cast<UResourceBase*>(*object);
-				//			UResourceBase::LoadAsset(Resource, ClassName, Path);
-				//		}
-				//	}
-				//	else
-				//	{
-				//		if ((*object) != nullptr)
-				//		{
-				//			DeleteObject((*object));
-				//		}
-				//		(*object) = NewObject(TypeClass);
-				//		(*object)->Serialize(bInIsLoading, Json);
-				//	}
-				//}
-
 				if (bInIsLoading)
 				{
 					//기존에 차있거나, 생성자에서 자동 생성한 목록 제거
@@ -552,18 +510,21 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 				{
 					for (UObject* Obj : pArray)
 					{
-						JSON ElementJson = json::Object();
-						if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
+						if (Obj != nullptr)
 						{
-							ElementJson["ClassName"] = Prop.ClassName;
-							ElementJson["Path"] = Resource->GetFilePath();
+							JSON ElementJson = json::Object();
+							if (UResourceBase* Resource = Cast<UResourceBase>(Obj))
+							{
+								ElementJson["ClassName"] = Prop.ClassName;
+								ElementJson["Path"] = Resource->GetFilePath();
+							}
+							else
+							{
+								ElementJson["ClassName"] = Obj->GetClass()->Name;
+								Obj->Serialize(bInIsLoading, ElementJson);
+							}
+							ArrayJson.append(ElementJson);
 						}
-						else
-						{
-							ElementJson["ClassName"] = Obj->GetClass()->Name;
-							Obj->Serialize(bInIsLoading, ElementJson);
-						}
-						ArrayJson.append(ElementJson);
 					}
 				}
 				break;

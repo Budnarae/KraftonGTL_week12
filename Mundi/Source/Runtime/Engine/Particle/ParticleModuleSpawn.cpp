@@ -1,5 +1,6 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleModuleSpawn.h"
+
 
 // ============================================================================
 // 생성자
@@ -20,7 +21,7 @@ UParticleModuleSpawn::UParticleModuleSpawn()
 // ============================================================================
 const FRawDistribution<float>& UParticleModuleSpawn::GetRate() const { return Rate; }
 const FRawDistribution<float>& UParticleModuleSpawn::GetRateScale() const { return RateScale; }
-const TArray<FParticleBurst>& UParticleModuleSpawn::GetBurstList() const { return BurstList; }
+const TArray<UParticleBurst*>& UParticleModuleSpawn::GetBurstList() const { return BurstList; }
 
 float UParticleModuleSpawn::GetMaxSpawnRate() const
 {
@@ -41,19 +42,24 @@ void UParticleModuleSpawn::SetRateScaleMax(float InMax) { RateScale.Max = InMax;
 // ============================================================================
 // 버스트 관리 함수
 // ============================================================================
-void UParticleModuleSpawn::AddBurst(const FParticleBurst& Burst)
+void UParticleModuleSpawn::AddBurst(UParticleBurst* Burst)
 {
     BurstList.Add(Burst);
 }
 
 void UParticleModuleSpawn::AddBurst(int32 Count, float Time)
 {
-    BurstList.Add(FParticleBurst(Count, Time));
+    BurstList.Add(NewObject<UParticleBurst>());
+    BurstList.Last()->Count = Count;
+    BurstList.Last()->Time = Time;
 }
 
 void UParticleModuleSpawn::AddBurst(int32 CountLow, int32 Count, float Time)
 {
-    BurstList.Add(FParticleBurst(CountLow, Count, Time));
+    BurstList.Add(NewObject<UParticleBurst>());
+    BurstList.Last()->CountLow = CountLow;
+    BurstList.Last()->Count = Count;
+    BurstList.Last()->Time = Time;
 }
 
 void UParticleModuleSpawn::ClearBursts()
@@ -188,7 +194,7 @@ int32 UParticleModuleSpawn::GetBurstCount(float EmitterTime, float EmitterDurati
     // ------------------------------------------------------------------------
     for (int32 i = 0; i < BurstList.Num(); ++i)
     {
-        const FParticleBurst& Burst = BurstList[i];
+        const UParticleBurst* Burst = BurstList[i];
 
         // 이미 발사된 버스트는 건너뜀
         if (BurstFired[i])
@@ -200,22 +206,22 @@ int32 UParticleModuleSpawn::GetBurstCount(float EmitterTime, float EmitterDurati
         // Time은 0~1 비율이므로 EmitterDuration을 곱함
         // EmitterDuration이 0이면 (무한 루프) Time을 초 단위로 간주
         float BurstTime = (EmitterDuration > 0.0f)
-            ? Burst.Time * EmitterDuration
-            : Burst.Time;
+            ? Burst->Time * EmitterDuration
+            : Burst->Time;
 
         // 현재 시간이 버스트 시간을 지났는지 확인
         if (EmitterTime >= BurstTime)
         {
             // 버스트 개수 결정
-            int32 BurstCount = Burst.Count;
+            int32 BurstCount = Burst->Count;
 
             // CountLow가 0 이상이면 랜덤 범위 사용
-            if (Burst.CountLow >= 0)
+            if (Burst->CountLow >= 0)
             {
                 // CountLow ~ Count 범위에서 랜덤 선택
-                BurstCount = Burst.CountLow +
-                    FMath::FloorToInt(FMath::GetRandZeroOneRange() * (Burst.Count - Burst.CountLow + 1));
-                BurstCount = FMath::Clamp(BurstCount, Burst.CountLow, Burst.Count);
+                BurstCount = Burst->CountLow +
+                    FMath::FloorToInt(FMath::GetRandZeroOneRange() * (Burst->Count - Burst->CountLow + 1));
+                BurstCount = FMath::Clamp(BurstCount, Burst->CountLow, Burst->Count);
             }
 
             TotalBurst += BurstCount;

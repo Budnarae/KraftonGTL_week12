@@ -28,8 +28,6 @@ struct TPropertyTypeTraits
 			return EPropertyType::RawDistribution_Float;
 		else if constexpr (std::is_same_v <T, FRawDistribution<FVector>>)
 			return EPropertyType::RawDistribution_FVector;
-		else if constexpr (std::is_same_v<T, FParticleBurst>)
-			return EPropertyType::FParticleBurst;
 		else if constexpr (std::is_same_v<T, FLinearColor>)
 			return EPropertyType::FLinearColor;
 		else if constexpr (std::is_same_v<T, FString>)

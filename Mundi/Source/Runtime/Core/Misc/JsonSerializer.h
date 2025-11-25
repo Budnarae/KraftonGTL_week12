@@ -283,7 +283,7 @@ public:
 		return false;
 	}
 
-	static bool ReadParticleBurst(const JSON& InJson, const FString& InKey, FParticleBurst& OutValue)
+	static bool ReadParticleBurst(const JSON& InJson, const FString& InKey, UParticleBurst& OutValue)
 	{
 		if (InJson.hasKey(InKey))
 		{
@@ -371,7 +371,7 @@ public:
 	// Converting To JSON
 	//====================================================================================
 
-	static JSON ParticleBurstToJson(const FParticleBurst& InStruct)
+	static JSON ParticleBurstToJson(const UParticleBurst& InStruct)
 	{
 		JSON VectorArray = JSON::Make(JSON::Class::Array);
 		VectorArray.append(InStruct.Count, InStruct.CountLow, InStruct.Time);

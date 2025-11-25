@@ -132,9 +132,6 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 	case EPropertyType::RawDistribution_FVector:
 		bChanged = RenderRawDistributionFVectorProperty(Property, ObjectInstance);
 		break;
-	case EPropertyType::FParticleBurst:
-		bChanged = RenderFParticleBurstProperty(Property, ObjectInstance);
-		break;
 	case EPropertyType::Array:
 		switch (Property.InnerType)
 		{
@@ -165,7 +162,42 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 				}
 			}
 			break;
+			case EPropertyType::ObjectPtr:
+			{
+				TArray<UObject*>* Arr = Property.GetValuePtr<TArray<UObject*>>(ObjectInstance);
+				ImGui::Text(Property.Name);
+				ImGui::SameLine();
+				if (ImGui::Button("+"))
+				{
+					Arr->Add(NewObject(UClass::FindClass(Property.ClassName)));
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("-"))
+				{
+					if (Arr->size() > 0) 
+					{
+						Arr->RemoveAt(Arr->size() - 1);
+					}
+				}
+				int idx = 0;
+				for (UObject* Object : *Arr)
+				{
+					ImGui::PushID(idx++);
+					if (Object == nullptr)
+					{
+						ImGui::Text("Null");
+					}
+					else 
+					{
+						RenderAllProperties(Object);
+					}
+					ImGui::PopID();
+				}
+
+				break;
+			}
 		}
+	
 		break;
 
 	case EPropertyType::Sound:
@@ -575,26 +607,6 @@ bool UPropertyRenderer::RenderRawDistributionFVectorProperty(const FProperty& Pr
 	return bDrag;
 }
 
-bool UPropertyRenderer::RenderFParticleBurstProperty(const FProperty& Prop, void* Instance)
-{
-	FParticleBurst* Value = Prop.GetValuePtr<FParticleBurst>(Instance);
-	bool bDrag = false;
-	ImGui::Text(Prop.Name);
-	if (ImGui::DragInt("Count", &Value->Count))
-	{
-		bDrag = true;
-	}
-	if (ImGui::DragInt("CountLow", &Value->CountLow))
-	{
-		bDrag = true;
-	}
-	if (ImGui::DragFloat("Time", &Value->Time))
-	{
-		bDrag = true;
-	}
-	return bDrag;
-}
-
 bool UPropertyRenderer::RenderColorProperty(const FProperty& Prop, void* Instance)
 {
 	FLinearColor* Value = Prop.GetValuePtr<FLinearColor>(Instance);
@@ -675,6 +687,8 @@ bool UPropertyRenderer::RenderObjectPtrProperty(const FProperty& Prop, void* Ins
 		UClass* ObjClass = (*ObjPtr)->GetClass();
 		FString ObjName = (*ObjPtr)->GetName();
 		ImGui::Text("%s: %s (%s)", Prop.Name, ObjName.c_str(), ObjClass->Name);
+		RenderAllProperties(*ObjPtr);
+
 	}
 	else
 	{

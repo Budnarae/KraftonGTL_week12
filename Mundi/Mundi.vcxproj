@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug_StandAlone|x64">
@@ -392,6 +392,7 @@
     <ClCompile Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerState.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleAsset.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleBurst.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleData.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEmitter.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEmitterInstance.cpp" />
@@ -616,7 +617,7 @@
     <ClCompile Include="Generated\UParticleModuleCollision.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp" />
     <ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp" />
-  </ItemGroup>
+  <ClCompile Include="Generated\UParticleBurst.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -849,6 +850,7 @@
     <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerState.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleAsset.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleBurst.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleData.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEmitter.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEmitterInstance.h" />
@@ -1096,7 +1098,7 @@
     <ClInclude Include="Generated\UParticleModuleCollision.generated.h" />
     <ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h" />
     <ClInclude Include="Generated\AProceduralPlacementVolume.generated.h" />
-  </ItemGroup>
+  <ClInclude Include="Generated\UParticleBurst.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />
