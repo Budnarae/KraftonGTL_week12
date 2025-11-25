@@ -26,6 +26,15 @@ enum class EBeamNoiseType : uint8
 };
 
 /**
+ * Beam noise algorithm
+ */
+enum class EBeamNoiseAlgorithm : uint8
+{
+    MidpointDisplacement,   // 중간 변위 알고리즘 (번개 효과 - 지직거림)
+    PerlinNoise             // Perlin 노이즈 (부드러운 출렁임)
+};
+
+/**
  * TypeData module for Beam emitters
  * Defines how beams are generated and rendered
  */
@@ -64,6 +73,7 @@ public:
     float GetDisplacementDecay() const { return DisplacementDecay; }
     float GetGlowIntensity() const { return GlowIntensity; }
     bool GetUseTexture() const { return bUseTexture; }
+    EBeamNoiseAlgorithm GetNoiseAlgorithm() const { return NoiseAlgorithm; }
 
     // Setters
     void SetBeamMethod(EBeamMethod Value) { BeamMethod = Value; }
@@ -83,6 +93,7 @@ public:
     void SetDisplacementDecay(float Value) { DisplacementDecay = Value; }
     void SetGlowIntensity(float Value) { GlowIntensity = Value; }
     void SetUseTexture(bool Value) { bUseTexture = Value; }
+    void SetNoiseAlgorithm(EBeamNoiseAlgorithm Value) { NoiseAlgorithm = Value; }
 
     // Calculate beam points for rendering
     void CalculateBeamPoints(
@@ -126,6 +137,10 @@ private:
 
     UPROPERTY(EditAnywhere, Category="Beam|Noise")
     float NoiseFrequency = 1.0f;
+
+    // Noise algorithm (MidpointDisplacement = 번개, PerlinNoise = 부드러운 출렁임)
+    UPROPERTY(EditAnywhere, Category="Beam|Noise")
+    EBeamNoiseAlgorithm NoiseAlgorithm = EBeamNoiseAlgorithm::MidpointDisplacement;
 
     // Texture settings
     UPROPERTY(EditAnywhere, Category="Beam|Texture")

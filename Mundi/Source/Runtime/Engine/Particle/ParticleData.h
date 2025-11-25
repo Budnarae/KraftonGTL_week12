@@ -111,14 +111,8 @@ public:
     void SetupIndicesPtr();
 };
 
-// 에미터 타입 정의
-enum EDynamicEmitterType : int32
-{
-    EDET_Sprite,
-    EDET_Mesh,
-    EDET_Beam,
-    EDET_Ribbon
-};
+// EDynamicEmitterType is defined in ParticleModuleTypeDataBase.h
+// Forward declaration only - include ParticleModuleTypeDataBase.h for full definition
 
 struct FDynamicEmitterReplayDataBase
 {
@@ -172,7 +166,7 @@ public:
     // -------------------------------------------
 
     // 이 스프라이트 에미터가 사용하는 재질 템플릿
-    UMaterial* MaterialInterface;
+    UMaterialInterface* MaterialInterface;
 
     // 파티클의 렌더링 방식(정렬, LOD 등)을 정의하는 필수 모듈 데이터 포인터
     FParticleRequiredModule* RequiredModule;

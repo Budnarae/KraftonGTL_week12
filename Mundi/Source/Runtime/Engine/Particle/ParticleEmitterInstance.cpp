@@ -2,6 +2,7 @@
 #include "ParticleEmitterInstance.h"
 #include "ParticleEmitter.h"
 #include "ParticleModuleRequired.h"
+#include "ParticleModuleTypeDataBase.h"
 #include "ParticleHelper.h"
 
 FParticleEmitterInstance::~FParticleEmitterInstance()
@@ -109,7 +110,8 @@ void FParticleEmitterInstance::SpawnParticles
 (
     float StartTime,
     float Increment,
-    const FVector& InitialLocation,
+    const FVector& PrevLocation,
+    const FVector& CurrLocation,
     const FVector& InitialVelocity,
     FParticleEventInstancePayload* EventPayload
 )
@@ -124,7 +126,7 @@ void FParticleEmitterInstance::SpawnParticles
 
         DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ActiveParticles);
         ActiveParticles++;
-        
+
         FBaseParticle& ParticleBase = *((FBaseParticle*)ParticlePtr);
 
         float LifeTime = GetLifeTimeValue();
@@ -134,9 +136,13 @@ void FParticleEmitterInstance::SpawnParticles
         // 파티클의 RelativeTime 설정 (Increment를 이용해 시간 분산)
         ParticleBase.RelativeTime = (float)Index * Increment;
 
-        ParticleBase.Location = InitialLocation;
-        ParticleBase.OldLocation = InitialLocation; // OldLocation도 초기 위치와 동일하게 설정
-        
+        // 이전 위치와 현재 위치 사이를 보간하여 각 파티클이 고유한 위치를 가짐
+        float T = (SpawnNum > 1) ? (float)Index / (float)(SpawnNum - 1) : 1.0f;
+        FVector InterpolatedLocation = PrevLocation + (CurrLocation - PrevLocation) * T;
+
+        ParticleBase.Location = InterpolatedLocation;
+        ParticleBase.OldLocation = InterpolatedLocation; // OldLocation도 초기 위치와 동일하게 설정
+
         ParticleBase.Velocity = InitialVelocity;
         ParticleBase.BaseVelocity = InitialVelocity; // BaseVelocity는 초기 속도 참조용
 
@@ -154,6 +160,14 @@ void FParticleEmitterInstance::SpawnParticles
         for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
         {
             Module->Spawn(Context, StartTime);
+        }
+
+        // TypeDataModule의 Spawn 호출 (Ribbon/Beam 등에서 SpawnTime 설정)
+        // Index * Increment로 시간 분산하여 각 파티클이 고유한 SpawnTime을 가짐
+        UParticleModuleTypeDataBase* TypeDataModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetTypeDataModule();
+        if (TypeDataModule)
+        {
+            TypeDataModule->Spawn(Context, StartTime + (float)Index * Increment);
         }
     }
 }

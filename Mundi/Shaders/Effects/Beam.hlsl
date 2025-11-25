@@ -67,6 +67,9 @@ PS_OUTPUT mainPS(PS_INPUT i)
 
     float4 finalColor;
 
+    // 정점 색상과 인스턴스 색상을 곱함 (리본: 정점 색상 사용, 빔: 인스턴스 색상만 사용)
+    float4 tintColor = i.color * Color;
+
     if (UseTexture > 0.5f)
     {
         // 빔 전체 UV로 리매핑 (시작=0, 끝=1)
@@ -75,7 +78,7 @@ PS_OUTPUT mainPS(PS_INPUT i)
         remappedUV.y = i.uv.y;  // 너비 방향은 그대로
 
         float4 texColor = BeamTex.Sample(LinearSamp, remappedUV);
-        finalColor = texColor * Color;  // 텍스처 색상 * 틴트
+        finalColor = texColor * tintColor;  // 텍스처 색상 * 틴트
 
         // 알파 컷오프 - 어두운/투명한 픽셀 제거
         // 밝기(luminance) 또는 알파가 임계값 미만이면 discard
@@ -90,7 +93,7 @@ PS_OUTPUT mainPS(PS_INPUT i)
     else
     {
         // 텍스처 없이 단색
-        finalColor = Color;
+        finalColor = tintColor;
     }
 
     Output.Color = finalColor;

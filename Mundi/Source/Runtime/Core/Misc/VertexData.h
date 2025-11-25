@@ -3,6 +3,7 @@
 #include "Name.h"
 #include "Vector.h"
 #include "Delegates.h"
+#include "Color.h"
 
 // 직렬화 포맷 (FVertexDynamic와 역할이 달라서 분리됨)
 struct FNormalVertex
@@ -164,11 +165,14 @@ struct FBillboardVertexInfo_GPU
     void FillFrom(const FNormalVertex& src);
 };
 
-// 빌보드 전용: 위치 + UV만 있으면 충분
+// 빌보드 전용: 위치 + UV + 색상
 struct FBillboardVertex
 {
     FVector WorldPosition;  // 정점 위치 (로컬 좌표, -0.5~0.5 기준 쿼드)
-    FVector2D UV;        // 텍스처 좌표 (0~1)
+    FVector2D UV;           // 텍스처 좌표 (0~1)
+    FLinearColor Color;     // 정점 색상 (리본 등에서 사용)
+
+    FBillboardVertex() : WorldPosition(FVector::Zero()), UV(FVector2D::Zero()), Color(1.0f, 1.0f, 1.0f, 1.0f) {}
 
     void FillFrom(const FMeshData& mesh, size_t i);
     void FillFrom(const FNormalVertex& src);

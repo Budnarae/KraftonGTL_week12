@@ -437,6 +437,9 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
         }
     }
 
+    // 이전 위치 업데이트
+    PreviousWorldLocation = CurrentLocation;
+
     // 3. 시뮬레이션 완료 후 렌더링용 Dynamic Data 생성
     CreateDynamicData();
 }
@@ -445,146 +448,539 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
 void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& OutMeshBatchElements, const FSceneView* View)
 {
     // 1. 유효성 검사
-    if (!Template || DynamicEmitterData.empty())
+    if (!Template || EmitterInstances.empty())
     {
         return;
     }
 
-    // 2. 모든 에미터의 파티클 인스턴스 데이터 수집
-    TArray<FParticleInstanceData> AllInstanceData;
-    UMaterial* FirstMaterial = nullptr;
-
-    for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
+    // 2. 각 에미터 인스턴스를 순회
+    for (FParticleEmitterInstance* Instance : EmitterInstances)
     {
-        if (!DynamicData)
+        if (!Instance)
         {
             continue;
         }
 
-        const FDynamicSpriteEmitterReplayDataBase& Source = DynamicData->GetSource();
-        if (Source.ActiveParticleCount == 0)
+        // 3. 렌더링에 필요한 리소스 준비
+        UParticleModuleRequired* RequiredModule = Instance->SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
+        if (!RequiredModule)
         {
             continue;
         }
 
-        // 카메라 기준 파티클 정렬 (Back-to-Front for transparency)
-        if (View)
+        UMaterialInterface* ParticleMaterial = RequiredModule->GetMaterial();
+        if (!ParticleMaterial)
         {
-            DynamicData->SortParticles(View->ViewLocation);
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No material found.");
+            continue;
         }
 
-        // 첫 번째 유효한 머티리얼 저장
-        if (!FirstMaterial && Source.MaterialInterface)
+        UShader* ShaderToUse = ParticleMaterial->GetShader();
+        if (!ShaderToUse)
         {
-            FirstMaterial = Source.MaterialInterface;
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] No shader found.");
+            continue;
         }
 
-        // 인스턴스 데이터 수집
-        uint8* ParticleData = Source.DataContainer.ParticleData;
-        uint16* ParticleIndices = Source.DataContainer.ParticleIndices;
-        int32 ParticleStride = Source.ParticleStride;
-        FVector ComponentLocation = GetWorldLocation();
-
-        for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
+        // 4. 공유 리소스 준비 (Billboard Quad)
+        UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
+        if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
         {
-            int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
-            DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Billboard quad not found.");
+            continue;
+        }
 
-            FParticleInstanceData InstanceData;
-            InstanceData.FillFromParticle(Particle, ComponentLocation);
-            AllInstanceData.Add(InstanceData);
+        // 5. 셰이더 컴파일
+        FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ParticleMaterial->GetShaderMacros());
+        if (!ShaderVariant)
+        {
+            UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Shader compilation failed.");
+            continue;
+        }
+
+        // 5.5. TypeDataModule 체크 - Beam 타입인지 확인
+        UParticleLODLevel* LODLevel = Instance->SpriteTemplate->GetCurrentLODLevelInstance();
+        UParticleModuleTypeDataBase* TypeDataModule = LODLevel ? LODLevel->GetTypeDataModule() : nullptr;
+
+        // Beam 타입이면 빔 렌더링 (Triangle Strip 방식 - 정점 공유로 틈 없음)
+        if (TypeDataModule && TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Beam)
+        {
+            UParticleModuleTypeDataBeam* BeamModule = static_cast<UParticleModuleTypeDataBeam*>(TypeDataModule);
+
+            // 빔 타겟/소스 위치 동적 업데이트
+            if (BeamTargetActor && BeamModule->GetBeamMethod() == EBeamMethod::Target)
+            {
+                BeamModule->SetTargetPoint(BeamTargetActor->GetActorLocation());
+            }
+            if (BeamSourceActor)
+            {
+                // SourcePoint는 EmitterLocation 기준 로컬 좌표
+                BeamModule->SetSourcePoint(BeamSourceActor->GetActorLocation() - GetWorldLocation());
+            }
+
+            // 빔 포인트 계산 (시간을 전달하여 동적 노이즈)
+            TArray<FVector> BeamPoints;
+            TArray<float> BeamWidths;
+            BeamModule->CalculateBeamPoints(GetWorldLocation(), BeamPoints, BeamWidths, ElapsedTime);
+
+            if (BeamPoints.Num() < 2)
+                continue;
+
+            // 1. 각 포인트에 대해 Right 벡터 계산
+            TArray<FVector> PointRightVectors;
+            PointRightVectors.SetNum(BeamPoints.Num());
+
+            for (int32 i = 0; i < BeamPoints.Num(); ++i)
+            {
+                // 이 포인트에서의 Forward 방향 계산 (인접 세그먼트들의 평균)
+                FVector Forward = FVector::Zero();
+
+                if (i > 0)
+                    Forward += (BeamPoints[i] - BeamPoints[i - 1]).GetNormalized();
+                if (i < BeamPoints.Num() - 1)
+                    Forward += (BeamPoints[i + 1] - BeamPoints[i]).GetNormalized();
+
+                if (Forward.Size() < 0.001f)
+                    Forward = FVector(1, 0, 0);
+                else
+                    Forward = Forward.GetNormalized();
+
+                // 카메라 방향
+                FVector ToCamera = (View->ViewLocation - BeamPoints[i]).GetNormalized();
+
+                // Right 벡터 계산
+                FVector Right = FVector::Cross(Forward, ToCamera);
+
+                // 폴백 처리
+                if (Right.Size() < 0.001f)
+                {
+                    Right = FVector::Cross(Forward, FVector(0, 0, 1));
+                    if (Right.Size() < 0.001f)
+                        Right = FVector::Cross(Forward, FVector(0, 1, 0));
+                }
+
+                PointRightVectors[i] = Right.GetNormalized();
+            }
+
+            // 2. 정점 데이터 생성 (각 포인트당 2개 정점: top, bottom)
+            uint32 NumPoints = static_cast<uint32>(BeamPoints.Num());
+            uint32 NumVertices = NumPoints * 2;
+            uint32 NumSegments = NumPoints - 1;
+            uint32 NumIndices = NumSegments * 6;  // 세그먼트당 2개 삼각형 = 6개 인덱스
+
+            TArray<FBillboardVertex> Vertices;
+            TArray<uint32> Indices;
+            Vertices.SetNum(NumVertices);
+            Indices.SetNum(NumIndices);
+
+            // 정점 생성
+            for (uint32 i = 0; i < NumPoints; ++i)
+            {
+                FVector Point = BeamPoints[i];
+                FVector Right = PointRightVectors[i];
+                float Width = BeamWidths[i];
+                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1);
+
+                // Bottom 정점 (V = 0)
+                Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
+                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+
+                // Top 정점 (V = 1)
+                Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
+                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+            }
+
+            // 인덱스 생성 (Triangle List)
+            for (uint32 i = 0; i < NumSegments; ++i)
+            {
+                uint32 BaseIndex = i * 6;
+                uint32 V0 = i * 2;      // 현재 bottom
+                uint32 V1 = i * 2 + 1;  // 현재 top
+                uint32 V2 = i * 2 + 2;  // 다음 bottom
+                uint32 V3 = i * 2 + 3;  // 다음 top
+
+                // 삼각형 1: V0 - V1 - V2
+                Indices[BaseIndex + 0] = V0;
+                Indices[BaseIndex + 1] = V1;
+                Indices[BaseIndex + 2] = V2;
+
+                // 삼각형 2: V1 - V3 - V2
+                Indices[BaseIndex + 3] = V1;
+                Indices[BaseIndex + 4] = V3;
+                Indices[BaseIndex + 5] = V2;
+            }
+
+            // 3. 동적 버퍼 생성/업데이트
+            D3D11RHI* RHIDevice = GEngine.GetRHIDevice();
+            ID3D11Device* Device = RHIDevice->GetDevice();
+
+            // 버텍스 버퍼
+            if (!BeamVertexBuffer || BeamVertexBufferSize < NumVertices)
+            {
+                if (BeamVertexBuffer)
+                    BeamVertexBuffer->Release();
+
+                D3D11_BUFFER_DESC VBDesc = {};
+                VBDesc.Usage = D3D11_USAGE_DYNAMIC;
+                VBDesc.ByteWidth = NumVertices * sizeof(FBillboardVertex);
+                VBDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+                VBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                Device->CreateBuffer(&VBDesc, nullptr, &BeamVertexBuffer);
+                BeamVertexBufferSize = NumVertices;
+            }
+
+            // 인덱스 버퍼
+            if (!BeamIndexBuffer || BeamIndexBufferSize < NumIndices)
+            {
+                if (BeamIndexBuffer)
+                    BeamIndexBuffer->Release();
+
+                D3D11_BUFFER_DESC IBDesc = {};
+                IBDesc.Usage = D3D11_USAGE_DYNAMIC;
+                IBDesc.ByteWidth = NumIndices * sizeof(uint32);
+                IBDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+                IBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                Device->CreateBuffer(&IBDesc, nullptr, &BeamIndexBuffer);
+                BeamIndexBufferSize = NumIndices;
+            }
+
+            // 버퍼 업데이트
+            ID3D11DeviceContext* Context = RHIDevice->GetDeviceContext();
+
+            D3D11_MAPPED_SUBRESOURCE MappedVB;
+            Context->Map(BeamVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedVB);
+            memcpy(MappedVB.pData, Vertices.GetData(), NumVertices * sizeof(FBillboardVertex));
+            Context->Unmap(BeamVertexBuffer, 0);
+
+            D3D11_MAPPED_SUBRESOURCE MappedIB;
+            Context->Map(BeamIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedIB);
+            memcpy(MappedIB.pData, Indices.GetData(), NumIndices * sizeof(uint32));
+            Context->Unmap(BeamIndexBuffer, 0);
+
+            // 4. BatchElement 생성 (단일 DrawCall)
+            FMeshBatchElement BatchElement;
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = BeamVertexBuffer;
+            BatchElement.IndexBuffer = BeamIndexBuffer;
+            BatchElement.VertexStride = sizeof(FBillboardVertex);
+            BatchElement.IndexCount = NumIndices;
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+            // WorldMatrix는 Identity (정점이 이미 월드 좌표)
+            BatchElement.WorldMatrix = FMatrix::Identity();
+
+            // 빔 색상 (GlowIntensity 적용)
+            FVector4 BeamColor = BeamModule->GetBeamColor();
+            float GlowIntensity = BeamModule->GetGlowIntensity();
+            BatchElement.InstanceColor = FLinearColor(
+                BeamColor.X * GlowIntensity,
+                BeamColor.Y * GlowIntensity,
+                BeamColor.Z * GlowIntensity,
+                BeamColor.W
+            );
+
+            // UV 매핑 (전체 빔에서 0~1, 셰이더에서 리매핑 불필요)
+            BatchElement.UVStart = 0.0f;
+            BatchElement.UVEnd = 1.0f;
+
+            // 텍스처 사용 여부
+            bool bUseTexture = BeamModule->GetUseTexture();
+            BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+            // 텍스처 설정
+            if (bUseTexture && ParticleMaterial)
+            {
+                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                {
+                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            BatchElement.ObjectID = InternalIndex;
+            OutMeshBatchElements.Add(BatchElement);
+
+            continue; // 빔 렌더링 완료, 스프라이트 렌더링 스킵
+        }
+
+        // Ribbon 타입이면 리본 렌더링
+        if (TypeDataModule && TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Ribbon)
+        {
+            UParticleModuleTypeDataRibbon* RibbonModule = static_cast<UParticleModuleTypeDataRibbon*>(TypeDataModule);
+
+            // 리본 포인트 계산 (파티클들로부터)
+            TArray<FVector> RibbonPoints;
+            TArray<float> RibbonWidths;
+            TArray<FLinearColor> RibbonColors;
+            RibbonModule->BuildRibbonFromParticles(Instance, GetWorldLocation(), RibbonPoints, RibbonWidths, RibbonColors);
+
+            if (RibbonPoints.Num() < 2)
+                continue;
+
+            // 1. 각 포인트에 대해 Right 벡터 계산 (카메라를 향하도록)
+            TArray<FVector> PointRightVectors;
+            PointRightVectors.SetNum(RibbonPoints.Num());
+
+            for (int32 i = 0; i < RibbonPoints.Num(); ++i)
+            {
+                FVector Forward;
+                if (i == 0)
+                    Forward = RibbonPoints[1] - RibbonPoints[0];
+                else if (i == RibbonPoints.Num() - 1)
+                    Forward = RibbonPoints[i] - RibbonPoints[i - 1];
+                else
+                    Forward = RibbonPoints[i + 1] - RibbonPoints[i - 1];
+
+                Forward = Forward.GetNormalized();
+
+                // 카메라를 향하는 Right 벡터
+                FVector ToCamera = (View->ViewLocation - RibbonPoints[i]).GetNormalized();
+                FVector Right = FVector::Cross(Forward, ToCamera);
+
+                // 폴백 처리
+                if (Right.Size() < 0.001f)
+                {
+                    Right = FVector::Cross(Forward, FVector(0, 0, 1));
+                    if (Right.Size() < 0.001f)
+                        Right = FVector::Cross(Forward, FVector(0, 1, 0));
+                }
+
+                PointRightVectors[i] = Right.GetNormalized();
+            }
+
+            // 2. 정점 데이터 생성
+            uint32 NumPoints = static_cast<uint32>(RibbonPoints.Num());
+            uint32 NumVertices = NumPoints * 2;
+            uint32 NumSegments = NumPoints - 1;
+            uint32 NumIndices = NumSegments * 6;
+
+            TArray<FBillboardVertex> Vertices;
+            TArray<uint32> Indices;
+            Vertices.SetNum(NumVertices);
+            Indices.SetNum(NumIndices);
+
+            // 텍스처 반복 계수
+            float TextureRepeat = RibbonModule->GetTextureRepeat();
+
+            // 정점 생성
+            for (uint32 i = 0; i < NumPoints; ++i)
+            {
+                FVector Point = RibbonPoints[i];
+                FVector Right = PointRightVectors[i];
+                float Width = RibbonWidths[i];
+                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1) * TextureRepeat;
+                FLinearColor VertexColor = RibbonColors[i];  // 각 세그먼트의 색상
+
+                // Bottom 정점 (V = 0)
+                Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
+                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+                Vertices[i * 2].Color = VertexColor;
+
+                // Top 정점 (V = 1)
+                Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
+                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+                Vertices[i * 2 + 1].Color = VertexColor;
+            }
+
+            // 인덱스 생성 (Triangle List)
+            for (uint32 i = 0; i < NumSegments; ++i)
+            {
+                uint32 BaseIndex = i * 6;
+                uint32 V0 = i * 2;
+                uint32 V1 = i * 2 + 1;
+                uint32 V2 = i * 2 + 2;
+                uint32 V3 = i * 2 + 3;
+
+                Indices[BaseIndex + 0] = V0;
+                Indices[BaseIndex + 1] = V1;
+                Indices[BaseIndex + 2] = V2;
+
+                Indices[BaseIndex + 3] = V1;
+                Indices[BaseIndex + 4] = V3;
+                Indices[BaseIndex + 5] = V2;
+            }
+
+            // 3. 동적 버퍼 생성/업데이트
+            D3D11RHI* RHIDevice = GEngine.GetRHIDevice();
+            ID3D11Device* Device = RHIDevice->GetDevice();
+
+            // 버텍스 버퍼
+            if (!RibbonVertexBuffer || RibbonVertexBufferSize < NumVertices)
+            {
+                if (RibbonVertexBuffer)
+                    RibbonVertexBuffer->Release();
+
+                D3D11_BUFFER_DESC VBDesc = {};
+                VBDesc.Usage = D3D11_USAGE_DYNAMIC;
+                VBDesc.ByteWidth = NumVertices * sizeof(FBillboardVertex);
+                VBDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+                VBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                Device->CreateBuffer(&VBDesc, nullptr, &RibbonVertexBuffer);
+                RibbonVertexBufferSize = NumVertices;
+            }
+
+            // 인덱스 버퍼
+            if (!RibbonIndexBuffer || RibbonIndexBufferSize < NumIndices)
+            {
+                if (RibbonIndexBuffer)
+                    RibbonIndexBuffer->Release();
+
+                D3D11_BUFFER_DESC IBDesc = {};
+                IBDesc.Usage = D3D11_USAGE_DYNAMIC;
+                IBDesc.ByteWidth = NumIndices * sizeof(uint32);
+                IBDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+                IBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                Device->CreateBuffer(&IBDesc, nullptr, &RibbonIndexBuffer);
+                RibbonIndexBufferSize = NumIndices;
+            }
+
+            // 버퍼 업데이트
+            ID3D11DeviceContext* Context = RHIDevice->GetDeviceContext();
+
+            D3D11_MAPPED_SUBRESOURCE MappedVB;
+            Context->Map(RibbonVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedVB);
+            memcpy(MappedVB.pData, Vertices.GetData(), NumVertices * sizeof(FBillboardVertex));
+            Context->Unmap(RibbonVertexBuffer, 0);
+
+            D3D11_MAPPED_SUBRESOURCE MappedIB;
+            Context->Map(RibbonIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedIB);
+            memcpy(MappedIB.pData, Indices.GetData(), NumIndices * sizeof(uint32));
+            Context->Unmap(RibbonIndexBuffer, 0);
+
+            // 4. BatchElement 생성
+            FMeshBatchElement BatchElement;
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = RibbonVertexBuffer;
+            BatchElement.IndexBuffer = RibbonIndexBuffer;
+            BatchElement.VertexStride = sizeof(FBillboardVertex);
+            BatchElement.IndexCount = NumIndices;
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+            BatchElement.WorldMatrix = FMatrix::Identity();
+
+            // 리본 색상 (정점 색상을 사용하므로 InstanceColor는 흰색으로 설정)
+            // 정점 색상 * InstanceColor가 최종 색상이 됨
+            BatchElement.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+            BatchElement.UVStart = 0.0f;
+            BatchElement.UVEnd = 1.0f;
+
+            // 텍스처 설정
+            bool bUseTexture = RibbonModule->GetUseTexture();
+            BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
+
+            if (bUseTexture && ParticleMaterial)
+            {
+                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                {
+                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                }
+                else
+                {
+                    BatchElement.InstanceShaderResourceView = nullptr;
+                }
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            BatchElement.ObjectID = InternalIndex;
+            OutMeshBatchElements.Add(BatchElement);
+
+            continue; // 리본 렌더링 완료, 스프라이트 렌더링 스킵
+        }
+
+        // 6. 각 파티클에 대해 FMeshBatchElement 생성 (스프라이트)
+        // 스프라이트는 ActiveParticles가 0이면 스킵
+        if (Instance->ActiveParticles == 0)
+        {
+            continue;
+        }
+
+        // TODO: 현재는 각 파티클마다 별도의 Draw Call을 생성 (최소 구현)
+        // 추후 인스턴싱이나 동적 버퍼로 최적화 필요
+        for (int32 ParticleIndex = 0; ParticleIndex < Instance->ActiveParticles; ParticleIndex++)
+        {
+            DECLARE_PARTICLE_PTR(Particle, Instance->ParticleData + Instance->ParticleStride * ParticleIndex);
+
+            // 7. FMeshBatchElement 생성
+            FMeshBatchElement BatchElement;
+
+            // --- 정렬 키 ---
+            BatchElement.VertexShader = ShaderVariant->VertexShader;
+            BatchElement.PixelShader = ShaderVariant->PixelShader;
+            BatchElement.InputLayout = ShaderVariant->InputLayout;
+            BatchElement.Material = ParticleMaterial;
+            BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
+            BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
+            BatchElement.VertexStride = ParticleQuad->GetVertexStride();
+
+            // --- 드로우 데이터 ---
+            BatchElement.IndexCount = ParticleQuad->GetIndexCount();
+            BatchElement.StartIndex = 0;
+            BatchElement.BaseVertexIndex = 0;
+            BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+            // --- 인스턴스 데이터 ---
+            // 파티클 위치 = 로컬 파티클 위치 + 컴포넌트 월드 위치
+            FVector WorldParticleLocation = Particle->Location + GetWorldLocation();
+            FMatrix ScaleMatrix = FMatrix::MakeScale(Particle->Size);
+            FMatrix TranslationMatrix = FMatrix::MakeTranslation(WorldParticleLocation);
+            BatchElement.WorldMatrix = ScaleMatrix * TranslationMatrix;
+
+            // 파티클 색상
+            BatchElement.InstanceColor = Particle->Color;
+
+            // Material의 텍스처 가져오기 (Diffuse 텍스처)
+            UTexture* DiffuseTexture = nullptr;
+            if (ParticleMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
+            {
+                DiffuseTexture = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
+            }
+
+            // 텍스처가 없으면 기본 텍스처 사용 (테스트용)
+            if (!DiffuseTexture)
+            {
+                DiffuseTexture = UResourceManager::GetInstance().Load<UTexture>(GDataDir + "/Textures/grass.jpg");
+            }
+
+            if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
+            {
+                BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
+            }
+            else
+            {
+                BatchElement.InstanceShaderResourceView = nullptr;
+            }
+
+            // 오브젝트 ID (선택 시스템용)
+            BatchElement.ObjectID = InternalIndex;
+
+            OutMeshBatchElements.Add(BatchElement);
         }
     }
-
-    // 3. 인스턴스가 없으면 종료
-    if (AllInstanceData.empty() || !FirstMaterial)
-    {
-        return;
-    }
-
-    // 4. 공유 버퍼 매니저에 데이터 업로드
-    FParticleInstanceBufferManager& BufferManager = FParticleInstanceBufferManager::Get();
-    ID3D11ShaderResourceView* InstanceSRV = BufferManager.UpdateAndGetSRV(AllInstanceData);
-    if (!InstanceSRV)
-    {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to update instance buffer.");
-        return;
-    }
-
-    // 5. 렌더링 리소스 준비
-    // 파티클은 UberLit.hlsl을 사용 (PARTICLE_SPRITE 매크로 지원)
-    UShader* ShaderToUse = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
-    if (!ShaderToUse)
-    {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to load UberLit shader.");
-        return;
-    }
-
-    UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
-    if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
-    {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Billboard quad not found.");
-        return;
-    }
-
-    // 6. 셰이더 매크로 설정 (PARTICLE_SPRITE 활성화)
-    TArray<FShaderMacro> ShaderMacros;
-    ShaderMacros.push_back({"PARTICLE_SPRITE", "1"});
-    ShaderMacros.push_back({"LIGHTING_MODEL_PHONG", "1"});
-
-    FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ShaderMacros);
-    if (!ShaderVariant)
-    {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Shader compilation failed.");
-        return;
-    }
-
-    // 7. 단일 FMeshBatchElement 생성 (인스턴싱)
-    FMeshBatchElement BatchElement;
-
-    // --- 정렬 키 ---
-    BatchElement.VertexShader = ShaderVariant->VertexShader;
-    BatchElement.PixelShader = ShaderVariant->PixelShader;
-    BatchElement.InputLayout = ShaderVariant->InputLayout;
-    BatchElement.Material = FirstMaterial;
-    BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
-    BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
-    BatchElement.VertexStride = ParticleQuad->GetVertexStride();
-
-    // --- 드로우 데이터 ---
-    BatchElement.IndexCount = ParticleQuad->GetIndexCount();
-    BatchElement.StartIndex = 0;
-    BatchElement.BaseVertexIndex = 0;
-    BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-    // --- 인스턴싱 데이터 ---
-    BatchElement.InstanceCount = static_cast<uint32>(AllInstanceData.size());
-    BatchElement.ParticleInstanceSRV = InstanceSRV;
-
-    // --- 인스턴스 데이터 ---
-    BatchElement.WorldMatrix = FMatrix::Identity();
-    BatchElement.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-    // 텍스처
-    UTexture* DiffuseTexture = nullptr;
-    if (FirstMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
-    {
-        DiffuseTexture = FirstMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
-    }
-    if (!DiffuseTexture)
-    {
-        DiffuseTexture = UResourceManager::GetInstance().Load<UTexture>(GDataDir + "/Textures/grass.jpg");
-    }
-
-    if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
-    {
-        BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
-    }
-
-    // 오브젝트 ID
-    BatchElement.ObjectID = InternalIndex;
-
-    OutMeshBatchElements.Add(BatchElement);
 }
 
 // // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)

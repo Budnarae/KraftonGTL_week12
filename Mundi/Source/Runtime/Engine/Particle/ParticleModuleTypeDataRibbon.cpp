@@ -1,6 +1,7 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleModuleTypeDataRibbon.h"
 #include "ParticleData.h"
+#include "ParticleEmitterInstance.h"
 #include <algorithm>
 
 UParticleModuleTypeDataRibbon::UParticleModuleTypeDataRibbon()
@@ -17,6 +18,7 @@ void UParticleModuleTypeDataRibbon::Spawn(FParticleContext& Context, float Emitt
     {
         // Store spawn time for sorting during rendering
         // SourceIndex will be determined after sorting by SpawnTime
+        // Note: Particle->Location is already in world coordinates
         Payload->Initialize(EmitterTime, -1, RibbonWidth);
     }
 }
@@ -66,9 +68,9 @@ void UParticleModuleTypeDataRibbon::BuildRibbonFromParticles(
             continue;
 
         // Collect particle data for sorting
-        // 리본의 경우 Particle->Location이 이미 스폰 시점의 월드 좌표를 포함
+        // Particle->Location is already in world coordinates
         FRibbonParticleData Data;
-        Data.Location = Particle->Location;  // EmitterLocation 더하지 않음
+        Data.Location = Particle->Location;
         Data.Color = Particle->Color;
         Data.Width = Payload->Width > 0.0f ? Payload->Width : RibbonWidth;
         Data.SpawnTime = Payload->SpawnTime;

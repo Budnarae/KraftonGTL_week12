@@ -287,6 +287,8 @@
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Character.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\GameModeBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\BeamParticleActor.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\RibbonParticleActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Pawn.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\PlayerController.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.cpp" />
@@ -618,7 +620,7 @@
     <ClCompile Include="Generated\UParticleModuleCollision.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp" />
     <ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp" />
-  <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" /></ItemGroup>
+  <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" /><ClCompile Include="Generated\ABeamParticleActor.generated.cpp" /><ClCompile Include="Generated\ARibbonParticleActor.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -836,6 +838,8 @@
     <ClInclude Include="Source\Runtime\Engine\GameFramework\GameEngine.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\GameModeBase.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\BeamParticleActor.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\RibbonParticleActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Pawn.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\PlayerCameraManager.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\DirectionalLightActor.h" />
@@ -1100,7 +1104,7 @@
     <ClInclude Include="Generated\UParticleModuleCollision.generated.h" />
     <ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h" />
     <ClInclude Include="Generated\AProceduralPlacementVolume.generated.h" />
-  <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" /></ItemGroup>
+  <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" /><ClInclude Include="Generated\ABeamParticleActor.generated.h" /><ClInclude Include="Generated\ARibbonParticleActor.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Tools\CodeGenerator\generate.py" />

@@ -58,7 +58,8 @@ public:
     (
         float StartTime,
         float Increment,
-        const FVector& InitialLocation, // 충돌 처리 등을 위해 별도의 인자로 받으나 보통 사용되지 않음
+        const FVector& PrevLocation,    // 이전 프레임 위치 (보간용)
+        const FVector& CurrLocation,    // 현재 프레임 위치
         const FVector& InitialVelocity,
         FParticleEventInstancePayload* EventPayload
     );
