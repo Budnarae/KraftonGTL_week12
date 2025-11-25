@@ -351,6 +351,13 @@ void SParticleEditWindow::OnRender()
         {
             UPropertyRenderer::RenderAllProperties(State->SelectedModule);
         }
+        else
+        {
+            if (State->SelectedEmitter)
+            {
+                UPropertyRenderer::RenderAllProperties(State->SelectedEmitter);
+            }
+        }
         ImGui::EndChild();
         ImGui::SameLine();
 
@@ -503,7 +510,7 @@ void SParticleEditWindow::DrawEmitterView()
         {
             //선택된 이미터 이걸로 변경
             State->SelectedEmitter = Emitter;
-            State->SelectedModule = RequireModule;
+            State->SelectedModule = nullptr;
         }
         ImGui::PopStyleColor();
         ImGui::PushStyleColor(ImGuiCol_Header, ModuleColor);

@@ -286,6 +286,12 @@ void UParticleSystemComponent::Activate(bool bReset)
     // TODO: 현재는 최소 구현으로 무조건 LOD == 0이라고 설정한다. 추후 추가 구현 필요
     // SetCurrentLODLevel을 호출하여 모든 Emitter의 CurrentLODLevel도 함께 설정
     SetCurrentLODLevel(0);
+    for (FParticleEmitterInstance* EmitterInstance : EmitterInstances)
+    {
+        delete EmitterInstance;
+    }
+    EmitterInstances.Empty();
+
     for (UParticleEmitter* Emitter : Template->GetEmitters())
     {
         // 페이로드 관련 정보 초기화

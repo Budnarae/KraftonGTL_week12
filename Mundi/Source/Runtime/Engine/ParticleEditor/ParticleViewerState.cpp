@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "ParticleViewerState.h"
+#include "Source/Runtime/Engine/GameFramework/ParticleSystemActor.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 
 ParticleViewerState::~ParticleViewerState()
 {
@@ -20,6 +22,8 @@ void ParticleViewerState::LoadCachedParticle(const FString& Path)
 	UParticleAsset* ParticleAsset = UResourceManager::GetInstance().Load<UParticleAsset>(Path);
 	ParticleAsset->GetDeepDuplicated(CachedParticle);
 	ParticlePath = ParticleAsset->GetFilePath();
+	ParticleActor->GetParticleSystemComponent()->SetTemplate(CachedParticle);
+	ParticleActor->GetParticleSystemComponent()->Activate(true);
 	SelectedEmitter = nullptr;
 	SelectedModule = nullptr;
 }
