@@ -4,6 +4,9 @@
 #include "Material.h"
 #include "UParticleModuleRequired.generated.h"
 
+// 전방 선언
+class UStaticMesh;
+
 UCLASS(DisplayName="필수 파티클 모듈", Description="파티클 렌더링에 필수적인 요소들을 포함하는 모듈입니다.")
 class UParticleModuleRequired : public UParticleModule
 {
@@ -24,25 +27,33 @@ public:
 
     // Getters
     UMaterial* GetMaterial() const { return Material; }
+    UStaticMesh* GetMesh() const { return Mesh; }
     FVector GetEmitterOrigin() const { return EmitterOrigin; }
     FQuat GetEmitterRotation() const { return EmitterRotation; }
     float GetEmitterDuration() const { return EmitterDuration; }
     float GetSpawnRate() const { return SpawnRate; }
     float GetEmitterDelay() const { return EmitterDelay; }
     float GetLifeTime() const { return LifeTime; }
+    bool GetEnableCameraFacing() const { return bEnableCameraFacing; }
 
     // Setters
     void SetMaterial(UMaterial* InMaterial) { Material = InMaterial; }
+    void SetMesh(UStaticMesh* InMesh) { Mesh = InMesh; }
     void SetEmitterOrigin(const FVector& InOrigin) { EmitterOrigin = InOrigin; }
     void SetEmitterRotation(const FQuat& InRotation) { EmitterRotation = InRotation; }
     void SetEmitterDuration(float InDuration) { EmitterDuration = InDuration; }
     void SetSpawnRate(float InSpawnRate) { SpawnRate = InSpawnRate; }
     void SetEmitterDelay(float InDelay) { EmitterDelay = InDelay; }
     void SetLifeTime(float InLifeTime) { LifeTime = InLifeTime; }
+    void SetEnableCameraFacing(bool bInEnable) { bEnableCameraFacing = bInEnable; }
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")
     UMaterial* Material{};
+
+    // 메시 에미터 전용 (스프라이트 에미터는 nullptr)
+    UPROPERTY(EditAnywhere, Category="Assets")
+    UStaticMesh* Mesh{};
 
     UPROPERTY(EditAnywhere, Category="Basic")
     FVector EmitterOrigin{};
@@ -62,6 +73,9 @@ private:
 
     UPROPERTY(EditAnywhere, Category="Basic")
     float EmitterDelay{};
+
+    UPROPERTY(EditAnywhere, Category="Rendering", Tooltip="Enable camera-facing billboard. True for sprites, false for meshes with rotation.")
+    bool bEnableCameraFacing = true;
 
 public:
     UPROPERTY(EditAnywhere, Category="Basic")

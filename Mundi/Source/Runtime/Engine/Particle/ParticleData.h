@@ -268,17 +268,19 @@ struct FParticleInstanceData
     FVector Position;       // 12 bytes (float3 in HLSL)
     float Rotation;         // 4 bytes  -> 16 bytes total
     FVector2D Size;         // 8 bytes (float2 in HLSL)
-    FVector2D Padding;      // 8 bytes  -> 16 bytes total
+    float CameraFacing;     // 4 bytes - 1.0 = billboard, 0.0 = use rotation
+    float Padding;          // 4 bytes  -> 16 bytes total
     FLinearColor Color;     // 16 bytes (float4 in HLSL)
     // Total: 48 bytes
 
     // FBaseParticle로부터 데이터 채우기
-    void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation)
+    void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation, bool bEnableCameraFacing = true)
     {
         Position = Particle->Location + ComponentLocation;
         Rotation = Particle->Rotation;
         Size = FVector2D(Particle->Size.X, Particle->Size.Y);
-        Padding = FVector2D(0.0f, 0.0f);
+        CameraFacing = bEnableCameraFacing ? 1.0f : 0.0f;
+        Padding = 0.0f;
         Color = Particle->Color;
     }
 };

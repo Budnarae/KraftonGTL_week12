@@ -184,18 +184,18 @@ void FDynamicMeshEmitterData::Init(FParticleEmitterInstance* Instance, int32 Ind
         }
     }
 
-    // 머티리얼 정보 설정
+    // 머티리얼 및 메시 정보 설정 (RequiredModule에서 가져옴)
     if (Instance->CurrentLODLevel && Instance->CurrentLODLevel->GetRequiredModule())
     {
-        Source.MaterialInterface = Instance->CurrentLODLevel->GetRequiredModule()->GetMaterial();
+        UParticleModuleRequired* RequiredModule = Instance->CurrentLODLevel->GetRequiredModule();
+        Source.MaterialInterface = RequiredModule->GetMaterial();
+        StaticMesh = RequiredModule->GetMesh();
     }
     else
     {
         Source.MaterialInterface = nullptr;
+        StaticMesh = nullptr;
     }
-
-    // 메시 정보 설정
-    StaticMesh = Instance->MeshToDraw;
 
     // 스케일 설정
     if (Instance->OwnerComponent)

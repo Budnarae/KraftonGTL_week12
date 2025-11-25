@@ -451,6 +451,14 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 SpriteMaterial = SpriteSource.MaterialInterface;
             }
 
+            // RequiredModule에서 CameraFacing 옵션 가져오기
+            bool bEnableCameraFacing = true; // 스프라이트 기본값
+            if (SpriteSource.RequiredModule)
+            {
+                UParticleModuleRequired* RequiredModule = reinterpret_cast<UParticleModuleRequired*>(SpriteSource.RequiredModule);
+                bEnableCameraFacing = RequiredModule->GetEnableCameraFacing();
+            }
+
             // 스프라이트 인스턴스 데이터 수집
             for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
             {
@@ -458,7 +466,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
 
                 FParticleInstanceData InstanceData;
-                InstanceData.FillFromParticle(Particle, ComponentLocation);
+                InstanceData.FillFromParticle(Particle, ComponentLocation, bEnableCameraFacing);
                 SpriteInstanceData.Add(InstanceData);
             }
         }
@@ -466,6 +474,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         {
             // 메시 에미터 데이터 캐스팅
             FDynamicMeshEmitterData* MeshEmitterData = static_cast<FDynamicMeshEmitterData*>(DynamicData);
+            const FDynamicMeshEmitterReplayDataBase& MeshSource = static_cast<const FDynamicMeshEmitterReplayDataBase&>(Source);
 
             // 메시 저장
             if (!MeshToRender && MeshEmitterData->StaticMesh)
@@ -473,14 +482,18 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 MeshToRender = MeshEmitterData->StaticMesh;
             }
 
-            // 메시의 머티리얼 사용 (StaticMesh의 GroupInfo에서 가져옴)
-            if (!MeshMaterial && MeshToRender && MeshToRender->HasMaterial())
+            // 메시의 머티리얼 사용 (RequiredModule에서 가져옴 - DynamicData에 이미 복사됨)
+            if (!MeshMaterial && MeshSource.MaterialInterface)
             {
-                const TArray<FGroupInfo>& GroupInfos = MeshToRender->GetMeshGroupInfo();
-                if (!GroupInfos.empty() && !GroupInfos[0].InitialMaterialName.empty())
-                {
-                    MeshMaterial = UResourceManager::GetInstance().Load<UMaterial>(GroupInfos[0].InitialMaterialName);
-                }
+                MeshMaterial = MeshSource.MaterialInterface;
+            }
+
+            // RequiredModule에서 CameraFacing 옵션 가져오기
+            bool bEnableCameraFacing = false; // 메시 기본값
+            if (MeshSource.RequiredModule)
+            {
+                UParticleModuleRequired* RequiredModule = reinterpret_cast<UParticleModuleRequired*>(MeshSource.RequiredModule);
+                bEnableCameraFacing = RequiredModule->GetEnableCameraFacing();
             }
 
             // 메시 인스턴스 데이터 수집
@@ -490,7 +503,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
 
                 FParticleInstanceData InstanceData;
-                InstanceData.FillFromParticle(Particle, ComponentLocation);
+                InstanceData.FillFromParticle(Particle, ComponentLocation, bEnableCameraFacing);
                 MeshInstanceData.Add(InstanceData);
             }
         }
@@ -580,21 +593,17 @@ void UParticleSystemComponent::RenderMeshParticles(
     UStaticMesh* Mesh,
     TArray<FMeshBatchElement>& OutMeshBatchElements)
 {
-    // 1. 셰이더 로드
-    UShader* MeshShader = Material->GetShader();
+    // 1. 셰이더 로드 (Material 무시, 항상 UberLit.hlsl 사용)
+    UShader* MeshShader = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
     if (!MeshShader)
     {
-        MeshShader = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
-    }
-    if (!MeshShader)
-    {
-        UE_LOG("[RenderMeshParticles] ERROR: Failed to load shader!");
+        UE_LOG("[RenderMeshParticles] ERROR: Failed to load UberLit.hlsl shader!");
         return;
     }
-    UE_LOG("[RenderMeshParticles] Shader loaded: %p", MeshShader);
 
-    // 2. 셰이더 매크로 (일반 Lit)
+    // 2. 셰이더 매크로 (Particle Mesh + Phong Shading)
     TArray<FShaderMacro> MeshMacros;
+    MeshMacros.push_back({"PARTICLE_MESH", "1"});
     MeshMacros.push_back({"LIGHTING_MODEL_PHONG", "1"});
 
     FShaderVariant* MeshVariant = MeshShader->GetOrCompileShaderVariant(MeshMacros);
@@ -604,15 +613,9 @@ void UParticleSystemComponent::RenderMeshParticles(
     }
 
     // 3. 각 파티클을 개별 드로우콜로 렌더링
-    UE_LOG("[RenderMeshParticles] Creating %d mesh batches", InstanceData.Num());
-
     for (const FParticleInstanceData& Data : InstanceData)
     {
         FMeshBatchElement MeshBatch;
-        UE_LOG("[RenderMeshParticles] Particle pos: (%f,%f,%f), size: (%f,%f), color: (%f,%f,%f,%f)",
-            Data.Position.X, Data.Position.Y, Data.Position.Z,
-            Data.Size.X, Data.Size.Y,
-            Data.Color.R, Data.Color.G, Data.Color.B, Data.Color.A);
 
         MeshBatch.VertexShader = MeshVariant->VertexShader;
         MeshBatch.PixelShader = MeshVariant->PixelShader;
@@ -627,17 +630,11 @@ void UParticleSystemComponent::RenderMeshParticles(
         MeshBatch.BaseVertexIndex = 0;
         MeshBatch.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-        UE_LOG("[RenderMeshParticles] Mesh info - VB: %p, IB: %p, IndexCount: %d, VertexStride: %d",
-            MeshBatch.VertexBuffer, MeshBatch.IndexBuffer, MeshBatch.IndexCount, MeshBatch.VertexStride);
-
         // 파티클 Transform을 WorldMatrix로 변환
         FMatrix ScaleMatrix = FMatrix::MakeScale(FVector(Data.Size.X, Data.Size.Y, Data.Size.X));
         FMatrix RotationMatrix = FQuat::FromAxisAngle(FVector(0.0f, 0.0f, 1.0f), Data.Rotation).ToMatrix();
         FMatrix TranslationMatrix = FMatrix::MakeTranslation(Data.Position);
         MeshBatch.WorldMatrix = ScaleMatrix * RotationMatrix * TranslationMatrix;
-
-        UE_LOG("[RenderMeshParticles] WorldMatrix translation: (%f, %f, %f)",
-            MeshBatch.WorldMatrix.M[3][0], MeshBatch.WorldMatrix.M[3][1], MeshBatch.WorldMatrix.M[3][2]);
 
         MeshBatch.InstanceColor = Data.Color;
         MeshBatch.InstanceCount = 1;

@@ -84,7 +84,8 @@ struct FParticleInstanceData
     float3 Position;    // 월드 위치
     float Rotation;     // 회전 각도 (라디안)
     float2 Size;        // 파티클 크기 (Width, Height)
-    float2 Padding;     // 16바이트 정렬
+    float CameraFacing; // 1.0 = billboard, 0.0 = use rotation
+    float Padding;      // 16바이트 정렬
     float4 Color;       // 파티클 색상 (RGBA)
 };
 
@@ -169,7 +170,7 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
 
 #ifdef PARTICLE_SPRITE
     // ========================================================================
-    // 파티클 스프라이트 빌보드 처리
+    // 파티클 스프라이트 처리 (CameraFacing 플래그에 따라 빌보드 또는 회전 사용)
     // ========================================================================
     FParticleInstanceData particle = g_ParticleInstances[InstanceID];
 
@@ -184,11 +185,21 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
     rotatedPos.y = scaledPos.x * sinR + scaledPos.y * cosR;
     rotatedPos.z = scaledPos.z;
 
-    // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
-    float3 posAligned = mul(float4(rotatedPos, 0.0f), InverseViewMatrix).xyz;
+    // CameraFacing 플래그에 따라 빌보드 또는 회전 사용
+    float3 finalPos;
+    if (particle.CameraFacing > 0.5f)
+    {
+        // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
+        finalPos = mul(float4(rotatedPos, 0.0f), InverseViewMatrix).xyz;
+    }
+    else
+    {
+        // 회전만 적용 (빌보드 없음)
+        finalPos = rotatedPos;
+    }
 
-    // 월드 위치 = 파티클 위치 + 정렬된 오프셋
-    float4 worldPos = float4(particle.Position + posAligned, 1.0f);
+    // 월드 위치 = 파티클 위치 + 정렬된/회전된 오프셋
+    float4 worldPos = float4(particle.Position + finalPos, 1.0f);
     Out.WorldPos = worldPos.xyz;
 
     // 뷰/프로젝션 변환

@@ -33,9 +33,6 @@ public:
     // 에미터 타입 (Sprite, Mesh, Beam, Ribbon)
     EDynamicEmitterType EmitterType{ EDET_Sprite };
 
-    // 메시 에미터 전용: 렌더링할 메시 (EmitterType == EDET_Mesh일 때만 사용)
-    UStaticMesh* MeshToDraw{};
-
     // LOD 및 모듈 참조
     int32 CurrentLODLevelIndex{};
     UParticleLODLevel* CurrentLODLevel{};

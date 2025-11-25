@@ -48,17 +48,40 @@ AParticleSystemActor::AParticleSystemActor()
 			UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
 			if (RequiredModule)
 			{
-				// 메시 에미터는 일반 Lit 셰이더 사용
-				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>("Shaders/Materials/UberLit.hlsl");
-				if (ParticleMaterial)
+				// 렌더링할 메시 로드 및 설정 (apple_mid 사용)
+				UStaticMesh* MeshToUse = UResourceManager::GetInstance().Load<UStaticMesh>(GResourceDir + "/bitten_apple_mid.umesh");
+				if (MeshToUse)
 				{
-					RequiredModule->SetMaterial(ParticleMaterial);
+					RequiredModule->SetMesh(MeshToUse);
+					UE_LOG("[ParticleSystemActor] Mesh loaded and set to RequiredModule: %s", MeshToUse->GetAssetPathFileName().c_str());
+					UE_LOG("[ParticleSystemActor] Mesh buffers - VB: %p, IB: %p, IndexCount: %d",
+						MeshToUse->GetVertexBuffer(), MeshToUse->GetIndexBuffer(), MeshToUse->GetIndexCount());
+
+					// 메시의 GroupInfo에서 Material 정보 가져오기
+					if (MeshToUse->HasMaterial())
+					{
+						const TArray<FGroupInfo>& GroupInfos = MeshToUse->GetMeshGroupInfo();
+						if (!GroupInfos.empty() && !GroupInfos[0].InitialMaterialName.empty())
+						{
+							UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>(GroupInfos[0].InitialMaterialName);
+							if (ParticleMaterial)
+							{
+								RequiredModule->SetMaterial(ParticleMaterial);
+								UE_LOG("[ParticleSystemActor] Material loaded from mesh GroupInfo: %s", GroupInfos[0].InitialMaterialName.c_str());
+							}
+						}
+					}
+				}
+				else
+				{
+					UE_LOG("[ParticleSystemActor] ERROR: Failed to load apple_mid for mesh emitter!");
 				}
 
 				RequiredModule->SetSpawnRate(5.0f);   // 초당 5개 (메시는 무거우니 적게)
 				RequiredModule->SetLifeTime(5.0f);    // 5초 수명
 				RequiredModule->SetEmitterDuration(0.0f);
 				RequiredModule->SetEmitterDelay(0.0f);
+				RequiredModule->SetEnableCameraFacing(false);  // 메시는 빌보드 비활성화
 			}
 
 			// 5. Location Module
@@ -132,20 +155,6 @@ AParticleSystemActor::AParticleSystemActor()
 
 			// 에미터 타입을 Mesh로 변경
 			Instance->EmitterType = EDET_Mesh;
-
-			// 렌더링할 메시 로드 (apple_mid 사용)
-			UStaticMesh* MeshToUse = UResourceManager::GetInstance().Load<UStaticMesh>(GResourceDir + "/bitten_apple_mid.umesh");
-			if (MeshToUse)
-			{
-				Instance->MeshToDraw = MeshToUse;
-				UE_LOG("[ParticleSystemActor] Mesh loaded: %s", MeshToUse->GetAssetPathFileName().c_str());
-				UE_LOG("[ParticleSystemActor] Mesh buffers - VB: %p, IB: %p, IndexCount: %d",
-					MeshToUse->GetVertexBuffer(), MeshToUse->GetIndexBuffer(), MeshToUse->GetIndexCount());
-			}
-			else
-			{
-				UE_LOG("[ParticleSystemActor] ERROR: Failed to load apple_mid for mesh emitter!");
-			}
 		}
 	}
 	
@@ -180,7 +189,7 @@ AParticleSystemActor::AParticleSystemActor()
 			if (RequiredModule)
 			{
 				// 머티리얼 설정 (Billboard 셰이더 사용)
-				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>("Shaders/UI/Billboard.hlsl");
+				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>("MatID_1");
 				if (ParticleMaterial)
 				{
 					RequiredModule->SetMaterial(ParticleMaterial);
