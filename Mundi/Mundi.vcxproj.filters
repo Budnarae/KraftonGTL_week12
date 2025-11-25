@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
     <FxCompile Include="Shaders\PostProcess\GammaCorrection_PS.hlsl">
@@ -950,10 +950,13 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleColorOverLife.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSizeOverLife.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleNoise.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\NoiseGenerator.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\PlacementDistribution.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.cpp" />
-  </ItemGroup>
+  <ClCompile Include="Generated\UPlacementMeshEntry.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleColorOverLife.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleNoise.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleSizeOverLife.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generated\USoundAnimNotify.generated.h">
       <Filter>Generated</Filter>
@@ -2012,7 +2015,7 @@
     <ClInclude Include="Source\Runtime\Engine\PCG\NoiseGenerator.h" />
     <ClInclude Include="Source\Runtime\Engine\PCG\PlacementDistribution.h" />
     <ClInclude Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.h" />
-  </ItemGroup>
+  <ClInclude Include="Generated\UPlacementMeshEntry.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleColorOverLife.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleNoise.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleSizeOverLife.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py">
       <Filter>Tools\CodeGenerator</Filter>

@@ -416,6 +416,9 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleColorOverLife.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSizeOverLife.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleNoise.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\NoiseGenerator.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\PlacementDistribution.cpp" />
     <ClCompile Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.cpp" />
@@ -620,7 +623,12 @@
     <ClCompile Include="Generated\UParticleModuleCollision.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp" />
     <ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp" />
-  <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" /><ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" /><ClCompile Include="Generated\ABeamParticleActor.generated.cpp" /><ClCompile Include="Generated\ARibbonParticleActor.generated.cpp" /></ItemGroup>
+    <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" />
+    <ClCompile Include="Generated\ABeamParticleActor.generated.cpp" />
+    <ClCompile Include="Generated\ARibbonParticleActor.generated.cpp" />
+  <ClCompile Include="Generated\UPlacementMeshEntry.generated.cpp" /><ClCompile Include="Generated\UParticleModuleColorOverLife.generated.cpp" /><ClCompile Include="Generated\UParticleModuleNoise.generated.cpp" /><ClCompile Include="Generated\UParticleModuleSizeOverLife.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -1104,7 +1112,12 @@
     <ClInclude Include="Generated\UParticleModuleCollision.generated.h" />
     <ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h" />
     <ClInclude Include="Generated\AProceduralPlacementVolume.generated.h" />
-  <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" /><ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" /><ClInclude Include="Generated\ABeamParticleActor.generated.h" /><ClInclude Include="Generated\ARibbonParticleActor.generated.h" /></ItemGroup>
+    <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" />
+    <ClInclude Include="Generated\ABeamParticleActor.generated.h" />
+    <ClInclude Include="Generated\ARibbonParticleActor.generated.h" />
+  <ClInclude Include="Generated\UPlacementMeshEntry.generated.h" /><ClInclude Include="Generated\UParticleModuleColorOverLife.generated.h" /><ClInclude Include="Generated\UParticleModuleNoise.generated.h" /><ClInclude Include="Generated\UParticleModuleSizeOverLife.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Tools\CodeGenerator\generate.py" />

@@ -31,6 +31,7 @@
 #include "Color.h"
 #include "PlatformProcess.h"
 #include "JsonSerializer.h"
+#include "../../Runtime/Engine/PCG/ProceduralPlacementVolume.h"
 
 using namespace std;
 
@@ -488,6 +489,31 @@ void UTargetActorTransformWidget::RenderSelectedActorDetails(AActor* SelectedAct
 	if (!SelectedActor)
 	{
 		return;
+	}
+
+	// ProceduralPlacementVolume 전용 버튼
+	if (AProceduralPlacementVolume* PPV = Cast<AProceduralPlacementVolume>(SelectedActor))
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
+		if (ImGui::Button("Generate", ImVec2(100, 30)))
+		{
+			PPV->Generate();
+		}
+		ImGui::PopStyleColor(2);
+
+		ImGui::SameLine();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.3f, 0.3f, 1.0f));
+		if (ImGui::Button("Clear", ImVec2(100, 30)))
+		{
+			PPV->ClearPlacement();
+		}
+		ImGui::PopStyleColor(2);
+
+		ImGui::Spacing();
+		ImGui::Separator();
 	}
 
 	// 액터 프로퍼티 표시

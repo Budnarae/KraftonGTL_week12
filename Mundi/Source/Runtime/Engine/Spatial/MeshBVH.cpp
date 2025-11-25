@@ -15,8 +15,8 @@ void FMeshBVH::Build(const TArray<FNormalVertex>& Vertices, const TArray<uint32>
 	BuildRecursive(0, TriCount, Vertices, Indices);
 }
 
-// 삼각형과 맞을 경우 , BVH를 따라 내려가면서 교차 가능성 있는 노드만 검사한다. 
-// Möller–Trumbore로 교차 체크 ! 
+// 삼각형과 맞을 경우 , BVH를 따라 내려가면서 교차 가능성 있는 노드만 검사한다.
+// Möller–Trumbore로 교차 체크 !
 bool FMeshBVH::IntersectRay(const FRay& InLocalRay,
 	const TArray<FNormalVertex>& InVertices,
 	const TArray<uint32>& InIndices,
@@ -47,10 +47,20 @@ bool FMeshBVH::IntersectRay(const FRay& InLocalRay,
 	std::priority_queue<FHeapItem, TArray<FHeapItem>, std::greater<FHeapItem>> Heap;
 	Heap.push({ 0, RootEntry });
 
+	// 가장 가까운 히트를 추적
+	bool bHasHit = false;
+	float ClosestHitDistance = std::numeric_limits<float>::max();
+
 	while (!Heap.empty())
 	{
 		FHeapItem Current = Heap.top();
 		Heap.pop();
+
+		// 이미 더 가까운 히트가 있으면 이 노드는 스킵
+		if (Current.EntryDistance > ClosestHitDistance)
+		{
+			continue;
+		}
 
 		const FMeshBVHNode& Node = Nodes[Current.NodeIndex];
 		if (Node.IsLeaf())
@@ -69,8 +79,12 @@ bool FMeshBVH::IntersectRay(const FRay& InLocalRay,
 				float HitT = 0.0f;
 				if (IntersectRayTriangleMT(InLocalRay, A, B, C, HitT))
 				{
-					OutHitDistance = HitT;
-					return true; // 🚀 첫 번째 히트 → 바로 종료
+					// 가장 가까운 히트인 경우에만 업데이트
+					if (HitT < ClosestHitDistance)
+					{
+						ClosestHitDistance = HitT;
+						bHasHit = true;
+					}
 				}
 			}
 		}
@@ -81,7 +95,11 @@ bool FMeshBVH::IntersectRay(const FRay& InLocalRay,
 				float ChildEntry, ChildExit;
 				if (Nodes[Node.Left].Bounds.IntersectsRay(InLocalRay, ChildEntry, ChildExit))
 				{
-					Heap.push({ Node.Left, ChildEntry });
+					// 이미 더 가까운 히트가 있으면 자식 노드 추가하지 않음
+					if (ChildEntry < ClosestHitDistance)
+					{
+						Heap.push({ Node.Left, ChildEntry });
+					}
 				}
 			}
 			if (Node.Right >= 0)
@@ -89,10 +107,19 @@ bool FMeshBVH::IntersectRay(const FRay& InLocalRay,
 				float ChildEntry, ChildExit;
 				if (Nodes[Node.Right].Bounds.IntersectsRay(InLocalRay, ChildEntry, ChildExit))
 				{
-					Heap.push({ Node.Right, ChildEntry });
+					if (ChildEntry < ClosestHitDistance)
+					{
+						Heap.push({ Node.Right, ChildEntry });
+					}
 				}
 			}
 		}
+	}
+
+	if (bHasHit)
+	{
+		OutHitDistance = ClosestHitDistance;
+		return true;
 	}
 
 	return false;
@@ -129,10 +156,21 @@ bool FMeshBVH::IntersectRayWithNormal(const FRay& InLocalRay,
 	std::priority_queue<FHeapItem, TArray<FHeapItem>, std::greater<FHeapItem>> Heap;
 	Heap.push({ 0, RootEntry });
 
+	// 가장 가까운 히트를 추적
+	bool bHasHit = false;
+	float ClosestHitDistance = std::numeric_limits<float>::max();
+	FVector ClosestHitNormal;
+
 	while (!Heap.empty())
 	{
 		FHeapItem Current = Heap.top();
 		Heap.pop();
+
+		// 이미 더 가까운 히트가 있으면 이 노드는 스킵
+		if (Current.EntryDistance > ClosestHitDistance)
+		{
+			continue;
+		}
 
 		const FMeshBVHNode& Node = Nodes[Current.NodeIndex];
 		if (Node.IsLeaf())
@@ -148,15 +186,25 @@ bool FMeshBVH::IntersectRayWithNormal(const FRay& InLocalRay,
 				const FVector& B = InVertices[V1].pos;
 				const FVector& C = InVertices[V2].pos;
 
+				// 삼각형 노멀 계산 (backface culling용)
+				FVector Edge1 = B - A;
+				FVector Edge2 = C - A;
+				FVector TriNormal = FVector::Cross(Edge1, Edge2).GetNormalized();
+
+				// Backface culling: 레이 방향과 노멀이 같은 방향이면 스킵
+				if (FVector::Dot(TriNormal, InLocalRay.Direction) > 0.0f)
+					continue;
+
 				float HitT = 0.0f;
 				if (IntersectRayTriangleMT(InLocalRay, A, B, C, HitT))
 				{
-					OutHitDistance = HitT;
-					// 삼각형 노멀 계산
-					FVector Edge1 = B - A;
-					FVector Edge2 = C - A;
-					OutHitNormal = FVector::Cross(Edge1, Edge2).GetNormalized();
-					return true;
+					// 가장 가까운 히트인 경우에만 업데이트
+					if (HitT < ClosestHitDistance)
+					{
+						ClosestHitDistance = HitT;
+						ClosestHitNormal = TriNormal;
+						bHasHit = true;
+					}
 				}
 			}
 		}
@@ -167,7 +215,11 @@ bool FMeshBVH::IntersectRayWithNormal(const FRay& InLocalRay,
 				float ChildEntry, ChildExit;
 				if (Nodes[Node.Left].Bounds.IntersectsRay(InLocalRay, ChildEntry, ChildExit))
 				{
-					Heap.push({ Node.Left, ChildEntry });
+					// 이미 더 가까운 히트가 있으면 자식 노드 추가하지 않음
+					if (ChildEntry < ClosestHitDistance)
+					{
+						Heap.push({ Node.Left, ChildEntry });
+					}
 				}
 			}
 			if (Node.Right >= 0)
@@ -175,10 +227,20 @@ bool FMeshBVH::IntersectRayWithNormal(const FRay& InLocalRay,
 				float ChildEntry, ChildExit;
 				if (Nodes[Node.Right].Bounds.IntersectsRay(InLocalRay, ChildEntry, ChildExit))
 				{
-					Heap.push({ Node.Right, ChildEntry });
+					if (ChildEntry < ClosestHitDistance)
+					{
+						Heap.push({ Node.Right, ChildEntry });
+					}
 				}
 			}
 		}
+	}
+
+	if (bHasHit)
+	{
+		OutHitDistance = ClosestHitDistance;
+		OutHitNormal = ClosestHitNormal;
+		return true;
 	}
 
 	return false;
