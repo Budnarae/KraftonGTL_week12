@@ -10,11 +10,14 @@
 #include "Source/Runtime/Engine/Particle/ParticleSystem.h"
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleColor.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleColorOverLife.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleLifeTime.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleLocation.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSize.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleVelocity.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleCollision.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleSizeOverLife.h"
 #include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
@@ -72,7 +75,7 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     {"컬러",
     {
         {"초기컬러", FMenuAction::CreateSpawnModule(UParticleModuleColor::StaticClass()->Name)},
-        {"컬러 오버 라이프", FMenuAction::CreateUpdateModule(UParticleModuleColor::StaticClass()->Name)},
+        {"컬러 오버 라이프", FMenuAction::CreateUpdateModule(UParticleModuleColorOverLife::StaticClass()->Name)},
     }
     },
     {"수명",
@@ -88,6 +91,7 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     {"크기",
     {
         {"초기 크기", FMenuAction::CreateSpawnModule(UParticleModuleSize::StaticClass()->Name)},
+        {"사이즈 오버 라이프", FMenuAction::CreateUpdateModule(UParticleModuleSizeOverLife::StaticClass()->Name)},
     }
     },
     {"속도",
@@ -98,6 +102,11 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     {"스폰",
     {
         {"스폰", FMenuAction::CreateSpawnModule(UParticleModuleSpawn::StaticClass()->Name)},
+    }
+    },
+    {"충돌",
+    {
+        {"콜리전", FMenuAction::CreateSpawnModule(UParticleModuleCollision::StaticClass()->Name)},
     }
     },
 };
