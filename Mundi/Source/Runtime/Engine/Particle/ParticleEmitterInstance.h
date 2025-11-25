@@ -1,8 +1,11 @@
 ﻿#pragma once
 
+#include "ParticleData.h"
+
 class UParticleEmitter;
 class UParticleSystemComponent;
 class UParticleLODLevel;
+class UStaticMesh;
 struct FParticleEventInstancePayload;
 
 // 특정 UParticleEmitter 템플릿의 활성 시뮬레이션 상태를 담는 구조체
@@ -26,6 +29,12 @@ public:
     // 템플릿 및 소유자 참조
     UParticleEmitter* SpriteTemplate{};
     UParticleSystemComponent* OwnerComponent{};
+
+    // 에미터 타입 (Sprite, Mesh, Beam, Ribbon)
+    EDynamicEmitterType EmitterType{ EDET_Sprite };
+
+    // 메시 에미터 전용: 렌더링할 메시 (EmitterType == EDET_Mesh일 때만 사용)
+    UStaticMesh* MeshToDraw{};
 
     // LOD 및 모듈 참조
     int32 CurrentLODLevelIndex{};

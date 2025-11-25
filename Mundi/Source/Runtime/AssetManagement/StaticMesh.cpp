@@ -82,18 +82,38 @@ void UStaticMesh::Load(const FString& InFilePath, ID3D11Device* InDevice, EVerte
     {
         // OBJ 또는 .umesh 파일 로드
         // ResourceManager가 확장자를 제거하고 관리하므로 .obj와 .umesh는 같은 리소스
+        UE_LOG("[UStaticMesh::Load] Loading via FObjManager: %s", InFilePath.c_str());
         StaticMeshAsset = FObjManager::LoadObjStaticMeshAsset(InFilePath);
+
+        if (StaticMeshAsset)
+        {
+            UE_LOG("[UStaticMesh::Load] FObjManager returned mesh - VertexCount: %zu, IndexCount: %zu",
+                StaticMeshAsset->Vertices.size(), StaticMeshAsset->Indices.size());
+        }
+        else
+        {
+            UE_LOG("[UStaticMesh::Load] ERROR: FObjManager returned nullptr");
+        }
     }
 
     // 빈 버텍스, 인덱스로 버퍼 생성 방지
     if (StaticMeshAsset && 0 < StaticMeshAsset->Vertices.size() && 0 < StaticMeshAsset->Indices.size())
     {
+        UE_LOG("[UStaticMesh::Load] Creating GPU buffers...");
         CacheFilePath = StaticMeshAsset->CacheFilePath;
         CreateVertexBuffer(StaticMeshAsset, InDevice, InVertexType);
         CreateIndexBuffer(StaticMeshAsset, InDevice);
         CreateLocalBound(StaticMeshAsset);
         VertexCount = static_cast<uint32>(StaticMeshAsset->Vertices.size());
         IndexCount = static_cast<uint32>(StaticMeshAsset->Indices.size());
+        UE_LOG("[UStaticMesh::Load] GPU buffers created - VB: %p, IB: %p", VertexBuffer, IndexBuffer);
+    }
+    else
+    {
+        UE_LOG("[UStaticMesh::Load] Skipping buffer creation - Asset: %p, Vertices: %zu, Indices: %zu",
+            StaticMeshAsset,
+            StaticMeshAsset ? StaticMeshAsset->Vertices.size() : 0,
+            StaticMeshAsset ? StaticMeshAsset->Indices.size() : 0);
     }
 }
 

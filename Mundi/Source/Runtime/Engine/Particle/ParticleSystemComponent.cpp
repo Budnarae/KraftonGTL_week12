@@ -13,6 +13,7 @@
 #include "Shader.h"
 #include "Quad.h"
 #include "Texture.h"
+#include "StaticMesh.h"
 
 UParticleSystemComponent::UParticleSystemComponent()
 {
@@ -316,20 +317,46 @@ void UParticleSystemComponent::CreateDynamicData()
             continue;
         }
 
-        FDynamicSpriteEmitterData* DynamicData = new FDynamicSpriteEmitterData();
-        DynamicData->Init(Instance, i);
-        DynamicEmitterData.Add(DynamicData);
+        // EmitterType에 따라 다른 DynamicData 클래스 생성
+        FDynamicEmitterRenderData* DynamicData = nullptr;
+
+        switch (Instance->EmitterType)
+        {
+        case EDET_Sprite:
+        {
+            FDynamicSpriteEmitterData* SpriteData = new FDynamicSpriteEmitterData();
+            SpriteData->Init(Instance, i);
+            DynamicData = SpriteData;
+            break;
+        }
+        case EDET_Mesh:
+        {
+            FDynamicMeshEmitterData* MeshData = new FDynamicMeshEmitterData();
+            MeshData->Init(Instance, i);
+            DynamicData = MeshData;
+            break;
+        }
+        default:
+            // 미구현 타입 (Beam, Ribbon 등)
+            UE_LOG("[CreateDynamicData][Warning] Unsupported emitter type: %d", (int)Instance->EmitterType);
+            continue;
+        }
+
+        if (DynamicData)
+        {
+            DynamicEmitterData.Add(DynamicData);
+        }
     }
 }
 
 // Dynamic Data 해제
 void UParticleSystemComponent::ReleaseDynamicData()
 {
-    for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
+    for (FDynamicEmitterRenderData* DynamicData : DynamicEmitterData)
     {
         if (DynamicData)
         {
-            delete DynamicData;
+            delete DynamicData;  // 다형성으로 인해 올바른 소멸자 호출됨
         }
     }
     DynamicEmitterData.clear();
@@ -378,18 +405,21 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         return;
     }
 
-    // 2. 모든 에미터의 파티클 인스턴스 데이터 수집
-    TArray<FParticleInstanceData> AllInstanceData;
-    UMaterial* FirstMaterial = nullptr;
+    // 2. 타입별로 데이터 수집 (Sprite / Mesh 분리)
+    TArray<FParticleInstanceData> SpriteInstanceData;
+    TArray<FParticleInstanceData> MeshInstanceData;
+    UMaterial* SpriteMaterial = nullptr;
+    UMaterial* MeshMaterial = nullptr;
+    UStaticMesh* MeshToRender = nullptr;
 
-    for (FDynamicSpriteEmitterData* DynamicData : DynamicEmitterData)
+    for (FDynamicEmitterRenderData* DynamicData : DynamicEmitterData)
     {
         if (!DynamicData)
         {
             continue;
         }
 
-        const FDynamicSpriteEmitterReplayDataBase& Source = DynamicData->GetSource();
+        const FDynamicEmitterReplayDataBase& Source = DynamicData->GetSource();
         if (Source.ActiveParticleCount == 0)
         {
             continue;
@@ -398,13 +428,11 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         // 카메라 기준 파티클 정렬 (Back-to-Front for transparency)
         if (View)
         {
-            DynamicData->SortParticles(View->ViewLocation);
-        }
-
-        // 첫 번째 유효한 머티리얼 저장
-        if (!FirstMaterial && Source.MaterialInterface)
-        {
-            FirstMaterial = Source.MaterialInterface;
+            FDynamicSpriteEmitterDataBase* SpriteDataBase = dynamic_cast<FDynamicSpriteEmitterDataBase*>(DynamicData);
+            if (SpriteDataBase)
+            {
+                SpriteDataBase->SortParticles(View->ViewLocation);
+            }
         }
 
         // 인스턴스 데이터 수집
@@ -413,49 +441,93 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         int32 ParticleStride = Source.ParticleStride;
         FVector ComponentLocation = GetWorldLocation();
 
-        for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
+        // 타입별 분기
+        if (Source.eEmitterType == EDET_Sprite)
         {
-            int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
-            DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
+            // 스프라이트 머티리얼 저장 (캐스팅 필요)
+            const FDynamicSpriteEmitterReplayDataBase& SpriteSource = static_cast<const FDynamicSpriteEmitterReplayDataBase&>(Source);
+            if (!SpriteMaterial && SpriteSource.MaterialInterface)
+            {
+                SpriteMaterial = SpriteSource.MaterialInterface;
+            }
 
-            FParticleInstanceData InstanceData;
-            InstanceData.FillFromParticle(Particle, ComponentLocation);
-            AllInstanceData.Add(InstanceData);
+            // 스프라이트 인스턴스 데이터 수집
+            for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
+            {
+                int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
+                DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
+
+                FParticleInstanceData InstanceData;
+                InstanceData.FillFromParticle(Particle, ComponentLocation);
+                SpriteInstanceData.Add(InstanceData);
+            }
+        }
+        else if (Source.eEmitterType == EDET_Mesh)
+        {
+            // 메시 에미터 데이터 캐스팅
+            FDynamicMeshEmitterData* MeshEmitterData = static_cast<FDynamicMeshEmitterData*>(DynamicData);
+
+            // 메시 머티리얼 및 메시 저장 (캐스팅 필요)
+            const FDynamicMeshEmitterReplayDataBase& MeshSource = static_cast<const FDynamicMeshEmitterReplayDataBase&>(Source);
+            if (!MeshMaterial && MeshSource.MaterialInterface)
+            {
+                MeshMaterial = MeshSource.MaterialInterface;
+            }
+            if (!MeshToRender && MeshEmitterData->StaticMesh)
+            {
+                MeshToRender = MeshEmitterData->StaticMesh;
+            }
+
+            // 메시 인스턴스 데이터 수집
+            for (int32 i = 0; i < Source.ActiveParticleCount; ++i)
+            {
+                int32 ParticleIndex = ParticleIndices ? ParticleIndices[i] : i;
+                DECLARE_PARTICLE_PTR(Particle, ParticleData + ParticleStride * ParticleIndex);
+
+                FParticleInstanceData InstanceData;
+                InstanceData.FillFromParticle(Particle, ComponentLocation);
+                MeshInstanceData.Add(InstanceData);
+            }
         }
     }
 
-    // 3. 인스턴스가 없으면 종료
-    if (AllInstanceData.empty() || !FirstMaterial)
+    // 3. 스프라이트 에미터 렌더링
+    if (!SpriteInstanceData.empty() && SpriteMaterial)
     {
-        return;
+        RenderSpriteParticles(SpriteInstanceData, SpriteMaterial, OutMeshBatchElements);
     }
 
-    // 4. 공유 버퍼 매니저에 데이터 업로드
+    // 4. 메시 에미터 렌더링
+    if (!MeshInstanceData.empty() && MeshMaterial && MeshToRender)
+    {
+        RenderMeshParticles(MeshInstanceData, MeshMaterial, MeshToRender, OutMeshBatchElements);
+    }
+}
+
+// 스프라이트 파티클 렌더링 (GPU 인스턴싱)
+void UParticleSystemComponent::RenderSpriteParticles(
+    const TArray<FParticleInstanceData>& InstanceData,
+    UMaterial* Material,
+    TArray<FMeshBatchElement>& OutMeshBatchElements)
+{
+    // 1. 공유 버퍼 매니저에 데이터 업로드
     FParticleInstanceBufferManager& BufferManager = FParticleInstanceBufferManager::Get();
-    ID3D11ShaderResourceView* InstanceSRV = BufferManager.UpdateAndGetSRV(AllInstanceData);
+    ID3D11ShaderResourceView* InstanceSRV = BufferManager.UpdateAndGetSRV(InstanceData);
     if (!InstanceSRV)
     {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to update instance buffer.");
+        UE_LOG("[RenderSpriteParticles][Warning] Failed to update instance buffer.");
         return;
     }
 
-    // 5. 렌더링 리소스 준비
-    // 파티클은 UberLit.hlsl을 사용 (PARTICLE_SPRITE 매크로 지원)
+    // 2. 렌더링 리소스 준비
     UShader* ShaderToUse = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
-    if (!ShaderToUse)
-    {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Failed to load UberLit shader.");
-        return;
-    }
-
     UQuad* ParticleQuad = UResourceManager::GetInstance().Get<UQuad>("BillboardQuad");
-    if (!ParticleQuad || ParticleQuad->GetIndexCount() == 0)
+    if (!ShaderToUse || !ParticleQuad || ParticleQuad->GetIndexCount() == 0)
     {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Billboard quad not found.");
         return;
     }
 
-    // 6. 셰이더 매크로 설정 (PARTICLE_SPRITE 활성화)
+    // 3. 셰이더 매크로 설정 (PARTICLE_SPRITE 활성화)
     TArray<FShaderMacro> ShaderMacros;
     ShaderMacros.push_back({"PARTICLE_SPRITE", "1"});
     ShaderMacros.push_back({"LIGHTING_MODEL_PHONG", "1"});
@@ -463,41 +535,36 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
     FShaderVariant* ShaderVariant = ShaderToUse->GetOrCompileShaderVariant(ShaderMacros);
     if (!ShaderVariant)
     {
-        UE_LOG("[UParticleSystemComponent::CollectMeshBatches][Warning] Shader compilation failed.");
         return;
     }
 
-    // 7. 단일 FMeshBatchElement 생성 (인스턴싱)
+    // 4. 단일 FMeshBatchElement 생성 (인스턴싱)
     FMeshBatchElement BatchElement;
 
-    // --- 정렬 키 ---
     BatchElement.VertexShader = ShaderVariant->VertexShader;
     BatchElement.PixelShader = ShaderVariant->PixelShader;
     BatchElement.InputLayout = ShaderVariant->InputLayout;
-    BatchElement.Material = FirstMaterial;
+    BatchElement.Material = Material;
     BatchElement.VertexBuffer = ParticleQuad->GetVertexBuffer();
     BatchElement.IndexBuffer = ParticleQuad->GetIndexBuffer();
     BatchElement.VertexStride = ParticleQuad->GetVertexStride();
 
-    // --- 드로우 데이터 ---
     BatchElement.IndexCount = ParticleQuad->GetIndexCount();
     BatchElement.StartIndex = 0;
     BatchElement.BaseVertexIndex = 0;
     BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-    // --- 인스턴싱 데이터 ---
-    BatchElement.InstanceCount = static_cast<uint32>(AllInstanceData.size());
+    BatchElement.InstanceCount = static_cast<uint32>(InstanceData.size());
     BatchElement.ParticleInstanceSRV = InstanceSRV;
 
-    // --- 인스턴스 데이터 ---
     BatchElement.WorldMatrix = FMatrix::Identity();
     BatchElement.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
     // 텍스처
     UTexture* DiffuseTexture = nullptr;
-    if (FirstMaterial->HasTexture(EMaterialTextureSlot::Diffuse))
+    if (Material->HasTexture(EMaterialTextureSlot::Diffuse))
     {
-        DiffuseTexture = FirstMaterial->GetTexture(EMaterialTextureSlot::Diffuse);
+        DiffuseTexture = Material->GetTexture(EMaterialTextureSlot::Diffuse);
     }
     if (!DiffuseTexture)
     {
@@ -509,11 +576,98 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         BatchElement.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
     }
 
-    // 오브젝트 ID
     BatchElement.ObjectID = InternalIndex;
 
     OutMeshBatchElements.Add(BatchElement);
 }
+
+// 메시 파티클 렌더링 (개별 드로우)
+void UParticleSystemComponent::RenderMeshParticles(
+    const TArray<FParticleInstanceData>& InstanceData,
+    UMaterial* Material,
+    UStaticMesh* Mesh,
+    TArray<FMeshBatchElement>& OutMeshBatchElements)
+{
+    // 1. 셰이더 로드
+    UShader* MeshShader = Material->GetShader();
+    if (!MeshShader)
+    {
+        MeshShader = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
+    }
+    if (!MeshShader)
+    {
+        UE_LOG("[RenderMeshParticles] ERROR: Failed to load shader!");
+        return;
+    }
+    UE_LOG("[RenderMeshParticles] Shader loaded: %p", MeshShader);
+
+    // 2. 셰이더 매크로 (일반 Lit)
+    TArray<FShaderMacro> MeshMacros;
+    MeshMacros.push_back({"LIGHTING_MODEL_PHONG", "1"});
+
+    FShaderVariant* MeshVariant = MeshShader->GetOrCompileShaderVariant(MeshMacros);
+    if (!MeshVariant)
+    {
+        return;
+    }
+
+    // 3. 각 파티클을 개별 드로우콜로 렌더링
+    UE_LOG("[RenderMeshParticles] Creating %d mesh batches", InstanceData.Num());
+
+    for (const FParticleInstanceData& Data : InstanceData)
+    {
+        FMeshBatchElement MeshBatch;
+        UE_LOG("[RenderMeshParticles] Particle pos: (%f,%f,%f), size: (%f,%f), color: (%f,%f,%f,%f)",
+            Data.Position.X, Data.Position.Y, Data.Position.Z,
+            Data.Size.X, Data.Size.Y,
+            Data.Color.R, Data.Color.G, Data.Color.B, Data.Color.A);
+
+        MeshBatch.VertexShader = MeshVariant->VertexShader;
+        MeshBatch.PixelShader = MeshVariant->PixelShader;
+        MeshBatch.InputLayout = MeshVariant->InputLayout;
+        MeshBatch.Material = Material;
+        MeshBatch.VertexBuffer = Mesh->GetVertexBuffer();
+        MeshBatch.IndexBuffer = Mesh->GetIndexBuffer();
+        MeshBatch.VertexStride = Mesh->GetVertexStride();
+
+        MeshBatch.IndexCount = Mesh->GetIndexCount();
+        MeshBatch.StartIndex = 0;
+        MeshBatch.BaseVertexIndex = 0;
+        MeshBatch.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+        UE_LOG("[RenderMeshParticles] Mesh info - VB: %p, IB: %p, IndexCount: %d, VertexStride: %d",
+            MeshBatch.VertexBuffer, MeshBatch.IndexBuffer, MeshBatch.IndexCount, MeshBatch.VertexStride);
+
+        // 파티클 Transform을 WorldMatrix로 변환
+        FMatrix ScaleMatrix = FMatrix::MakeScale(FVector(Data.Size.X, Data.Size.Y, Data.Size.X));
+        FMatrix RotationMatrix = FQuat::FromAxisAngle(FVector(0.0f, 0.0f, 1.0f), Data.Rotation).ToMatrix();
+        FMatrix TranslationMatrix = FMatrix::MakeTranslation(Data.Position);
+        MeshBatch.WorldMatrix = ScaleMatrix * RotationMatrix * TranslationMatrix;
+
+        UE_LOG("[RenderMeshParticles] WorldMatrix translation: (%f, %f, %f)",
+            MeshBatch.WorldMatrix.M[3][0], MeshBatch.WorldMatrix.M[3][1], MeshBatch.WorldMatrix.M[3][2]);
+
+        MeshBatch.InstanceColor = Data.Color;
+        MeshBatch.InstanceCount = 1;
+        MeshBatch.ParticleInstanceSRV = nullptr;
+
+        // 텍스처
+        UTexture* DiffuseTexture = nullptr;
+        if (Material->HasTexture(EMaterialTextureSlot::Diffuse))
+        {
+            DiffuseTexture = Material->GetTexture(EMaterialTextureSlot::Diffuse);
+        }
+        if (DiffuseTexture && DiffuseTexture->GetShaderResourceView())
+        {
+            MeshBatch.InstanceShaderResourceView = DiffuseTexture->GetShaderResourceView();
+        }
+
+        MeshBatch.ObjectID = InternalIndex;
+
+        OutMeshBatchElements.Add(MeshBatch);
+    }
+}
+
 
 // // 모든 파티클을 즉시 중지하고 메모리를 정리합니다. (강제 종료)
 // void UParticleSystemComponent::KillParticlesAndCleanUp()

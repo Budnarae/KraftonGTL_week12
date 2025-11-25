@@ -11,8 +11,11 @@
 #include "../Particle/ParticleModuleLifetime.h"
 #include "../Particle/ParticleModuleColor.h"
 #include "../Particle/ParticleModuleSize.h"
+#include "../Particle/ParticleEmitterInstance.h"
+#include "../Particle/ParticleData.h"
 #include "Material.h"
 #include "ResourceManager.h"
+#include "StaticMesh.h"
 
 AParticleSystemActor::AParticleSystemActor()
 {
@@ -23,9 +26,137 @@ AParticleSystemActor::AParticleSystemActor()
 	RootComponent = ParticleSystemComponent;
 
 	// ============================================================
-	// TEST CODE - REMOVE LATER
-	// 가시성 테스트를 위한 하드코딩된 파티클 시스템 설정
+	// TEST CODE - MESH EMITTER
+	// 메시 에미터 기능 테스트
 	// ============================================================
+	{
+		// 1. ParticleSystem 템플릿 생성
+		UParticleSystem* TestTemplate = NewObject<UParticleSystem>();
+		TestTemplate->ObjectName = "TestMeshParticleSystem";
+
+		// 2. Emitter 생성
+		UParticleEmitter* TestEmitter = NewObject<UParticleEmitter>();
+		TestEmitter->ObjectName = "TestMeshEmitter";
+		TestEmitter->SetMaxParticleCount(30);
+
+		// 3. LOD Level 0에 접근 (생성자에서 이미 RequiredModule이 생성됨)
+		UParticleLODLevel* TestLODLevel = TestEmitter->GetParticleLODLevelWithIndex(0);
+		if (TestLODLevel)
+		{
+			// 4. Required Module 설정
+			UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
+			if (RequiredModule)
+			{
+				// 메시 에미터는 일반 Lit 셰이더 사용
+				UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>("Shaders/Materials/UberLit.hlsl");
+				if (ParticleMaterial)
+				{
+					RequiredModule->SetMaterial(ParticleMaterial);
+				}
+
+				RequiredModule->SetSpawnRate(5.0f);   // 초당 5개 (메시는 무거우니 적게)
+				RequiredModule->SetLifeTime(5.0f);    // 5초 수명
+				RequiredModule->SetEmitterDuration(0.0f);
+				RequiredModule->SetEmitterDelay(0.0f);
+			}
+
+			// 5. Location Module
+			UParticleModuleLocation* LocationModule = NewObject<UParticleModuleLocation>();
+			if (LocationModule)
+			{
+				LocationModule->SetDistributionBox(FVector::Zero(), FVector(2.0f, 2.0f, 2.0f));
+				TestLODLevel->AddSpawnModule(LocationModule);
+			}
+
+			// 6. Velocity Module
+			UParticleModuleVelocity* VelocityModule = NewObject<UParticleModuleVelocity>();
+			if (VelocityModule)
+			{
+				VelocityModule->SetVelocityRange(FVector(-1.0f, -1.0f, 2.0f), FVector(1.0f, 1.0f, 4.0f));
+				VelocityModule->SetStartVelocityRadialMin(0.5f);
+				VelocityModule->SetStartVelocityRadialMax(1.5f);
+				TestLODLevel->AddSpawnModule(VelocityModule);
+			}
+
+			// 7. Spawn Module
+			UParticleModuleSpawn* SpawnModule = NewObject<UParticleModuleSpawn>();
+			if (SpawnModule)
+			{
+				SpawnModule->SetRateMin(3.0f);
+				SpawnModule->SetRateMax(7.0f);
+				SpawnModule->AddBurst(5, 0.0f);
+				TestLODLevel->AddSpawnModule(SpawnModule);
+			}
+
+			// 8. Lifetime Module
+			UParticleModuleLifetime* LifetimeModule = NewObject<UParticleModuleLifetime>();
+			if (LifetimeModule)
+			{
+				LifetimeModule->SetLifetimeRange(4.0f, 6.0f);
+				TestLODLevel->AddSpawnModule(LifetimeModule);
+			}
+
+			// 9. Color Module
+			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
+			if (ColorModule)
+			{
+				ColorModule->SetColorRange(FVector(0.5f, 0.8f, 1.0f), FVector(0.8f, 1.0f, 1.0f));
+				ColorModule->SetAlphaRange(1.0f, 1.0f);
+				TestLODLevel->AddSpawnModule(ColorModule);
+			}
+
+			// 10. Size Module
+			UParticleModuleSize* SizeModule = NewObject<UParticleModuleSize>();
+			if (SizeModule)
+			{
+				SizeModule->SetUniformSize(0.3f, 0.7f);
+				TestLODLevel->AddSpawnModule(SizeModule);
+			}
+		}
+
+		// Emitter를 ParticleSystem에 추가
+		TestTemplate->AddEmitter(TestEmitter);
+
+		// ParticleSystemComponent에 템플릿 설정
+		ParticleSystemComponent->SetTemplate(TestTemplate);
+
+		// 파티클 시스템 활성화
+		ParticleSystemComponent->Activate(false);
+
+		// Activate 직후 EmitterInstance를 Mesh Emitter로 설정
+		TArray<FParticleEmitterInstance*>& Instances = ParticleSystemComponent->GetSystemInstance();
+		if (!Instances.empty() && Instances[0])
+		{
+			FParticleEmitterInstance* Instance = Instances[0];
+
+			// 에미터 타입을 Mesh로 변경
+			Instance->EmitterType = EDET_Mesh;
+
+			// 렌더링할 메시 로드 (apple_mid 사용)
+			UStaticMesh* MeshToUse = UResourceManager::GetInstance().Load<UStaticMesh>(GResourceDir + "/apple_mid.umesh");
+			if (MeshToUse)
+			{
+				Instance->MeshToDraw = MeshToUse;
+				UE_LOG("[ParticleSystemActor] Mesh loaded: %s", MeshToUse->GetAssetPathFileName().c_str());
+				UE_LOG("[ParticleSystemActor] Mesh buffers - VB: %p, IB: %p, IndexCount: %d",
+					MeshToUse->GetVertexBuffer(), MeshToUse->GetIndexBuffer(), MeshToUse->GetIndexCount());
+			}
+			else
+			{
+				UE_LOG("[ParticleSystemActor] ERROR: Failed to load apple_mid for mesh emitter!");
+			}
+		}
+	}
+	// ============================================================
+	// END OF MESH EMITTER TEST CODE
+	// ============================================================
+
+	// ============================================================
+	// SPRITE EMITTER TEST CODE (주석 처리)
+	// 스프라이트 에미터를 테스트하려면 위의 메시 에미터 코드를 주석 처리하고
+	// 아래 코드의 주석을 해제하세요.
+	// ============================================================
+	/*
 	{
 		// 1. ParticleSystem 템플릿 생성
 		UParticleSystem* TestTemplate = NewObject<UParticleSystem>();
@@ -149,8 +280,9 @@ AParticleSystemActor::AParticleSystemActor()
 		// 파티클 시스템 활성화
 		ParticleSystemComponent->Activate(false);
 	}
+	*/
 	// ============================================================
-	// END OF TEST CODE
+	// END OF SPRITE EMITTER TEST CODE
 	// ============================================================
 }
 
