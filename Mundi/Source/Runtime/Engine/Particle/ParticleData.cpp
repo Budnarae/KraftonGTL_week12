@@ -2,187 +2,133 @@
 #include "ParticleData.h"
 
 #include "ParticleEmitter.h"
+#include "ParticleEmitterInstance.h"
 #include "ParticleModuleRequired.h"
-#include "ParticleHelper.h"
+#include "ParticleSystemComponent.h"
 
-FParticleEmitterInstance::~FParticleEmitterInstance()
+#include <algorithm>
+
+// ============================================================================
+// FDynamicSpriteEmitterData 구현
+// ============================================================================
+
+FDynamicSpriteEmitterData::~FDynamicSpriteEmitterData()
 {
-    KillAllParticles();
+    Release();
 }
 
-// ============================================================================
-// 복사 생성자
-// ============================================================================
-// ParticleData 메모리 블록을 깊은 복사합니다.
-// OwnerComponent는 복사 후 호출자가 별도로 설정해야 합니다.
-// ============================================================================
-FParticleEmitterInstance::FParticleEmitterInstance(const FParticleEmitterInstance& Other)
-    : ParticleData(nullptr)
-    , OwnerComponent(nullptr)
+// ----------------------------------------------------------------------------
+// Init - EmitterInstance로부터 렌더링 데이터 초기화
+// ----------------------------------------------------------------------------
+void FDynamicSpriteEmitterData::Init(FParticleEmitterInstance* Instance, int32 Index)
 {
-    CopyFrom(Other);
-}
-
-// ============================================================================
-// 복사 대입 연산자
-// ============================================================================
-FParticleEmitterInstance& FParticleEmitterInstance::operator=(const FParticleEmitterInstance& Other)
-{
-    if (this != &Other)
+    if (!Instance)
     {
-        // 기존 ParticleData 해제
-        if (ParticleData)
-        {
-            free(ParticleData);
-            ParticleData = nullptr;
-        }
-        CopyFrom(Other);
-    }
-    return *this;
-}
-
-// ============================================================================
-// 복사 헬퍼 함수
-// ============================================================================
-void FParticleEmitterInstance::CopyFrom(const FParticleEmitterInstance& Other)
-{
-    // 템플릿 및 LOD 참조 (얕은 복사 - 공유 데이터)
-    SpriteTemplate = Other.SpriteTemplate;
-    CurrentLODLevelIndex = Other.CurrentLODLevelIndex;
-    CurrentLODLevel = Other.CurrentLODLevel;
-
-    // 메모리 관리 변수 복사
-    MaxActiveParticles = Other.MaxActiveParticles;
-    ParticleStride = Other.ParticleStride;
-
-    // 런타임 파티클 생성 관리 변수 복사
-    SpawnRate = Other.SpawnRate;
-    SpawnNum = Other.SpawnNum;
-    SpawnFraction = Other.SpawnFraction;
-    Duration = Other.Duration;
-    ActiveParticles = Other.ActiveParticles;
-
-    // ParticleData 깊은 복사
-    if (Other.ParticleData && MaxActiveParticles > 0 && ParticleStride > 0)
-    {
-        size_t DataSize = static_cast<size_t>(MaxActiveParticles) * ParticleStride;
-        ParticleData = static_cast<uint8*>(malloc(DataSize));
-
-        if (ParticleData)
-        {
-            memcpy(ParticleData, Other.ParticleData, DataSize);
-        }
-    }
-}
-
-void FParticleEmitterInstance::Update(float DeltaTime)
-{
-    for (int32 Index = ActiveParticles - 1; Index >= 0; Index--)
-    {
-        DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
-
-        // FParticleContext 생성 (ParticleIndex 포함)
-        FParticleContext Context(ParticleBase, OwnerComponent, Index);
-
-        UParticleModuleRequired* RequiredModule = \
-            SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
-
-        RequiredModule->Update(Context, DeltaTime);
-
-        TArray<UParticleModule*>& UpdateModules = \
-            SpriteTemplate->GetCurrentLODLevelInstance()->GetUpdateModule();
-
-        for (UParticleModule* UpdateModule : UpdateModules)
-        {
-            UpdateModule->Update(Context, DeltaTime);
-        }
-
-        if (ParticleBase->RelativeTime >= ParticleBase->LifeTime)
-            KillParticle(Index);
-    }
-
-    float SpawnNumFraction = SpawnRate * DeltaTime + SpawnFraction;
-    SpawnNum = floor(SpawnNumFraction);
-    SpawnFraction = SpawnNumFraction - SpawnNum;
-}
-
-void FParticleEmitterInstance::SpawnParticles
-(
-    float StartTime,
-    float Increment,
-    const FVector& InitialLocation,
-    const FVector& InitialVelocity,
-    FParticleEventInstancePayload* EventPayload
-)
-{
-    for (int32 Index = 0; Index < SpawnNum; Index++)
-    {
-        if (ActiveParticles >= MaxActiveParticles)
-        {
-            UE_LOG("[FParticleEmitterInstance::SpawnParticles][Warning] Reached max particle count.");
-            break;
-        }
-
-        DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ActiveParticles);
-        ActiveParticles++;
-        
-        FBaseParticle& ParticleBase = *((FBaseParticle*)ParticlePtr);
-
-        float LifeTime = GetLifeTimeValue();
-        ParticleBase.LifeTime = LifeTime;
-        ParticleBase.OneOverMaxLifetime = (LifeTime > 0.0f) ? (1.0f / LifeTime) : 0.0f; // 역수 설정
-
-        // 파티클의 RelativeTime 설정 (Increment를 이용해 시간 분산)
-        ParticleBase.RelativeTime = (float)Index * Increment;
-
-        ParticleBase.Location = InitialLocation;
-        ParticleBase.OldLocation = InitialLocation; // OldLocation도 초기 위치와 동일하게 설정
-        
-        ParticleBase.Velocity = InitialVelocity;
-        ParticleBase.BaseVelocity = InitialVelocity; // BaseVelocity는 초기 속도 참조용
-
-        // FParticleContext 생성
-        FParticleContext Context(&ParticleBase, OwnerComponent);
-
-        // RequiredModule의 Spawn 호출 (필수)
-        UParticleModuleRequired* RequiredModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
-        if (RequiredModule)
-        {
-            RequiredModule->Spawn(Context, StartTime);
-        }
-
-        // 추가 SpawnModules 호출
-        for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
-        {
-            Module->Spawn(Context, StartTime);
-        }
-    }
-}
-
-void FParticleEmitterInstance::KillParticle(int32 Index)
-{
-    if (Index >= ActiveParticles || Index < 0)
-    {
-        UE_LOG("[FParticleEmitterInstance::KillParticle][Warning] Invalid Index.");
         return;
     }
 
-    ActiveParticles--;
+    EmitterIndex = Index;
 
-    // 마지막 요소가 아니면 swap-and-pop
-    if (Index != ActiveParticles)
+    // 기본 정보 설정
+    Source.eEmitterType = EDET_Sprite;
+    Source.ActiveParticleCount = Instance->ActiveParticles;
+    Source.ParticleStride = Instance->ParticleStride;
+
+    // DataContainer 설정 (싱글 스레드이므로 직접 참조)
+    Source.DataContainer.ParticleData = Instance->ParticleData;
+    Source.DataContainer.ParticleDataNumBytes = Instance->ActiveParticles * Instance->ParticleStride;
+
+    // 인덱스 배열 할당/재할당
+    if (Source.DataContainer.ParticleIndices)
     {
-        DECLARE_PARTICLE_PTR(Target, ParticleData + ParticleStride * Index);
-        DECLARE_PARTICLE_PTR(Last, ParticleData + ParticleStride * ActiveParticles);
-        memcpy(Target, Last, ParticleStride);
+        free(Source.DataContainer.ParticleIndices);
+        Source.DataContainer.ParticleIndices = nullptr;
     }
+
+    if (Instance->ActiveParticles > 0)
+    {
+        Source.DataContainer.ParticleIndicesNumShorts = Instance->ActiveParticles;
+        Source.DataContainer.ParticleIndices = static_cast<uint16*>(
+            malloc(Instance->ActiveParticles * sizeof(uint16))
+        );
+
+        // 기본 순서로 인덱스 초기화
+        for (int32 i = 0; i < Instance->ActiveParticles; ++i)
+        {
+            Source.DataContainer.ParticleIndices[i] = static_cast<uint16>(i);
+        }
+    }
+
+    // 머티리얼 정보 설정
+    if (Instance->CurrentLODLevel && Instance->CurrentLODLevel->GetRequiredModule())
+    {
+        Source.MaterialInterface = Instance->CurrentLODLevel->GetRequiredModule()->GetMaterial();
+    }
+    else
+    {
+        Source.MaterialInterface = nullptr;
+    }
+
+    // 스케일 설정
+    if (Instance->OwnerComponent)
+    {
+        Source.Scale = Instance->OwnerComponent->GetWorldScale();
+    }
+    else
+    {
+        Source.Scale = FVector(1.0f, 1.0f, 1.0f);
+    }
+
+    // 정렬 모드 (기본값: 없음)
+    Source.SortMode = 0;
 }
 
-void FParticleEmitterInstance::KillAllParticles()
+// ----------------------------------------------------------------------------
+// SortParticles - 카메라 거리 기준 Back-to-Front 정렬
+// ----------------------------------------------------------------------------
+void FDynamicSpriteEmitterData::SortParticles(const FVector& CameraPosition)
 {
-    for (int32 i = ActiveParticles - 1; i >= 0; i--)
+    if (Source.ActiveParticleCount <= 1 || !Source.DataContainer.ParticleIndices)
     {
-        KillParticle(i);
-        ActiveParticles--;
+        return;
     }
+
+    uint8* ParticleData = Source.DataContainer.ParticleData;
+    int32 Stride = Source.ParticleStride;
+    uint16* Indices = Source.DataContainer.ParticleIndices;
+    int32 Count = Source.ActiveParticleCount;
+
+    // 각 파티클의 카메라 거리 제곱 계산
+    TArray<float> DistancesSq;
+    DistancesSq.resize(Count);
+
+    for (int32 i = 0; i < Count; ++i)
+    {
+        FBaseParticle* Particle = reinterpret_cast<FBaseParticle*>(ParticleData + i * Stride);
+        FVector Diff = Particle->Location - CameraPosition;
+        DistancesSq[i] = Diff.X * Diff.X + Diff.Y * Diff.Y + Diff.Z * Diff.Z;
+    }
+
+    // 인덱스 배열을 거리 기준으로 정렬 (먼 것부터 - Back-to-Front)
+    // std::sort 사용 - O(n log n) 복잡도
+    std::sort(Indices, Indices + Count, [&DistancesSq](uint16 A, uint16 B)
+    {
+        return DistancesSq[A] > DistancesSq[B]; // 내림차순 (먼 것부터)
+    });
+}
+
+// ----------------------------------------------------------------------------
+// Release - 할당된 메모리 해제
+// ----------------------------------------------------------------------------
+void FDynamicSpriteEmitterData::Release()
+{
+    if (Source.DataContainer.ParticleIndices)
+    {
+        free(Source.DataContainer.ParticleIndices);
+        Source.DataContainer.ParticleIndices = nullptr;
+    }
+
+    // ParticleData는 EmitterInstance가 소유하므로 여기서 해제하지 않음
+    Source.DataContainer.ParticleData = nullptr;
+    Source.ActiveParticleCount = 0;
 }
