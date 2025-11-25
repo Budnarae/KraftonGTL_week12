@@ -53,5 +53,7 @@ public:
     // // 시스템 전체에 적용되는 크기 및 속도 배율
     // UPROPERTY(EditAnywhere, Category="Basic");
     // float SystemScale;
+
+
 private:
 };

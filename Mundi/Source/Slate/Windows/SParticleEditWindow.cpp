@@ -4,29 +4,168 @@
 #include "FViewportClient.h"
 #include "Source/Runtime/Engine/ParticleEditor/ParticleViewerBootstrap.h"
 #include "USlateManager.h"
+#include "Source/Editor/PlatformProcess.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleRequired.h"
 #include "Source/Slate/Widgets/PropertyRenderer.h"
 #include "Source/Runtime/Engine/Particle/ParticleAsset.h"
 #include "Source/Runtime/Engine/Particle/ParticleSystem.h"
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleColor.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleLifeTime.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleLocation.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleSize.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleVelocity.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
 
+ImVec4 HoveredColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f); //마우스 올리면
+ImVec4 ActiveColor = ImVec4(0.9f, 0.9f, 0.9f, 1.0f); //선택했을때 클릭
 
-//enum, bool, int, float, vector2,3,4, TArray 정도 적용 필요
-//어처피 프로퍼티는 생성되어 있음 그 프로퍼티정보를 가져와서 만들자
-//근데 enum은 범위 정보가 없다 일단 제외
+ImVec4 EmitterColor = ImVec4(0.25f, 0.25f, 0.8f, 1.0f);//선택된
+ImVec4 ModuleColor = ImVec4(0.25f, 0.8f, 0.25f, 1.0f);
+
+ImVec2 EmitterSize = ImVec2(100, 40);
+ImVec2 RequireModuleSize = ImVec2(100, 30);
+ImVec2 ModuleSize = ImVec2(100, 20);
+
+//Dropdown에서 첫 카테고리안에 두번째 생성할 목록이 들어가 있다.
+//각 생성할 목록들을 클릭하면 그 값이 현재 클릭된 이미터를 기준으로 추가된다.
+//즉 파티클 시스템에 추가 함수가 있고, 각 목록들은 그함수에 연결되어 있다.
+//함수 연결? 아니면 string?
+//함수연결이 낫겠지
+
+FRect GetWindowRect()
+{
+    ImVec2 pos = ImGui::GetWindowPos();
+    ImVec2 size = ImGui::GetWindowSize();
+    FRect Rect;
+    Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
+    return Rect;
+}
+
+void FMenuAction::Action(SParticleEditWindow* ParticleEditWindow) const
+{
+    switch (MenuActionType)
+    {
+    case EMenuActionType::AddEmitter:
+        ParticleEditWindow->AddEmitter(EmitterOffset);
+        break;
+    case EMenuActionType::AddSpawnModule:
+        ParticleEditWindow->AddSpawnModule(ClassName);
+        break;
+    case EMenuActionType::AddUpdateModule:
+        ParticleEditWindow->AddUpdateModule(ClassName);
+        break;
+    }
+}
+
+TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
+{
+    {"파티클 시스템",
+    {
+        {"앞에 이미터 추가", FMenuAction::CreateAddEmitter(-1)},
+        {"뒤에 이미터 추가", FMenuAction::CreateAddEmitter(1)},
+    }
+    },
+    {"컬러",
+    {
+        {"초기컬러", FMenuAction::CreateSpawnModule(UParticleModuleColor::StaticClass()->Name)},
+        {"컬러 오버 라이프", FMenuAction::CreateUpdateModule(UParticleModuleColor::StaticClass()->Name)},
+    }
+    },
+    {"수명",
+    {
+        {"수명", FMenuAction::CreateSpawnModule(UParticleModuleLifetime::StaticClass()->Name)},
+    }
+    },
+    {"위치",
+    {
+        {"초기 위치", FMenuAction::CreateSpawnModule(UParticleModuleLocation::StaticClass()->Name)},
+    }
+    },
+    {"크기",
+    {
+        {"초기 크기", FMenuAction::CreateSpawnModule(UParticleModuleSize::StaticClass()->Name)},
+    }
+    },
+    {"속도",
+    {
+        {"초기 속도", FMenuAction::CreateSpawnModule(UParticleModuleVelocity::StaticClass()->Name)},
+    }
+    },
+};
+
+
+void SParticleEditWindow::AddEmitter(const int EmitterOffset)
+{
+    if (State->PreviewParticle)
+    {
+        State->PreviewParticle->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
+    }
+}
+void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
+{
+    if (State->SelectedEmitter)
+    {
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+        UObject* obj = NewObject(UClass::FindClass(ClassName));
+        if (UParticleModule* Module = Cast<UParticleModule>(obj))
+        {
+            LOD->AddSpawnModule(Module);
+        }
+    }
+}
+void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
+{
+    if (State->SelectedEmitter)
+    {
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+        UObject* obj = NewObject(UClass::FindClass(ClassName));
+        if (UParticleModule* Module = Cast<UParticleModule>(obj))
+        {
+            LOD->AddUpdateModule(Module);
+        }
+    }
+}
+
+void SParticleEditWindow::RemoveEmitter()
+{
+    if (State->SelectedEmitter)
+    {
+        State->PreviewParticle->ParticleSystem.RemoveEmitter(State->SelectedEmitter);
+        State->SelectedEmitter = nullptr;
+        State->SelectedModule = nullptr;
+    }
+}
+void SParticleEditWindow::RemoveModule()
+{
+    if (State->SelectedEmitter && State->SelectedModule)
+    {
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+        if (LOD->RemoveSpawnModule(State->SelectedModule) == false)
+        {
+            State->SelectedModule = nullptr;
+            return;
+        }
+        if (LOD->RemoveUpdateModule(State->SelectedModule) == false)
+        {
+            State->SelectedModule = nullptr;
+            return;
+        }
+    }
+}
+void SParticleEditWindow::ResetModule()
+{
+
+}
+
+
+
 
 
 void SParticleEditWindow::CreateParticleEditor(const FString& Path)
 {
-    std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
-    UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
-    ParticleAsset->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
-    ParticleAsset->ParticleSystem.AddEmitter(NewObject<UParticleEmitter>());
-    ParticleAsset->ParticleSystem.Emitters[1]->SetMaxParticleCount(3);
-    ParticleAsset->Save();
     auto* Viewer = USlateManager::GetInstance().FindViewer<SParticleEditWindow>();
     if (!Viewer || !Viewer->IsOpen())
     {
@@ -45,7 +184,7 @@ void SParticleEditWindow::CreateParticleEditor(const UParticleModuleRequired* Pa
 }
 SParticleEditWindow::SParticleEditWindow()
 {
-    CenterRect = FRect(0, 0, 0, 0);
+
 }
 
 SParticleEditWindow::~SParticleEditWindow()
@@ -85,7 +224,7 @@ bool SParticleEditWindow::Initialize(float StartX, float StartY, float Width, fl
 }    
 void SParticleEditWindow::LoadAsset(const FString& AssetPath)
 {
-
+    State->PreviewParticle = UResourceManager::GetInstance().Load<UParticleAsset>(AssetPath);
 }
 void SParticleEditWindow::OnRender()
 {
@@ -98,6 +237,7 @@ void SParticleEditWindow::OnRender()
     ImGuiWindowFlags ChildFlag = ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoCollapse;
+    HoveredWindowType = EHoveredWindowType::None;
 
     if (!bInitialPlacementDone)
     {
@@ -111,12 +251,46 @@ void SParticleEditWindow::OnRender()
 
     if (ImGui::Begin("Particle Editor", &bIsOpen, ParentFlag))
     {
-        ImVec2 pos = ImGui::GetWindowPos();
-        ImVec2 size = ImGui::GetWindowSize();
-        Rect.Left = pos.x; Rect.Top = pos.y; Rect.Right = pos.x + size.x; Rect.Bottom = pos.y + size.y; Rect.UpdateMinMax();
+        Rect = GetWindowRect();
+        UParticleSystem& CurParticleSystem = State->PreviewParticle->ParticleSystem;
+
+        //상단 버튼 및 경로
+        const char* PathStr = State->PreviewParticle == nullptr ? "None" : State->PreviewParticle->GetFilePath().c_str();
+        ImGui::Text("Path %s", PathStr);
+        if (ImGui::Button("New"))
+        {
+            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
+            UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
+            ParticleAsset->Save();
+            State->PreviewParticle = ParticleAsset;
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Save"))
         {
+            if (State->PreviewParticle) 
+            {
+                State->PreviewParticle->Save();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load"))
+        {
+            std::filesystem::path FolderPath = GContentDir + "/Resources/Particle";
+            const FWideString Extension = L".uasset";
+            const FWideString Description = L"Particle Files";
 
+            // Windows 파일 다이얼로그 열기
+            std::filesystem::path SelectedPath = FPlatformProcess::OpenLoadFileDialog(FolderPath.wstring(), Extension, Description);
+            if (SelectedPath.empty())
+            {
+                
+            }
+            else 
+            {
+                State->PreviewParticle = UResourceManager::GetInstance().Load<UParticleAsset>(SelectedPath.string());
+                State->SelectedEmitter = nullptr;
+                State->SelectedModule = nullptr;
+            }
         }
         ImGui::SameLine();
         if (ImGui::Button("Restart"))
@@ -125,28 +299,55 @@ void SParticleEditWindow::OnRender()
         }
 
 
+        //뷰포트
         ImVec2 ChildSize = Size * 0.5f;
         ImGui::BeginChild("Viewport", ChildSize);
-        //World Rendering
+        ViewportRect = GetWindowRect();
+
+        if (ImGui::IsWindowHovered())
+        {
+            HoveredWindowType = EHoveredWindowType::Viewport;
+        }
+        ImGui::Text("Viewport");
         ImGui::EndChild();
         ImGui::SameLine();
 
-        ImGui::BeginChild("Emitter", ChildSize);
-        //
+        //이미터
+        ImGui::BeginChild("Emitter", ChildSize,0, ImGuiWindowFlags_HorizontalScrollbar);
+        if (ImGui::IsWindowHovered())
+        {
+            HoveredWindowType = EHoveredWindowType::Emitter;
+        }
+        ImGui::Text("Emitter");
+
+        DrawEmitterView();
+        DrawEmitterDropdown();
+        DrawModuleDropdown();
         ImGui::EndChild();
 
+        //디테일
         ImGui::BeginChild("Detail", ChildSize);
-        /*UPropertyRenderer::RenderAllProperties();
-        UClass* Class = UParticleModuleRequired::StaticClass();
-        const TArray<FProperty>& Properties = Class->GetAllProperties();*/
+        if (ImGui::IsWindowHovered())
+        {
+            HoveredWindowType = EHoveredWindowType::Detail;
+        }
+        ImGui::Text("Emitter");
+
+        if (State->SelectedModule)
+        {
+            UPropertyRenderer::RenderAllProperties(State->SelectedModule);
+        }
         ImGui::EndChild();
         ImGui::SameLine();
+
+
+        //커브 미구현
         ImGui::BeginChild("CurveEditor", ChildSize);
         ImGui::EndChild();
-
-      
         ImGui::End();
     }
+
+
 
 }
 void SParticleEditWindow::OnUpdate(float DeltaSeconds)
@@ -164,9 +365,9 @@ void SParticleEditWindow::OnMouseMove(FVector2D MousePos)
 {
     if (!State || !State->Viewport) return;
 
-    if (CenterRect.Contains(MousePos))
+    if (ViewportRect.Contains(MousePos))
     {
-        FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
+        FVector2D LocalPos = MousePos - FVector2D(ViewportRect.Left, ViewportRect.Top);
         State->Viewport->ProcessMouseMove((int32)LocalPos.X, (int32)LocalPos.Y);
     }
 }
@@ -175,13 +376,16 @@ void SParticleEditWindow::OnMouseDown(FVector2D MousePos, uint32 Button)
 {
     if (!State || !State->Viewport) return;
 
-    if (CenterRect.Contains(MousePos))
+
+
+    if (ViewportRect.Contains(MousePos))
     {
-        FVector2D LocalPos = MousePos - FVector2D(CenterRect.Left, CenterRect.Top);
+        FVector2D LocalPos = MousePos - FVector2D(ViewportRect.Left, ViewportRect.Top);
 
         // First, always try gizmo picking (pass to viewport)
         State->Viewport->ProcessMouseButtonDown((int32)LocalPos.X, (int32)LocalPos.Y, (int32)Button);
 
+        UE_LOG("%d", Button);
 
     }
 }
@@ -190,22 +394,185 @@ void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
 {
     if (!State || !State->Viewport) return;
 
+    switch (HoveredWindowType)
+    {
+    case EHoveredWindowType::Viewport:
+        bEmitterDropdown = false;
+        bModuleDropdown = false;
+        break;
+    case EHoveredWindowType::Emitter:
+        if (Button == 1 && ImGui::IsAnyItemHovered() == false)
+        {
+            bEmitterDropdown = true;
+            EmitterDropdownPos = ImGui::GetMousePos();
+        }
+        break;
+    case EHoveredWindowType::Detail:
+        bEmitterDropdown = false;
+        bModuleDropdown = false;
+        break;
+    default:
+        bEmitterDropdown = false;
+        bModuleDropdown = false;
+        break;
+    }
 
+   
 }
 
 void SParticleEditWindow::OnRenderViewport()
 {
-    if (State && State->Viewport && CenterRect.GetWidth() > 0 && CenterRect.GetHeight() > 0)
+    if (State && State->Viewport && ViewportRect.GetWidth() > 0 && ViewportRect.GetHeight() > 0)
     {
-        const uint32 NewStartX = static_cast<uint32>(CenterRect.Left);
-        const uint32 NewStartY = static_cast<uint32>(CenterRect.Top);
-        const uint32 NewWidth = static_cast<uint32>(CenterRect.Right - CenterRect.Left);
-        const uint32 NewHeight = static_cast<uint32>(CenterRect.Bottom - CenterRect.Top);
+        const uint32 NewStartX = static_cast<uint32>(ViewportRect.Left);
+        const uint32 NewStartY = static_cast<uint32>(ViewportRect.Top);
+        const uint32 NewWidth = static_cast<uint32>(ViewportRect.Right - ViewportRect.Left);
+        const uint32 NewHeight = static_cast<uint32>(ViewportRect.Bottom - ViewportRect.Top);
         State->Viewport->Resize(NewStartX, NewStartY, NewWidth, NewHeight);
-
-       
 
         // 뷰포트 렌더링 (ImGui보다 먼저)
         State->Viewport->Render();
     }
+}
+
+//window우클릭
+//module 우클릭
+void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size)
+{
+    if (Module == nullptr)
+    {
+        return;
+    }
+    FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+    bool bSelected = Module == State->SelectedModule;
+    if (ImGui::Selectable(RequireModuleGUIID.c_str(), bSelected, 0, Size))
+    {
+        State->SelectedModule = Module;
+        State->SelectedEmitter = ParentEmitter;
+    }
+    if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+    {
+        State->SelectedModule = Module;
+        State->SelectedEmitter = ParentEmitter;
+        bModuleDropdown = true;
+        ModuleDropdownPos = ImGui::GetMousePos();
+    }
+}
+
+void SParticleEditWindow::DrawEmitterView()
+{
+    if (State->PreviewParticle == nullptr)
+    {
+        return;
+    }
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HoveredColor);
+    UParticleSystem& CurParticle = State->PreviewParticle->ParticleSystem;
+    TArray<UParticleEmitter*> Emitters = CurParticle.GetEmitters();
+    for (UParticleEmitter* Emitter : Emitters)
+    {
+        UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);
+        UParticleModule* RequireModule = ParticleLOD->GetRequiredModule();
+        TArray<UParticleModule*>& SpawnModules = ParticleLOD->GetSpawnModule();
+        TArray<UParticleModule*>& UpdateModules = ParticleLOD->GetUpdateModule();
+
+        ImGui::BeginGroup();
+        FString GUIID = GetUniqueGUIIDWithPointer(Emitter->GetEmitterName(), Emitter);
+        bool bSelected = Emitter == State->SelectedEmitter;
+        ImGui::PushStyleColor(ImGuiCol_Header, EmitterColor);
+
+        if (ImGui::Selectable(GUIID.c_str(), bSelected, 0, EmitterSize))
+        {
+            //선택된 이미터 이걸로 변경
+            State->SelectedEmitter = Emitter;
+            State->SelectedModule = RequireModule;
+        }
+        ImGui::PopStyleColor();
+        ImGui::PushStyleColor(ImGuiCol_Header, ModuleColor);
+        
+
+        DrawModuleInEmitterView(Emitter, RequireModule, RequireModuleSize);
+        for (UParticleModule* Module : SpawnModules)
+        {
+            DrawModuleInEmitterView(Emitter, Module, ModuleSize);
+        }
+        for (UParticleModule* Module : UpdateModules)
+        {
+            DrawModuleInEmitterView(Emitter, Module, ModuleSize);
+        }
+
+        ImGui::EndGroup();
+        ImGui::SameLine();
+        ImGui::PopStyleColor();
+    }
+    ImGui::PopStyleColor(2);
+
+}
+
+void SParticleEditWindow::DrawModuleDropdown()
+{
+    if (bModuleDropdown == false)
+    {
+        return;
+    }
+    ImGui::OpenPopup("ModuleDropdown");
+
+    ImGui::SetNextWindowPos(ModuleDropdownPos);
+    if (ImGui::BeginPopup("ModuleDropdown"))
+    {
+        if (ImGui::Selectable("모듈 새로고침"))
+        {
+            ResetModule();
+        }
+        if (ImGui::Selectable("모듈 제거"))
+        {
+            RemoveModule();
+        }
+        ImGui::EndPopup();
+    }
+}
+void SParticleEditWindow::DrawEmitterDropdown()
+{
+    if (bEmitterDropdown == false)
+    {
+        return;
+    }
+
+    ImGui::OpenPopup("EmitterDropdown");
+
+    ImGui::SetNextWindowPos(EmitterDropdownPos);
+    if (ImGui::BeginPopup("EmitterDropdown"))
+    {
+        for (auto& pair : DropdownActionMap)
+        {
+            const FString& Category = pair.first;
+            const TMap<FString, FMenuAction>& SubCategoryMap = pair.second;
+            if (ImGui::Selectable(Category.c_str(), false, ImGuiSelectableFlags_DontClosePopups))
+            {
+                
+            }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+            {
+                ImVec2 SubCategoryPos;
+                SubCategoryPos.x = ImGui::GetItemRectMax().x;
+                SubCategoryPos.y = ImGui::GetItemRectMin().y;
+                ImGui::SetNextWindowPos(SubCategoryPos);
+                ImGui::OpenPopup(Category.c_str());
+            }
+            if (ImGui::BeginPopup(Category.c_str()))
+            {
+                for (auto& SubPair : SubCategoryMap)
+                {
+                    const FString& SubCategory = SubPair.first;
+                    const FMenuAction& SubCategorySelectAction = SubPair.second;
+                    if (ImGui::Selectable(SubCategory.c_str()))
+                    {
+                        SubCategorySelectAction.Action(this);
+                    }
+                }
+                ImGui::EndPopup();
+            }
+        }
+        ImGui::EndPopup();
+    }    
 }

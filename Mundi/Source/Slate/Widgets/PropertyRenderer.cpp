@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "PropertyRenderer.h"
-#include "ImGui/imgui.h"
 #include "Vector.h"
 #include "Color.h"
 #include "SceneComponent.h"
@@ -75,6 +74,10 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 		bChanged = RenderVectorProperty(Property, ObjectInstance);
 		break;
 
+	case EPropertyType::FQuat:
+		bChanged = RenderQuaternionProperty(Property, ObjectInstance);
+		break;
+
 	case EPropertyType::FLinearColor:
 		bChanged = RenderColorProperty(Property, ObjectInstance);
 		break;
@@ -121,6 +124,12 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 
 	case EPropertyType::Curve:
 		bChanged = RenderCurveProperty(Property, ObjectInstance);
+		break;
+	case EPropertyType::RawDistribution_Float:
+		bChanged = RenderRawDistributionFloatProperty(Property, ObjectInstance);
+		break;
+	case EPropertyType::RawDistribution_FVector:
+		bChanged = RenderRawDistributionFVectorProperty(Property, ObjectInstance);
 		break;
 
 	case EPropertyType::Array:
@@ -511,6 +520,57 @@ bool UPropertyRenderer::RenderVectorProperty(const FProperty& Prop, void* Instan
 	return ImGui::DragFloat3(Prop.Name, &Value->X, 0.1f);
 }
 
+bool UPropertyRenderer::RenderQuaternionProperty(const FProperty& Prop, void* Instance)
+{
+	FQuat* Value = Prop.GetValuePtr<FQuat>(Instance);
+	FVector EulerDegree = Value->ToEulerZYXDeg();
+	bool bDrag = false;
+	if (ImGui::DragFloat3(Prop.Name, &EulerDegree.X, 0.1f))
+	{
+		bDrag = true;
+	}
+	FQuat EditedQuat = FQuat::MakeFromEulerZYX(EulerDegree);
+	Value->X = EditedQuat.X;
+	Value->Y = EditedQuat.Y;
+	Value->Z = EditedQuat.Z;
+	Value->W = EditedQuat.W;
+	return bDrag;
+}
+
+bool UPropertyRenderer::RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance)
+{
+	FRawDistribution<float>* Value = Prop.GetValuePtr<FRawDistribution<float>>(Instance);
+	bool bDrag = false;
+	ImGui::Text(Prop.Name);
+	if (ImGui::DragFloat("Min", &Value->Min, 0.1f))
+	{
+		bDrag = true;
+	}
+	if (ImGui::DragFloat("Max", &Value->Max, 0.1f))
+	{
+		bDrag |= true;
+	}
+
+	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
+	return bDrag;
+}
+bool UPropertyRenderer::RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance)
+{
+	FRawDistribution<FVector>* Value = Prop.GetValuePtr<FRawDistribution<FVector>>(Instance);
+	bool bDrag = false;
+	ImGui::Text(Prop.Name);
+	if (ImGui::DragFloat3("Min", &Value->Min.X, 0.1f))
+	{
+		bDrag = true;
+	}
+	if (ImGui::DragFloat3("Max", &Value->Max.X, 0.1f))
+	{
+		bDrag |= true;
+	}
+
+	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
+	return bDrag;
+}
 bool UPropertyRenderer::RenderColorProperty(const FProperty& Prop, void* Instance)
 {
 	FLinearColor* Value = Prop.GetValuePtr<FLinearColor>(Instance);

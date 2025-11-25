@@ -45,10 +45,15 @@ public:
     bool IsValid() const;
     void Serialize(const bool bInIsLoading, JSON& InOutHandle);
 
+    void SetEmitterName(const FString& InName) { EmitterName = InName; }
+    const FString& GetEmitterName() const { return EmitterName; }
+
 private:
     // -------------------------------------------
     // 1. 데이터 멤버 (Data Members)
     // -------------------------------------------
+
+    FString EmitterName;
 
     inline static constexpr int32 INVALID = -1;
     

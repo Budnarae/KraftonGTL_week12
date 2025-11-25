@@ -2,6 +2,7 @@
 
 #include "Property.h"
 #include "Object.h"
+#include "ImGui/imgui.h"
 
 // 프로퍼티 렌더러
 // 리플렉션 정보를 기반으로 ImGui UI를 자동 생성
@@ -20,12 +21,45 @@ public:
 	// 객체의 모든 프로퍼티를 카테고리별로 렌더링 (부모 클래스 프로퍼티 포함)
 	static void RenderAllPropertiesWithInheritance(UObject* Object);
 
+
 private:
 	// 타입별 렌더링 함수들
+	template<typename T>
+	static bool RenderEnumProperty(const char* ValueName, T& EnumValue, const char** EnumNames, const int Count)
+	{
+		int Current = static_cast<int>(EnumValue);
+		
+		bool bChanged = false;
+		if (ImGui::Combo(ValueName, &Current, EnumNames, Count))
+		{
+			EnumValue = static_cast<T>(Current);
+			bChanged = true;
+		}
+		return bChanged;
+	}
+
+	template<typename T>
+	static bool RenderEnumProperty(const FProperty& Prop, void* Instance, const char** EnumNames, const int Count)
+	{
+		T* EnumValue = Prop.GetValuePtr<T>(Instance);
+
+		int Current = static_cast<int>(*EnumValue);
+
+		bool bChanged = false;
+		if (ImGui::Combo(Prop.Name, &Current, EnumNames, Count))
+		{
+			*EnumValue = static_cast<T>(Current);
+			bChanged = true;
+		}
+		return bChanged;
+	}
 	static bool RenderBoolProperty(const FProperty& Prop, void* Instance);
 	static bool RenderInt32Property(const FProperty& Prop, void* Instance);
 	static bool RenderFloatProperty(const FProperty& Prop, void* Instance);
 	static bool RenderVectorProperty(const FProperty& Prop, void* Instance);
+	static bool RenderQuaternionProperty(const FProperty& Prop, void* Instance);
+	static bool RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance);
+	static bool RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderColorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderStringProperty(const FProperty& Prop, void* Instance);
 	static bool RenderNameProperty(const FProperty& Prop, void* Instance);
@@ -45,7 +79,6 @@ private:
 	static bool RenderSingleMaterialSlot(const char* Label, UMaterialInterface** MaterialPtr, UObject* OwningObject, uint32 MaterialIndex);	// 단일 UMaterial* 슬롯을 렌더링하는 헬퍼 함수.
 	static bool RenderTextureSelectionCombo(const char* Label, UTexture* CurrentTexture, UTexture*& OutNewTexture);
 	static bool RenderSoundSelectionCombo(const char* Label, USound* CurrentSound, USound*& OutNewSound);
-
 public:
 	// Simplified sound combo without thumbnails
 	static bool RenderSoundSelectionComboSimple(const char* Label, USound* CurrentSound, USound*& OutNewSound);

@@ -111,6 +111,15 @@ public:
     void SetupIndicesPtr();
 };
 
+// 에미터 타입 정의
+enum EDynamicEmitterType : int32
+{
+    EDET_Sprite,
+    EDET_Mesh,
+    EDET_Beam,
+    EDET_Ribbon
+};
+
 struct FDynamicEmitterReplayDataBase
 {
 public:
@@ -152,7 +161,6 @@ public:
 };
 
 // 전방 선언
-class UMaterialInterface;
 struct FParticleRequiredModule; 
 
 // 스프라이트 에미터의 시각적 재생 상태를 위한 데이터 구조체
@@ -164,7 +172,7 @@ public:
     // -------------------------------------------
 
     // 이 스프라이트 에미터가 사용하는 재질 템플릿
-    UMaterialInterface* MaterialInterface;
+    UMaterial* MaterialInterface;
 
     // 파티클의 렌더링 방식(정렬, LOD 등)을 정의하는 필수 모듈 데이터 포인터
     FParticleRequiredModule* RequiredModule;
@@ -174,8 +182,8 @@ public:
     // 2. 생성자/소멸자 (Minimal)
     // -------------------------------------------
     
-    FDynamicSpriteEmitterReplayDataBase();
-    virtual ~FDynamicSpriteEmitterReplayDataBase() {}
+    FDynamicSpriteEmitterReplayDataBase() = default;
+    virtual ~FDynamicSpriteEmitterReplayDataBase() = default;
 
     // -------------------------------------------
     // 3. 인터페이스 (Inherited/Override)
@@ -223,7 +231,6 @@ public:
 };
 
 // 외부 UObject 클래스들에 대한 전방 선언
-class UParticleSystemComponent;
 class UParticleLODLevel;
 struct FParticleEventInstancePayload;
 enum class ERHIFeatureLevel : int32; // 렌더링 피처 레벨 정의
@@ -254,90 +261,84 @@ struct FParticleSpriteVertex
     }
 };
 
+// GPU 인스턴싱용 파티클 인스턴스 데이터 (셰이더와 일치해야 함)
+// HLSL StructuredBuffer와 정확히 일치하도록 패킹 지정
+#pragma pack(push, 4)
+struct FParticleInstanceData
+{
+    FVector Position;       // 12 bytes (float3 in HLSL)
+    float Rotation;         // 4 bytes  -> 16 bytes total
+    FVector2D Size;         // 8 bytes (float2 in HLSL)
+    FVector2D Padding;      // 8 bytes  -> 16 bytes total
+    FLinearColor Color;     // 16 bytes (float4 in HLSL)
+    // Total: 48 bytes
+
+    // FBaseParticle로부터 데이터 채우기
+    void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation)
+    {
+        Position = Particle->Location + ComponentLocation;
+        Rotation = Particle->Rotation;
+        Size = FVector2D(Particle->Size.X, Particle->Size.Y);
+        Padding = FVector2D(0.0f, 0.0f);
+        Color = Particle->Color;
+    }
+};
+#pragma pack(pop)
+
 struct FMeshParticleInstanceVertex;
 
 // ----------------------------------------------------
 // [A] 렌더링 타입별 다형성 데이터 (Dynamic Data Hierarchy)
 // ----------------------------------------------------
-//
-// // 1. Sprite 에미터의 기본 타입별 데이터 (추상)
-// struct FDynamicSpriteEmitterDataBase : public FDynamicEmitterDataBase
-// {
-//     void SortSpriteParticles(...) {}
-//     
-//     // Vertex Stride (Vertex 데이터 크기)를 반환하는 순수 가상 함수
-//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type /*InFeatureLevel*/) const = 0;
-// };
-//
-// // 2. 일반 Sprite 에미터의 구체적인 구현
-// struct FDynamicSpriteEmitterData : public FDynamicSpriteEmitterDataBase
-// {
-//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type InFeatureLevel) const override
-//     {
-//         return sizeof(FParticleSpriteVertex);
-//     }
-//     // ... 추가적인 스프라이트 전용 데이터
-// };
-//
-// // 3. Mesh 에미터의 구체적인 구현 (Vertex Stride 재정의)
-// struct FDynamicMeshEmitterData : public FDynamicSpriteEmitterData
-// {
-//     virtual int32 GetDynamicVertexStride(ERHIFeatureLevel::Type /*InFeatureLevel*/) const override
-//     {
-//         return sizeof(FMeshParticleInstanceVertex);
-//     }
-//     // ... 추가적인 메시 전용 데이터
-// };
 
-// ----------------------------------------------------
-// [B] 런타임 에미터 코어 (FParticleEmitterInstance)
-// ----------------------------------------------------
+// 전방 선언
+struct FParticleEmitterInstance;
 
-// 특정 UParticleEmitter 템플릿의 활성 시뮬레이션 상태를 담는 구조체
-struct FParticleEmitterInstance
+// ============================================================================
+// FDynamicSpriteEmitterData
+// ============================================================================
+// 스프라이트 에미터의 렌더링용 데이터 구조체입니다.
+// FParticleEmitterInstance로부터 렌더링에 필요한 정보를 추출하여 보관합니다.
+// 싱글 스레드 환경에서는 시뮬레이션 데이터를 직접 참조합니다.
+// ============================================================================
+struct FDynamicSpriteEmitterData
 {
-    FParticleEmitterInstance() = default;
-    ~FParticleEmitterInstance();
+    FDynamicSpriteEmitterData() = default;
+    ~FDynamicSpriteEmitterData();
 
-    // 복사 생성자 (Deep Copy)
-    FParticleEmitterInstance(const FParticleEmitterInstance& Other);
+    // UParticleSystem::Emitters 배열에서의 인덱스
+    int32 EmitterIndex = 0;
 
-    // 복사 대입 연산자 (Deep Copy)
-    FParticleEmitterInstance& operator=(const FParticleEmitterInstance& Other);
+    // 렌더링용 스냅샷 데이터
+    FDynamicSpriteEmitterReplayDataBase Source;
 
-private:
-    // 복사 헬퍼 함수
-    void CopyFrom(const FParticleEmitterInstance& Other);
+    // ========================================================================
+    // 초기화 및 업데이트
+    // ========================================================================
 
-public:
-    
-    // 템플릿 및 소유자 참조
-    UParticleEmitter* SpriteTemplate{};
-    UParticleSystemComponent* OwnerComponent{};
+    // EmitterInstance로부터 렌더링 데이터 초기화/갱신
+    void Init(FParticleEmitterInstance* Instance, int32 Index);
 
-    // LOD 및 모듈 참조
-    int32 CurrentLODLevelIndex{};
-    UParticleLODLevel* CurrentLODLevel{};
+    // ========================================================================
+    // 파티클 정렬
+    // ========================================================================
 
-    // 메모리 관리 및 상태 변수
-    uint8* ParticleData{};          // 모든 파티클의 데이터가 저장된 로우 메모리 블록의 시작 주소.
-    int32 MaxActiveParticles{};     // ParticleData 블록의 최대 크기를 결정하는 파티클 수 (메모리 할당 기준)
+    // 카메라 위치 기준으로 파티클을 Back-to-Front 정렬
+    void SortParticles(const FVector& CameraPosition);
 
-    int32 ParticleStride{};         // 단일 파티클의 메모리 크기이자, 다음 파티클의 시작 주소로 점프하기 위한 $16$ 바이트 정렬이 적용된 최종 크기 (포인터 연산 기준).
-    // int32 PayloadOffset;         // 파티클 데이터 내에서 고정 필드가 끝나고 가변 페이로드 데이터가 시작되는 지점을 표시하는 오프셋 (메모리 분할 기준).
-    
-    // uint8* InstanceData;
-    // int32 InstancePayloadSize;
+    // ========================================================================
+    // 데이터 접근
+    // ========================================================================
 
-    // 런타임 파티클 생성 관리
-    float SpawnRate{};              // 파티클 스폰 레이트 (초당 개수)
-    int32 SpawnNum{};               // 이번 프레임에 스폰할 파티클의 개수
-    float SpawnFraction{};          // 다음 프레임에 합산할 소수부 나머지
+    // 스냅샷 데이터 반환
+    const FDynamicSpriteEmitterReplayDataBase& GetSource() const { return Source; }
 
-    float Duration{};
-    
-    int32 ActiveParticles{};        // 현재 시뮬레이션 루프에서 실제 활성화된 파티클의 수 (현재 카운트).
+    // Vertex Stride 반환
+    int32 GetDynamicVertexStride() const { return sizeof(FParticleSpriteVertex); }
 
+    // ========================================================================
+    // 메모리 관리
+    // ========================================================================
     // 파티클 갱신 함수 (Update 모듈 호출)
     void Update(float DeltaTime);
     
@@ -352,16 +353,11 @@ public:
         FParticleEventInstancePayload* EventPayload
     );
 
-    // 파티클 소멸 함수
-    void KillParticle(int32 Index);
-
-    void KillAllParticles();
-
-    float GetLifeTimeValue()
-    {
-        return SpriteTemplate->
-            GetCurrentLODLevelInstance()->
-            GetRequiredModule()->
-            GetLifeTime();
-    }
+    // 할당된 인덱스 배열 해제
+    void Release();
 };
+
+// ----------------------------------------------------
+// [B] 런타임 에미터 코어 (FParticleEmitterInstance)
+// ----------------------------------------------------
+

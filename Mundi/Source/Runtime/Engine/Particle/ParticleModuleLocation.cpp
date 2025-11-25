@@ -4,6 +4,8 @@
 #include "ParticleData.h"
 #include "ParticleSystemComponent.h"
 
+IMPLEMENT_CLASS(UParticleModuleLocation)
+
 // -------------------------------------------
 // Getters
 // -------------------------------------------

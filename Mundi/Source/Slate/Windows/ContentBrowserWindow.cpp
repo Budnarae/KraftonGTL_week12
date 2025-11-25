@@ -293,9 +293,9 @@ void UContentBrowserWindow::RenderFolderTreeNode(const std::filesystem::path& Fo
 
 void UContentBrowserWindow::RenderPathBar()
 {
-	if (ImGui::Button("Particle Window Test"))
+	if (ImGui::Button("Particle Editor"))
 	{
-		SParticleEditWindow::CreateParticleEditor("TestParticle.uasset");
+		SParticleEditWindow::CreateParticleEditor("");
 	}
 	ImGui::Text("Path: ");
 	ImGui::SameLine();

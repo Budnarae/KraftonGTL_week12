@@ -8,8 +8,12 @@
 enum class EDistributionMode : uint8
 {
     Uniform,  // Min~Max 사이 랜덤 (기본값)
-    Curve     // 시간 기반 커브
+    Curve,     // 시간 기반 커브
+    Count       //Enum갯수를 위한 것 Property에 보이지 않도록 할것
 };
+
+const static char* EDistributionModeNames[] =
+{ "Uniform", "Curve" };
 
 // -------------------------------------------
 // FInterpCurvePoint - 키프레임 포인트

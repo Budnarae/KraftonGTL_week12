@@ -286,6 +286,40 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
+		case EPropertyType::RawDistribution_Float:
+		{
+			FRawDistribution<float>* Value = Prop.GetValuePtr<FRawDistribution<float>>(this);
+			if (bInIsLoading)
+			{
+				FRawDistribution<float> ReadValue;
+				if (FJsonSerializer::ReadRawDistribution(InOutHandle, Prop.Name, ReadValue))
+				{
+					*Value = ReadValue;
+				}
+			}
+			else
+			{
+				InOutHandle[Prop.Name] = FJsonSerializer::RawDistributionToJson(*Value);
+			}
+			break;
+		}
+		case EPropertyType::RawDistribution_FVector:
+		{
+			FRawDistribution<FVector>* Value = Prop.GetValuePtr<FRawDistribution<FVector>>(this);
+			if (bInIsLoading)
+			{
+				FRawDistribution<FVector> ReadValue;
+				if (FJsonSerializer::ReadRawDistribution(InOutHandle, Prop.Name, ReadValue))
+				{
+					*Value = ReadValue;
+				}
+			}
+			else
+			{
+				InOutHandle[Prop.Name] = FJsonSerializer::RawDistributionToJson(*Value);
+			}
+			break;
+		}
 		case EPropertyType::ObjectPtr:
 		{
 			char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
@@ -310,7 +344,10 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 					UClass* TypeClass = UClass::FindClass(Prop.ClassName);
 					if (TypeClass) 
 					{
-						(*object) = NewObject(TypeClass);
+						if ((*object) == nullptr)
+						{
+							(*object) = NewObject(TypeClass);
+						}
 						(*object)->Serialize(bInIsLoading, Json);
 					}
 				}
@@ -419,14 +456,17 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			case EPropertyType::ObjectPtr:
 			{
 				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
-				TArray<UObject*> pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
+				TArray<UObject*>& pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
 				if (bInIsLoading)
 				{
 					JSON Json = InOutHandle[Prop.Name];
 					int idx = 0;
 					for (auto ElementJson : Json.ArrayRange())
 					{
-						pArray.emplace_back();
+						if (pArray.size() <= idx)
+						{
+							pArray.emplace_back();
+						}
 						if (UResourceBase* Resource = Cast<UResourceBase>(pArray[idx]))
 						{
 							FString ResourceTypeName;
@@ -443,7 +483,10 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 							UClass* TypeClass = UClass::FindClass(Prop.ClassName);
 							if (TypeClass) 
 							{
-								pArray[idx] = NewObject(TypeClass);
+								if (pArray[idx] == nullptr) 
+								{
+									pArray[idx] = NewObject(TypeClass);
+								}
 								pArray[idx]->Serialize(bInIsLoading, ElementJson);
 							}
 						}

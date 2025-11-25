@@ -69,10 +69,12 @@ struct FMeshBatchElement
 	// (기본값으로 흰색(1,1,1,1)을 설정하는 것이 일반적입니다.)
 	FLinearColor InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-	// 빔 UV 매핑용 (ColorBufferType의 Padding으로 전달됨)
-	float UVStart = 0.0f;      // 세그먼트 시작 U
-	float UVEnd = 1.0f;        // 세그먼트 끝 U
-	float UseTexture = 0.0f;   // 텍스처 사용 여부
+	// --- 4. 인스턴싱 데이터 (GPU Instancing) ---
+	// DrawIndexedInstanced를 위한 인스턴스 카운트입니다.
+	uint32 InstanceCount = 1;
+
+	// 파티클 인스턴스 데이터를 담은 StructuredBuffer의 SRV입니다.
+	ID3D11ShaderResourceView* ParticleInstanceSRV = nullptr;
 
 	// --- 기본 생성자 ---
 	FMeshBatchElement() = default;

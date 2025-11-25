@@ -573,7 +573,21 @@ void FSceneRenderer::RenderShadowDepthPass(FShadowRenderRequest& ShadowRequest, 
 		RHIDevice->SetAndUpdateConstantBuffer(ModelBufferType(Batch.WorldMatrix, Batch.WorldMatrix.InverseAffine().Transpose()));
 
 		// 드로우 콜
-		RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+		if (Batch.InstanceCount > 1)
+		{
+			// 인스턴싱 (파티클 등) - 그림자 패스에서는 파티클을 건너뛸 수도 있음
+			RHIDevice->GetDeviceContext()->DrawIndexedInstanced(
+				Batch.IndexCount,
+				Batch.InstanceCount,
+				Batch.StartIndex,
+				Batch.BaseVertexIndex,
+				0
+			);
+		}
+		else
+		{
+			RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+		}
 	}
 
 	// 본 SRV 바인딩 해제
@@ -1383,7 +1397,9 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 		}
 
 		// 1. 셰이더 상태 변경
-		if (Batch.VertexShader != CurrentVertexShader || Batch.PixelShader != CurrentPixelShader)
+		// 파티클 인스턴싱은 항상 셰이더를 강제 바인딩 (InputLayout이 다를 수 있음)
+		bool bForceShaderBind = (Batch.InstanceCount > 1);
+		if (bForceShaderBind || Batch.VertexShader != CurrentVertexShader || Batch.PixelShader != CurrentPixelShader)
 		{
 			RHIDevice->GetDeviceContext()->IASetInputLayout(Batch.InputLayout);
 			RHIDevice->GetDeviceContext()->VSSetShader(Batch.VertexShader, nullptr, 0);
@@ -1515,12 +1531,40 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 			CurrentVSBoneNormalSRV = Batch.BoneNormalMatrixSRV;
 		}
 
+		// 4.5. 파티클 인스턴스 버퍼 바인딩 (VS t12)
+		if (Batch.ParticleInstanceSRV)
+		{
+			RHIDevice->GetDeviceContext()->VSSetShaderResources(12, 1, &Batch.ParticleInstanceSRV);
+		}
+
 		// 5. 오브젝트별 상수 버퍼 설정 (매번 변경)
 		RHIDevice->SetAndUpdateConstantBuffer(ModelBufferType(Batch.WorldMatrix, Batch.WorldMatrix.InverseAffine().Transpose()));
 		RHIDevice->SetAndUpdateConstantBuffer(ColorBufferType(Batch.InstanceColor, Batch.ObjectID, Batch.UVStart, Batch.UVEnd, Batch.UseTexture));
 
 		// 6. 드로우 콜 실행
-		RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+		if (Batch.InstanceCount > 1)
+		{
+			// 인스턴싱 (파티클 등)
+			RHIDevice->GetDeviceContext()->DrawIndexedInstanced(
+				Batch.IndexCount,
+				Batch.InstanceCount,
+				Batch.StartIndex,
+				Batch.BaseVertexIndex,
+				0
+			);
+		}
+		else
+		{
+			// 일반 드로우
+			RHIDevice->GetDeviceContext()->DrawIndexed(Batch.IndexCount, Batch.StartIndex, Batch.BaseVertexIndex);
+		}
+
+		// 파티클 SRV 바인딩 해제
+		if (Batch.ParticleInstanceSRV)
+		{
+			ID3D11ShaderResourceView* NullSRV = nullptr;
+			RHIDevice->GetDeviceContext()->VSSetShaderResources(12, 1, &NullSRV);
+		}
 	}
 
 	// 스켈레탈 메시 GPU 타이밍: 마지막 배치가 스켈레탈이었으면 종료

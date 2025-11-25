@@ -393,7 +393,9 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleData.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEmitter.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleEmitterInstance.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleHelper.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleInstanceBuffer.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleLODLevel.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleColor.cpp" />
@@ -851,7 +853,9 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleAsset.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleData.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEmitter.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleEmitterInstance.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleHelper.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleInstanceBuffer.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleLODLevel.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModule.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleColor.h" />

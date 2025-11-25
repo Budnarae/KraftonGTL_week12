@@ -6,7 +6,54 @@
 class UParticleModuleRequired;
 class FViewport;
 class FViewportClient;
+class SParticleEditWindow;
 struct ID3D11Device;
+
+enum class EMenuActionType
+{
+    AddEmitter,
+    AddSpawnModule,
+    AddUpdateModule,
+};
+enum class EHoveredWindowType
+{
+    None,
+    Viewport,
+    Emitter,
+    Detail,
+};
+
+struct FMenuAction
+{
+    EMenuActionType MenuActionType;
+    int EmitterOffset;
+    FString ClassName;
+
+    static FMenuAction CreateSpawnModule(const FString& InClassName)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::AddSpawnModule;
+        Action.ClassName = InClassName;
+        return Action;
+    }
+    static FMenuAction CreateUpdateModule(const FString& InClassName)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::AddUpdateModule;
+        Action.ClassName = InClassName;
+        return Action;
+    }
+    static FMenuAction CreateAddEmitter(const int InEmitterOffset)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::AddEmitter;
+        Action.EmitterOffset = InEmitterOffset;
+        return Action;
+    }
+    void Action(SParticleEditWindow* ParticleEditWindow) const;
+private:
+    FMenuAction() = default;
+};
 
 class SParticleEditWindow : public SViewerWindowBase
 {
@@ -36,22 +83,47 @@ public:
 
     void OnRenderViewport();
 
+    UParticleSystem* GetParticleSystem()
+    {
+        return &State->PreviewParticle->ParticleSystem;
+    }
+    void AddEmitter(const int EmitterOffset);
+    void AddSpawnModule(const FString& ClassName);
+    void AddUpdateModule(const FString& ClassName);
+
+
 private:
 
     ParticleViewerState* State = nullptr;
-
     // Layout state
     float LeftPanelRatio = 0.25f;   // 25% of width
     float RightPanelRatio = 0.25f;  // 25% of width
 
+    EHoveredWindowType HoveredWindowType;
+    ImVec2 EmitterDropdownPos;
+    bool bEmitterDropdown = false;
+
+    ImVec2 ModuleDropdownPos;
+    bool bModuleDropdown = false;
+
     // Cached center region used for viewport sizing and input mapping
-    FRect CenterRect;
+    FRect ViewportRect;
 
     // UI Widgets (재사용 가능)
     FAssetBrowserWidget AssetBrowser;
-
+    
 
 private:
     void Save();
     void ReStart();
+
+    void ResetModule();
+    void RemoveModule();
+    void RemoveEmitter();
+
+    void DrawEmitterView();
+    void DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size);
+    void DrawEmitterDropdown();
+    void DrawModuleDropdown();
+
 };

@@ -69,6 +69,7 @@ void UParticleAsset::Load(const FString& InFilePath, ID3D11Device* InDevice)
 {
 	JSON OutJson;
 	FJsonSerializer::LoadJsonFromFile(OutJson, UTF8ToWide(InFilePath));
+	auto temp = &ParticleSystem.Emitters;
 	ParticleSystem.Serialize(true, OutJson);
 }
 bool UParticleAsset::Save(const FString& InFilePath) 

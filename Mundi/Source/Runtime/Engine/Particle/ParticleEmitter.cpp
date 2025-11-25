@@ -10,6 +10,7 @@ IMPLEMENT_CLASS(UParticleEmitter)
 UParticleEmitter::UParticleEmitter()
 {
     // LODLevel의 최대치만큼 미리 LOD Level을 저장한다.
+    SetEmitterName("NewEmitter");
     LODLevels.clear();
     LODLevels.resize(MAX_PARTICLE_LODLEVEL);
     

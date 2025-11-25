@@ -1,8 +1,10 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleModuleSize.h"
 
 #include "ParticleData.h"
 #include "ParticleSystemComponent.h"
+
+IMPLEMENT_CLASS(UParticleModuleSize)
 
 // ============================================================================
 // 생성자

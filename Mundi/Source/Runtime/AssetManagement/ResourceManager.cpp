@@ -7,6 +7,7 @@
 #include "Quad.h"
 #include "MeshBVH.h"
 #include "Enums.h"
+#include "../Particle/ParticleInstanceBuffer.h"
 
 #include <filesystem>
 #include <cwctype>
@@ -50,11 +51,17 @@ void UResourceManager::Initialize(ID3D11Device* InDevice, ID3D11DeviceContext* I
     CreateDefaultShader();
     CreateDefaultMaterial();
     UParticleAsset::LoadAllDatas();
+
+    // 파티클 인스턴스 버퍼 초기화
+    FParticleInstanceBufferManager::Get().Initialize(10000);
 }
 
 // 전체 해제
 void UResourceManager::Clear()
 {
+    // 파티클 인스턴스 버퍼 해제
+    FParticleInstanceBufferManager::Get().Release();
+
     {////////////// Deprecated //////////////
         for (auto& [Key, Data] : ResourceMap)
         {
