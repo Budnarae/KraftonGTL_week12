@@ -341,15 +341,20 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 				}
 				else
 				{
-					UClass* TypeClass = UClass::FindClass(Prop.ClassName);
-					if (TypeClass) 
+					FString ClassName;
+					FJsonSerializer::ReadString(Json, "ClassName", ClassName);
+					if (ClassName.empty() == false) 
 					{
-						if ((*object) == nullptr)
+						UClass* TypeClass = UClass::FindClass(ClassName);
+						if (TypeClass)
 						{
-							(*object) = NewObject(TypeClass);
+							if ((*object) == nullptr)
+							{
+								(*object) = NewObject(TypeClass);
+							}
+							(*object)->Serialize(bInIsLoading, Json);
 						}
-						(*object)->Serialize(bInIsLoading, Json);
-					}
+					}		
 				}
 			}
 			else
@@ -366,6 +371,7 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 					}
 					else
 					{
+						Json["ClassName"] = (*object)->GetClass()->Name;
 						(*object)->Serialize(bInIsLoading, Json);
 					}
 				}
@@ -471,8 +477,8 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 						{
 							FString ResourceTypeName;
 							FString Path;
-							FJsonSerializer::ReadString(Json, "ResourceType", ResourceTypeName);
-							FJsonSerializer::ReadString(Json, "Path", Path);
+							FJsonSerializer::ReadString(ElementJson, "ResourceType", ResourceTypeName);
+							FJsonSerializer::ReadString(ElementJson, "Path", Path);
 							if (ResourceTypeName.empty() == false && Path.empty() == false && ResourceTypeName == Prop.ClassName)
 							{
 								UResourceBase::LoadAsset(Resource, ResourceTypeName, Path);
@@ -480,14 +486,19 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 						}
 						else
 						{
-							UClass* TypeClass = UClass::FindClass(Prop.ClassName);
-							if (TypeClass) 
+							FString ClassName;
+							FJsonSerializer::ReadString(ElementJson, "ClassName", ClassName);
+							if (ClassName.empty() == false) 
 							{
-								if (pArray[idx] == nullptr) 
+								UClass* TypeClass = UClass::FindClass(ClassName);
+								if (TypeClass)
 								{
-									pArray[idx] = NewObject(TypeClass);
+									if (pArray[idx] == nullptr)
+									{
+										pArray[idx] = NewObject(TypeClass);
+									}
+									pArray[idx]->Serialize(bInIsLoading, ElementJson);
 								}
-								pArray[idx]->Serialize(bInIsLoading, ElementJson);
 							}
 						}
 						idx++;
@@ -505,6 +516,7 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 						}
 						else
 						{
+							ElementJson["ClassName"] = Obj->GetClass()->Name;
 							Obj->Serialize(bInIsLoading, ElementJson);
 						}
 						ArrayJson.append(ElementJson);
