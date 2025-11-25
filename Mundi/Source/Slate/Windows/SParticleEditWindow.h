@@ -83,10 +83,6 @@ public:
 
     void OnRenderViewport();
 
-    UParticleSystem* GetParticleSystem()
-    {
-        return &State->PreviewParticle->ParticleSystem;
-    }
     void AddEmitter(const int EmitterOffset);
     void AddSpawnModule(const FString& ClassName);
     void AddUpdateModule(const FString& ClassName);

@@ -32,6 +32,8 @@ public:
     // float GetCalculatedDuration() const;
     void Serialize(const bool bInIsLoading, JSON& InOutHandle);
 
+    void DuplicateSubObjects() override;
+
 public:
     // -------------------------------------------
     // 1. 핵심 데이터 멤버 (Core Data Members)

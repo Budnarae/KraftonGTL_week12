@@ -58,3 +58,8 @@ void UParticleSystem::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 {
     Super::Serialize(bInIsLoading, InOutHandle);
 }
+
+void UParticleSystem::DuplicateSubObjects()
+{
+    Super::DuplicateSubObjects();
+}

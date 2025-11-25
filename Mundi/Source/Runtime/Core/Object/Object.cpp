@@ -463,16 +463,20 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			{
 				char* pValue = reinterpret_cast<char*>(this) + Prop.Offset;
 				TArray<UObject*>& pArray = *reinterpret_cast<TArray<UObject*>*>(pValue);
+
 				if (bInIsLoading)
 				{
+					//기존에 차있거나, 생성자에서 자동 생성한 목록 제거
+					for (UObject* Object : pArray)
+					{
+						DeleteObject(Object);
+					}
+					pArray.Empty();
 					JSON Json = InOutHandle[Prop.Name];
 					int idx = 0;
 					for (auto ElementJson : Json.ArrayRange())
 					{
-						if (pArray.size() <= idx)
-						{
-							pArray.emplace_back();
-						}
+						pArray.emplace_back();
 						if (UResourceBase* Resource = Cast<UResourceBase>(pArray[idx]))
 						{
 							FString ResourceTypeName;

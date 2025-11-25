@@ -35,6 +35,7 @@ public:
 	static void RegisterLoadAssetFunc(const FString& ClassName, std::function<UResourceBase* (const FString&)> Func);
 	static bool LoadAsset(UResourceBase*& OutAssetPointer, const FString& ClassName, const FString& FilePath);
 
+	static FWideString OpenFileDialogGetPath(const std::filesystem::path& FolderPath, const FWideString& Extension, const FWideString& Desc);
 protected:
 	FString FilePath;	// 원본 파일의 경로이자, UResourceManager에 등록된 Key
 	std::filesystem::file_time_type LastModifiedTime;
