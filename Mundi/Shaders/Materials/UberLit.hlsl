@@ -84,7 +84,8 @@ struct FParticleInstanceData
     float3 Position;    // 월드 위치
     float Rotation;     // 회전 각도 (라디안)
     float2 Size;        // 파티클 크기 (Width, Height)
-    float2 Padding;     // 16바이트 정렬
+    float CameraFacing; // 1.0 = billboard, 0.0 = use rotation
+    float Padding;      // 16바이트 정렬
     float4 Color;       // 파티클 색상 (RGBA)
 };
 
@@ -169,7 +170,7 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
 
 #ifdef PARTICLE_SPRITE
     // ========================================================================
-    // 파티클 스프라이트 빌보드 처리
+    // 파티클 스프라이트 처리 (CameraFacing 플래그에 따라 빌보드 또는 회전 사용)
     // ========================================================================
     FParticleInstanceData particle = g_ParticleInstances[InstanceID];
 
@@ -184,11 +185,21 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
     rotatedPos.y = scaledPos.x * sinR + scaledPos.y * cosR;
     rotatedPos.z = scaledPos.z;
 
-    // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
-    float3 posAligned = mul(float4(rotatedPos, 0.0f), InverseViewMatrix).xyz;
+    // CameraFacing 플래그에 따라 빌보드 또는 회전 사용
+    float3 finalPos;
+    if (particle.CameraFacing > 0.5f)
+    {
+        // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
+        finalPos = mul(float4(rotatedPos, 0.0f), InverseViewMatrix).xyz;
+    }
+    else
+    {
+        // 회전만 적용 (빌보드 없음)
+        finalPos = rotatedPos;
+    }
 
-    // 월드 위치 = 파티클 위치 + 정렬된 오프셋
-    float4 worldPos = float4(particle.Position + posAligned, 1.0f);
+    // 월드 위치 = 파티클 위치 + 정렬된/회전된 오프셋
+    float4 worldPos = float4(particle.Position + finalPos, 1.0f);
     Out.WorldPos = worldPos.xyz;
 
     // 뷰/프로젝션 변환
@@ -310,7 +321,12 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
 
 #elif LIGHTING_MODEL_PHONG
     // Phong Shading: 픽셀별 계산을 위해 픽셀 셰이더로 데이터 전달
+#ifdef PARTICLE_MESH
+    // PARTICLE_MESH: InstanceColor가 LerpColor로 전달됨 (버텍스에 Color 없음)
+    Out.Color = LerpColor;
+#else
     Out.Color = Input.Color;
+#endif
 
 #else
     // 조명 모델 미정의 - 정점 색상을 그대로 전달
@@ -563,7 +579,7 @@ PS_OUTPUT mainPS(PS_INPUT Input)
     float3 viewDir = normalize(CameraPosition - Input.WorldPos);
     float4 baseColor = Input.Color;
 
-#ifdef PARTICLE_SPRITE
+#if defined(PARTICLE_SPRITE) || defined(PARTICLE_MESH)
     // 파티클: VS에서 전달된 색상 사용, 텍스처가 있으면 곱함
     if (bHasTexture)
     {
