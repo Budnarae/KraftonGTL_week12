@@ -1412,9 +1412,13 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 
 	// 기본 샘플러 미리 가져오기 (루프 내 반복 호출 방지)
 	ID3D11SamplerState* DefaultSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::Default);
+	ID3D11SamplerState* LinearClampSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::LinearClamp);
 	// Shadow PCF용 샘플러 추가
 	ID3D11SamplerState* ShadowSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::Shadow);
 	ID3D11SamplerState* VSMSampler = RHIDevice->GetSamplerState(RHI_Sampler_Index::VSM);
+
+	// 현재 샘플러 타입 캐시 (0 = Default, 1 = LinearClamp)
+	uint32 CurrentSamplerType = 0;
 
 	// 스켈레탈 메시 GPU 타이밍 측정용
 	bool bGPUQueryStarted = false;
@@ -1446,9 +1450,9 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 
 		// --- 2. 픽셀 상태 (텍스처, 샘플러, 재질CBuffer) 변경 (캐싱됨) ---
 		//
-		// 'Material' 또는 'Instance SRV' 둘 중 하나라도 바뀌면
+		// 'Material' 또는 'Instance SRV' 또는 'SamplerType' 중 하나라도 바뀌면
 		// 모든 픽셀 리소스를 다시 바인딩해야 합니다.
-		if (Batch.Material != CurrentMaterial || Batch.InstanceShaderResourceView != CurrentInstanceSRV)
+		if (Batch.Material != CurrentMaterial || Batch.InstanceShaderResourceView != CurrentInstanceSRV || Batch.SamplerType != CurrentSamplerType)
 		{
 			ID3D11ShaderResourceView* DiffuseTextureSRV = nullptr; // t0
 			ID3D11ShaderResourceView* NormalTextureSRV = nullptr;  // t1
@@ -1496,15 +1500,17 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 					}
 				}
 			}
-			
+
 			// --- RHI 상태 업데이트 ---
 			// 1. 텍스처(SRV) 바인딩
 			ID3D11ShaderResourceView* Srvs[2] = { DiffuseTextureSRV, NormalTextureSRV };
 			RHIDevice->GetDeviceContext()->PSSetShaderResources(0, 2, Srvs);
 
-			// 2. 샘플러 바인딩
-			ID3D11SamplerState* Samplers[4] = { DefaultSampler, DefaultSampler, ShadowSampler, VSMSampler };
-			RHIDevice->GetDeviceContext()->PSSetSamplers(0, 4, Samplers);			
+			// 2. 샘플러 바인딩 (SamplerType에 따라 다른 샘플러 사용)
+			// SamplerType: 0 = Default (WRAP), 1 = LinearClamp (Beam/Ribbon용)
+			ID3D11SamplerState* PrimarySampler = (Batch.SamplerType == 1) ? LinearClampSampler : DefaultSampler;
+			ID3D11SamplerState* Samplers[4] = { PrimarySampler, PrimarySampler, ShadowSampler, VSMSampler };
+			RHIDevice->GetDeviceContext()->PSSetSamplers(0, 4, Samplers);
 
 			// 3. 재질 CBuffer 바인딩
 			RHIDevice->SetAndUpdateConstantBuffer(PixelConst);
@@ -1512,6 +1518,7 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 			// --- 캐시 업데이트 ---
 			CurrentMaterial = Batch.Material;
 			CurrentInstanceSRV = Batch.InstanceShaderResourceView;
+			CurrentSamplerType = Batch.SamplerType;
 		}
 
 		// 3. IA (Input Assembler) 상태 변경
@@ -1573,7 +1580,7 @@ void FSceneRenderer::DrawMeshBatches(TArray<FMeshBatchElement>& InMeshBatches, b
 
 		// 5. 오브젝트별 상수 버퍼 설정 (매번 변경)
 		RHIDevice->SetAndUpdateConstantBuffer(ModelBufferType(Batch.WorldMatrix, Batch.WorldMatrix.InverseAffine().Transpose()));
-		RHIDevice->SetAndUpdateConstantBuffer(ColorBufferType(Batch.InstanceColor, Batch.ObjectID));
+		RHIDevice->SetAndUpdateConstantBuffer(ColorBufferType(Batch.InstanceColor, Batch.ObjectID, Batch.UVStart, Batch.UVEnd, Batch.UseTexture));
 
 		// 6. 드로우 콜 실행
 		if (Batch.InstanceCount > 1)

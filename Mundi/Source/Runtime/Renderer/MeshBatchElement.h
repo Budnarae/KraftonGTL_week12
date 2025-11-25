@@ -69,6 +69,17 @@ struct FMeshBatchElement
 	// (기본값으로 흰색(1,1,1,1)을 설정하는 것이 일반적입니다.)
 	FLinearColor InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
+	// UV 좌표 범위 (Beam/Ribbon 렌더링용)
+	float UVStart = 0.0f;
+	float UVEnd = 1.0f;
+
+	// 텍스처 사용 여부 (Beam/Ribbon 렌더링용)
+	float UseTexture = 0.0f;
+
+	// 샘플러 타입 (Beam/Ribbon은 CLAMP 필요)
+	// 0 = Default (WRAP), 1 = LinearClamp
+	uint32 SamplerType = 0;
+
 	// --- 4. 인스턴싱 데이터 (GPU Instancing) ---
 	// DrawIndexedInstanced를 위한 인스턴스 카운트입니다.
 	uint32 InstanceCount = 1;

@@ -7,6 +7,16 @@ UParticleModuleRequired::UParticleModuleRequired() :
     UParticleModule(REQUIRED_MODULE_PAYLOAD_SIZE)
 {}
 
+UParticleModuleRequired::~UParticleModuleRequired()
+{
+    // UMaterialInstanceDynamic은 동적으로 생성되므로 해제 필요
+    if (Material && Cast<UMaterialInstanceDynamic>(Material))
+    {
+        delete Material;
+        Material = nullptr;
+    }
+}
+
 void UParticleModuleRequired::Spawn(FParticleContext& Context, float EmitterTime)
 {
     FBaseParticle* Particle = Context.Particle;

@@ -3,8 +3,10 @@
 
 #include "ParticleEmitter.h"
 #include "ParticleEmitterInstance.h"
-#include "ParticleModuleRequired.h"
 #include "ParticleSystemComponent.h"
+#include "ParticleModuleRequired.h"
+#include "ParticleModuleTypeDataBase.h"
+#include "ParticleHelper.h"
 
 #include <algorithm>
 
@@ -68,19 +70,6 @@ void FDynamicSpriteEmitterData::Init(FParticleEmitterInstance* Instance, int32 I
     {
         Source.MaterialInterface = nullptr;
     }
-
-    // 스케일 설정
-    if (Instance->OwnerComponent)
-    {
-        Source.Scale = Instance->OwnerComponent->GetWorldScale();
-    }
-    else
-    {
-        Source.Scale = FVector(1.0f, 1.0f, 1.0f);
-    }
-
-    // 정렬 모드 (기본값: 없음)
-    Source.SortMode = 0;
 }
 
 // ----------------------------------------------------------------------------

@@ -2,12 +2,32 @@
 
 #include "Actor.h"
 #include "PlacementDistribution.h"
+#include "MeshBVH.h"
+#include "PlacementMeshEntry.h"
 #include "AProceduralPlacementVolume.generated.h"
 
 class UBoxComponent;
 class UStaticMeshComponent;
 class UStaticMesh;
 class UBillboardComponent;
+
+// BVH 캐시 엔트리
+struct FBVHCacheEntry
+{
+    FMeshBVH* BVH = nullptr;
+    FStaticMesh* MeshAsset = nullptr;
+    FMatrix WorldMatrix;
+    FMatrix InvWorldMatrix;
+
+    ~FBVHCacheEntry()
+    {
+        if (BVH)
+        {
+            delete BVH;
+            BVH = nullptr;
+        }
+    }
+};
 
 UCLASS(DisplayName="Procedural Placement Volume", Description="Procedurally places meshes within the volume")
 class AProceduralPlacementVolume : public AActor
@@ -23,6 +43,7 @@ protected:
 public:
     void BeginPlay() override;
     void Tick(float DeltaSeconds) override;
+    void Destroy() override;
 
     void Generate();
     void ClearPlacement();
@@ -31,25 +52,32 @@ public:
 
 protected:
     TArray<FVector> GeneratePoints();
-    void SpawnMeshAtPoint(const FVector& LocalPosition);
-    void SpawnMeshAtSurfacePoint(const FVector& WorldPosition, const FVector& SurfaceNormal);
-    FTransform GenerateRandomTransform(const FVector& Position);
-    FTransform GenerateRandomTransformWithNormal(const FVector& Position, const FVector& Normal);
+    void SpawnMeshAtPoint(const FVector& LocalPosition, UPlacementMeshEntry* Entry);
+    void SpawnMeshAtSurfacePoint(const FVector& WorldPosition, const FVector& SurfaceNormal, UPlacementMeshEntry* Entry);
+    FTransform GenerateRandomTransform(const FVector& Position, UPlacementMeshEntry* Entry);
+    FTransform GenerateRandomTransformWithNormal(const FVector& Position, const FVector& Normal, UPlacementMeshEntry* Entry);
     bool PassesDensityCheck(const FVector& Position);
     bool RaycastToSurface(const FVector& Origin, const FVector& Direction, FVector& OutHitPoint, FVector& OutHitNormal);
+
+    // BVH 캐시 관리
+    void BuildBVHCache();
+    void ClearBVHCache();
+
+    // 가중치 기반 메시 엔트리 선택
+    UPlacementMeshEntry* SelectMeshEntryByWeight();
 
 protected:
     UBoxComponent* VolumeComponent = nullptr;
 
-    // Mesh settings (simplified - single mesh)
-    UPROPERTY(EditAnywhere, Category="Placement|Mesh", Tooltip="Mesh to place")
-    UStaticMesh* PlacementMesh = nullptr;
+    // 메시 배열 (에디터에서 동적으로 추가/삭제 가능, 각 엔트리에 스케일 설정 포함)
+    UPROPERTY(EditAnywhere, Category="Placement|Mesh", Tooltip="Meshes with weights and scale settings for varied placement")
+    TArray<UPlacementMeshEntry*> PlacementMeshes;
 
-    UPROPERTY(EditAnywhere, Category="Placement|Mesh", Tooltip="Minimum scale")
-    FVector ScaleMin = FVector(0.8f, 0.8f, 0.8f);
+    // 가중치 합계 (캐싱)
+    float TotalWeight = 0.0f;
 
-    UPROPERTY(EditAnywhere, Category="Placement|Mesh", Tooltip="Maximum scale")
-    FVector ScaleMax = FVector(1.2f, 1.2f, 1.2f);
+    // BVH 캐시 (레이캐스트 성능 최적화)
+    TMap<UStaticMeshComponent*, FBVHCacheEntry*> BVHCache;
 
     // Density settings
     UPROPERTY(EditAnywhere, Category="Placement|Density", Tooltip="Target placement count")
@@ -65,11 +93,11 @@ protected:
     float DensityThreshold = 0.3f;
 
     // Transform randomization
-    UPROPERTY(EditAnywhere, Category="Placement|Transform", Tooltip="Uniform scale (use X only)")
-    bool bUniformScale = true;
-
     UPROPERTY(EditAnywhere, Category="Placement|Transform", Tooltip="Random yaw rotation")
     bool bRandomYaw = true;
+
+    UPROPERTY(EditAnywhere, Category="Placement|Transform", Tooltip="Random pitch/roll tilt")
+    bool bRandomTilt = true;
 
     UPROPERTY(EditAnywhere, Category="Placement|Transform", Tooltip="Max tilt angle (degrees)")
     float MaxTilt = 5.0f;
@@ -100,7 +128,7 @@ protected:
 
     // Control
     UPROPERTY(EditAnywhere, Category="Placement", Tooltip="Auto generate on BeginPlay")
-    bool bGenerateOnBeginPlay = true;
+    bool bGenerateOnBeginPlay = false;
 
     TArray<AActor*> SpawnedActors;
     FPlacementDistribution Distribution;

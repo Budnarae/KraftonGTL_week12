@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug_StandAlone|x64">
@@ -283,12 +283,14 @@
     <ClCompile Include="Source\Runtime\Engine\Components\SkeletalMeshComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SkinnedMeshComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\SpringArmComponent.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\BeamParticleActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Character.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\GameModeBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\ParticleSystemActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Pawn.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\PlayerController.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\GameFramework\RibbonParticleActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Components\BoneAnchorComponent.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Fade.cpp" />
@@ -391,6 +393,7 @@
     <ClCompile Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.cpp" />
     <ClCompile Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerState.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\DynamicMeshBuffer.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleAsset.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleBurst.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleData.cpp" />
@@ -401,11 +404,17 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleLODLevel.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModule.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleColor.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleColorOverLife.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleLifetime.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleLocation.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleNoise.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleRequired.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSize.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSizeOverLife.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystemComponent.cpp" />
@@ -617,7 +626,17 @@
     <ClCompile Include="Generated\UParticleModuleCollision.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleEventGenerator.generated.cpp" />
     <ClCompile Include="Generated\AProceduralPlacementVolume.generated.cpp" />
-  <ClCompile Include="Generated\UParticleBurst.generated.cpp" /></ItemGroup>
+    <ClCompile Include="Generated\UParticleBurst.generated.cpp" />
+    <ClCompile Include="Generated\ABeamParticleActor.generated.cpp" />
+    <ClCompile Include="Generated\ARibbonParticleActor.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleColorOverLife.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleNoise.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleSizeOverLife.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" />
+    <ClCompile Include="Generated\UPlacementMeshEntry.generated.cpp" />
+  </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -789,6 +808,7 @@
     <ClInclude Include="Source\Runtime\Core\Misc\Hash.h" />
     <ClInclude Include="Source\Runtime\Core\Misc\PathUtils.h" />
     <ClInclude Include="Source\Runtime\Core\Object\FireballActor.h" />
+    <ClInclude Include="Source\Runtime\Core\Object\ObjectMacros.h" />
     <ClInclude Include="Source\Runtime\Core\Object\Property.h" />
     <ClInclude Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\AnimationViewer\AnimationViewerState.h" />
@@ -824,6 +844,7 @@
     <ClInclude Include="Source\Runtime\Engine\Components\SpringArmComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\TestAutoBindComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\AmbientLightActor.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\BeamParticleActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Gamma.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_LetterBox.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Camera\CamMod_Vignette.h" />
@@ -843,12 +864,14 @@
     <ClInclude Include="Source\Runtime\Engine\GameFramework\Info.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\PlayerController.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\PointLightActor.h" />
+    <ClInclude Include="Source\Runtime\Engine\GameFramework\RibbonParticleActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\SkeletalMeshActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\SpotLightActor.h" />
     <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\MaterialEditor\MaterialEditorState.h" />
     <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerBootstrap.h" />
     <ClInclude Include="Source\Runtime\Engine\ParticleEditor\ParticleViewerState.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\DynamicMeshBuffer.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleAsset.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleBurst.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleData.h" />
@@ -859,11 +882,17 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleLODLevel.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModule.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleColor.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleColorOverLife.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleLifetime.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleLocation.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleNoise.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleRequired.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSize.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSizeOverLife.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystem.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystemComponent.h" />
@@ -896,6 +925,7 @@
     <ClInclude Include="Source\Runtime\Engine\Components\LocalLightComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\PointLightComponent.h" />
     <ClInclude Include="Source\Runtime\Engine\Components\SpotLightComponent.h" />
+    <ClInclude Include="Source\Runtime\Renderer\LightStats.h" />
     <ClInclude Include="Source\Runtime\Renderer\MeshBatchElement.h" />
     <ClInclude Include="Source\Runtime\Renderer\PostProcessing\GammaPass.h" />
     <ClInclude Include="Source\Runtime\Renderer\PostProcessing\HeightFogPass.h" />
@@ -903,6 +933,7 @@
     <ClInclude Include="Source\Runtime\Renderer\PostProcessing\PostProcessing.h" />
     <ClInclude Include="Source\Runtime\Renderer\PostProcessing\VignettePass.h" />
     <ClInclude Include="Source\Runtime\Renderer\SceneView.h" />
+    <ClInclude Include="Source\Runtime\Renderer\ShadowStats.h" />
     <ClInclude Include="Source\Runtime\Renderer\StatManagement\DecalStatManager.h" />
     <ClInclude Include="Source\Runtime\Renderer\StatManagement\SkinningStatManager.h" />
     <ClInclude Include="Source\Runtime\Renderer\TileCullingStats.h" />
@@ -1098,7 +1129,17 @@
     <ClInclude Include="Generated\UParticleModuleCollision.generated.h" />
     <ClInclude Include="Generated\UParticleModuleEventGenerator.generated.h" />
     <ClInclude Include="Generated\AProceduralPlacementVolume.generated.h" />
-  <ClInclude Include="Generated\UParticleBurst.generated.h" /></ItemGroup>
+    <ClInclude Include="Generated\UParticleBurst.generated.h" />
+    <ClInclude Include="Generated\ABeamParticleActor.generated.h" />
+    <ClInclude Include="Generated\ARibbonParticleActor.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleColorOverLife.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleNoise.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleSizeOverLife.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" />
+    <ClInclude Include="Generated\UPlacementMeshEntry.generated.h" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />

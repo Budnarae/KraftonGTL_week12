@@ -178,3 +178,86 @@ float FNoiseGenerator::FBM3D(float X, float Y, float Z, int32 Octaves, float Per
 
     return Total / MaxValue;
 }
+
+float FNoiseGenerator::HashRandom(int32 Seed)
+{
+    Seed = (Seed << 13) ^ Seed;
+    return ((1.0f - ((Seed * (Seed * Seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0f));
+}
+
+// 내부 재귀 헬퍼 함수
+static void MidpointDisplacementRecursive(
+    const FVector& Start,
+    const FVector& End,
+    int32 Depth,
+    float Displacement,
+    int32 TimeSeed,
+    int32& NodeIndex,
+    TArray<FVector>& OutPoints,
+    float DisplacementDecay
+)
+{
+    if (Depth == 0)
+    {
+        OutPoints.Add(Start);
+        return;
+    }
+
+    // 중점 계산
+    FVector Mid = (Start + End) * 0.5f;
+
+    // 빔 방향 계산
+    FVector Dir = End - Start;
+    float Length = Dir.Size();
+    if (Length > 0.001f)
+    {
+        Dir = Dir / Length;
+    }
+
+    // 수직 방향 계산 (빔 방향에 수직인 벡터)
+    FVector Perp;
+    if (std::abs(Dir.Z) < 0.9f)
+    {
+        Perp = FVector::Cross(Dir, FVector(0, 0, 1)).GetNormalized();
+    }
+    else
+    {
+        Perp = FVector::Cross(Dir, FVector(1, 0, 0)).GetNormalized();
+    }
+
+    // 두 번째 수직 방향
+    FVector Perp2 = FVector::Cross(Dir, Perp).GetNormalized();
+
+    // 시간과 노드 인덱스를 결합한 시드로 랜덤 변위
+    int32 Seed1 = TimeSeed * 10000 + NodeIndex * 2;
+    int32 Seed2 = TimeSeed * 10000 + NodeIndex * 2 + 1;
+
+    float Rand1 = FNoiseGenerator::HashRandom(Seed1) * Displacement;
+    float Rand2 = FNoiseGenerator::HashRandom(Seed2) * Displacement;
+
+    Mid = Mid + Perp * Rand1 + Perp2 * Rand2;
+    NodeIndex++;
+
+    // 재귀
+    MidpointDisplacementRecursive(Start, Mid, Depth - 1, Displacement * DisplacementDecay, TimeSeed, NodeIndex, OutPoints, DisplacementDecay);
+    MidpointDisplacementRecursive(Mid, End, Depth - 1, Displacement * DisplacementDecay, TimeSeed, NodeIndex, OutPoints, DisplacementDecay);
+}
+
+void FNoiseGenerator::GenerateLightningPoints(
+    const FVector& Start,
+    const FVector& End,
+    int32 Depth,
+    float Displacement,
+    int32 TimeSeed,
+    TArray<FVector>& OutPoints,
+    float DisplacementDecay
+)
+{
+    OutPoints.Empty();
+
+    int32 NodeIndex = 0;
+    MidpointDisplacementRecursive(Start, End, Depth, Displacement, TimeSeed, NodeIndex, OutPoints, DisplacementDecay);
+
+    // 끝점 추가
+    OutPoints.Add(End);
+}

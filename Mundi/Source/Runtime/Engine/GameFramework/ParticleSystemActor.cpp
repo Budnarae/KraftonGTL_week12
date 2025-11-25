@@ -13,6 +13,8 @@
 #include "../Particle/ParticleModuleSize.h"
 #include "../Particle/ParticleEmitterInstance.h"
 #include "../Particle/ParticleData.h"
+#include "../Particle/ParticleModuleTypeDataBeam.h"
+#include "../Particle/ParticleModuleTypeDataRibbon.h"
 #include "Material.h"
 #include "ResourceManager.h"
 #include "StaticMesh.h"
@@ -300,6 +302,20 @@ AParticleSystemActor::AParticleSystemActor()
 void AParticleSystemActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// Beam Target Test Code - 웬만하면 삭제하지 마세요
+	//if (ParticleSystemComponent && !ParticleSystemComponent->GetBeamTargetActor())
+	//{
+	//	if (UWorld* World = GetWorld())
+	//	{
+	//		// "TestActor_1" 이름을 가진 액터를 찾아서 타겟으로 설정
+	//		AActor* TestActor = World->FindActorByName(FName("ATempCharacter_1"));
+	//		if (TestActor)
+	//		{
+	//			ParticleSystemComponent->SetBeamTargetActor(TestActor);
+	//		}
+	//	}
+	//}
 }
 
 AParticleSystemActor::~AParticleSystemActor()

@@ -32,6 +32,14 @@ AProceduralPlacementVolume::~AProceduralPlacementVolume()
 {
 }
 
+void AProceduralPlacementVolume::Destroy()
+{
+    // Volume 삭제 시 스폰된 액터들도 함께 삭제
+    ClearPlacement();
+
+    AActor::Destroy();
+}
+
 void AProceduralPlacementVolume::BeginPlay()
 {
     AActor::BeginPlay();
@@ -63,7 +71,21 @@ void AProceduralPlacementVolume::Generate()
 {
     ClearPlacement();
 
-    if (!PlacementMesh)
+    // 메시 배열 체크
+    if (PlacementMeshes.Num() == 0)
+    {
+        return;
+    }
+
+    // 가중치 합계 계산
+    TotalWeight = 0.0f;
+    for (UPlacementMeshEntry* Entry : PlacementMeshes)
+    {
+        if (Entry && Entry->Mesh)
+            TotalWeight += Entry->Weight;
+    }
+
+    if (TotalWeight <= 0.0f)
     {
         return;
     }
@@ -75,11 +97,31 @@ void AProceduralPlacementVolume::Generate()
     FVector Extent = VolumeComponent->GetBoxExtent();
     Distribution.SetBounds(Extent);
 
+    // 표면 배치 모드면 BVH 캐시 빌드 (성능 최적화)
+    if (bPlaceOnSurface)
+    {
+        BuildBVHCache();
+    }
+
     TArray<FVector> Points = GeneratePoints();
+
+    // Surface 배치 모드에서 3D 최소 거리 체크용
+    TArray<FVector> PlacedSurfacePoints;
+    if (bPlaceOnSurface)
+    {
+        PlacedSurfacePoints.Reserve(Points.Num());
+    }
 
     for (const FVector& Point : Points)
     {
         if (bUseDensityMap && !PassesDensityCheck(Point))
+        {
+            continue;
+        }
+
+        // 가중치 기반 메시 엔트리 선택
+        UPlacementMeshEntry* SelectedEntry = SelectMeshEntryByWeight();
+        if (!SelectedEntry || !SelectedEntry->Mesh)
         {
             continue;
         }
@@ -94,22 +136,51 @@ void AProceduralPlacementVolume::Generate()
             FVector HitPoint, HitNormal;
             if (RaycastToSurface(RayOrigin, RayDirection, HitPoint, HitNormal))
             {
-                SpawnMeshAtSurfacePoint(HitPoint, HitNormal);
+                // 3D 공간에서 기존 배치점들과 최소 거리 체크
+                bool bTooClose = false;
+                for (const FVector& ExistingPoint : PlacedSurfacePoints)
+                {
+                    float Distance = (HitPoint - ExistingPoint).Size();
+                    if (Distance < MinDistance)
+                    {
+                        bTooClose = true;
+                        break;
+                    }
+                }
+
+                if (!bTooClose)
+                {
+                    PlacedSurfacePoints.Add(HitPoint);
+                    SpawnMeshAtSurfacePoint(HitPoint, HitNormal, SelectedEntry);
+                }
             }
         }
         else
         {
             // 기존 볼륨 배치 모드
-            SpawnMeshAtPoint(Point);
+            SpawnMeshAtPoint(Point, SelectedEntry);
         }
     }
+
+    // BVH 캐시 정리
+    ClearBVHCache();
 }
 
 void AProceduralPlacementVolume::ClearPlacement()
 {
+    if (!World)
+    {
+        SpawnedActors.Empty();
+        return;
+    }
+
+    // 현재 월드에 존재하는 액터 목록
+    const TArray<AActor*>& WorldActors = World->GetActors();
+
     for (AActor* Actor : SpawnedActors)
     {
-        if (Actor)
+        // 액터가 여전히 월드에 존재하는지 확인 (외부 삭제 대응)
+        if (Actor && WorldActors.Contains(Actor))
         {
             Actor->Destroy();
         }
@@ -122,14 +193,12 @@ TArray<FVector> AProceduralPlacementVolume::GeneratePoints()
     return Distribution.GeneratePoints(GetDistributionType(), TargetCount, MinDistance);
 }
 
-void AProceduralPlacementVolume::SpawnMeshAtPoint(const FVector& LocalPosition)
+void AProceduralPlacementVolume::SpawnMeshAtPoint(const FVector& LocalPosition, UPlacementMeshEntry* Entry)
 {
-    if (!World || !PlacementMesh)
-    {
+    if (!World || !Entry || !Entry->Mesh)
         return;
-    }
 
-    FTransform SpawnTransform = GenerateRandomTransform(LocalPosition);
+    FTransform SpawnTransform = GenerateRandomTransform(LocalPosition, Entry);
 
     FVector WorldPos = GetActorLocation() + LocalPosition;
     SpawnTransform.Translation = WorldPos;
@@ -141,7 +210,7 @@ void AProceduralPlacementVolume::SpawnMeshAtPoint(const FVector& LocalPosition)
         if (MeshComp)
         {
             SpawnedActor->SetRootComponent(MeshComp);
-            MeshComp->SetStaticMesh(PlacementMesh->GetAssetPathFileName());
+            MeshComp->SetStaticMesh(Entry->Mesh->GetAssetPathFileName());
         }
 
         SpawnedActor->SetActorLocation(SpawnTransform.Translation);
@@ -152,28 +221,39 @@ void AProceduralPlacementVolume::SpawnMeshAtPoint(const FVector& LocalPosition)
     }
 }
 
-FTransform AProceduralPlacementVolume::GenerateRandomTransform(const FVector& Position)
+FTransform AProceduralPlacementVolume::GenerateRandomTransform(const FVector& Position, UPlacementMeshEntry* Entry)
 {
     FTransform Transform;
     Transform.Translation = Position;
 
-    if (bUniformScale)
+    // 엔트리의 스케일 설정 사용
+    if (Entry->bRandomScale)
     {
-        float UniformScaleValue = Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X);
-        Transform.Scale3D = FVector(UniformScaleValue, UniformScaleValue, UniformScaleValue);
+        const FVector& ScaleMin = Entry->ScaleMin;
+        const FVector& ScaleMax = Entry->ScaleMax;
+
+        if (Entry->bUniformScale)
+        {
+            float UniformScaleValue = Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X);
+            Transform.Scale3D = FVector(UniformScaleValue, UniformScaleValue, UniformScaleValue);
+        }
+        else
+        {
+            Transform.Scale3D = FVector(
+                Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X),
+                Distribution.RandomFloatInRange(ScaleMin.Y, ScaleMax.Y),
+                Distribution.RandomFloatInRange(ScaleMin.Z, ScaleMax.Z)
+            );
+        }
     }
     else
     {
-        Transform.Scale3D = FVector(
-            Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X),
-            Distribution.RandomFloatInRange(ScaleMin.Y, ScaleMax.Y),
-            Distribution.RandomFloatInRange(ScaleMin.Z, ScaleMax.Z)
-        );
+        Transform.Scale3D = FVector(1.0f, 1.0f, 1.0f);
     }
 
     float Yaw = bRandomYaw ? Distribution.RandomFloatInRange(0.0f, 360.0f) : 0.0f;
-    float Pitch = Distribution.RandomFloatInRange(-MaxTilt, MaxTilt);
-    float Roll = Distribution.RandomFloatInRange(-MaxTilt, MaxTilt);
+    float Pitch = bRandomTilt ? Distribution.RandomFloatInRange(-MaxTilt, MaxTilt) : 0.0f;
+    float Roll = bRandomTilt ? Distribution.RandomFloatInRange(-MaxTilt, MaxTilt) : 0.0f;
 
     FQuat YawQuat = FQuat::FromAxisAngle(FVector(0, 0, 1), Yaw * (PI / 180.0f));
     FQuat PitchQuat = FQuat::FromAxisAngle(FVector(1, 0, 0), Pitch * (PI / 180.0f));
@@ -204,28 +284,16 @@ bool AProceduralPlacementVolume::RaycastToSurface(const FVector& Origin, const F
     float ClosestDistance = FLT_MAX;
     bool bHit = false;
 
-    TArray<AActor*> Actors = World->GetActors();
-    for (AActor* Actor : Actors)
+    // 캐시된 BVH 사용
+    for (auto& Pair : BVHCache)
     {
-        if (!Actor || Actor == this)
+        FBVHCacheEntry* CacheEntry = Pair.second;
+        if (!CacheEntry || !CacheEntry->BVH || !CacheEntry->MeshAsset)
             continue;
 
-        // StaticMeshComponent 찾기
-        UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Actor->GetComponent(UStaticMeshComponent::StaticClass()));
-        if (!MeshComp)
-            continue;
-
-        UStaticMesh* Mesh = MeshComp->GetStaticMesh();
-        if (!Mesh)
-            continue;
-
-        FStaticMesh* MeshAsset = Mesh->GetStaticMeshAsset();
-        if (!MeshAsset)
-            continue;
-
-        // 월드 → 로컬 변환
-        FMatrix WorldMatrix = Actor->GetActorTransform().ToMatrix();
-        FMatrix InvWorld = WorldMatrix.InverseAffine();
+        // 캐시된 행렬 사용
+        const FMatrix& WorldMatrix = CacheEntry->WorldMatrix;
+        const FMatrix& InvWorld = CacheEntry->InvWorldMatrix;
 
         FVector4 RayOrigin4(Origin.X, Origin.Y, Origin.Z, 1.0f);
         FVector4 RayDir4(Direction.X, Direction.Y, Direction.Z, 0.0f);
@@ -236,14 +304,12 @@ bool AProceduralPlacementVolume::RaycastToSurface(const FVector& Origin, const F
         LocalRay.Origin = FVector(LocalOrigin4.X, LocalOrigin4.Y, LocalOrigin4.Z);
         LocalRay.Direction = FVector(LocalDir4.X, LocalDir4.Y, LocalDir4.Z).GetNormalized();
 
-        // BVH 빌드 및 레이캐스트
+        // 캐시된 BVH로 레이캐스트
         float HitDistance = 0.0f;
         FVector HitNormal;
 
-        FMeshBVH BVH;
-        BVH.Build(MeshAsset->Vertices, MeshAsset->Indices);
-
-        if (BVH.IntersectRayWithNormal(LocalRay, MeshAsset->Vertices, MeshAsset->Indices, HitDistance, HitNormal))
+        FStaticMesh* MeshAsset = CacheEntry->MeshAsset;
+        if (CacheEntry->BVH->IntersectRayWithNormal(LocalRay, MeshAsset->Vertices, MeshAsset->Indices, HitDistance, HitNormal))
         {
             // 로컬 → 월드 변환
             FVector LocalHitPoint = LocalRay.Origin + LocalRay.Direction * HitDistance;
@@ -254,15 +320,22 @@ bool AProceduralPlacementVolume::RaycastToSurface(const FVector& Origin, const F
 
             if (WorldDistance < ClosestDistance)
             {
-                ClosestDistance = WorldDistance;
-                OutHitPoint = FVector(WorldHitPoint4.X, WorldHitPoint4.Y, WorldHitPoint4.Z);
-
-                // 노멀도 월드 공간으로 변환 (방향 벡터)
+                // 노멀을 월드 공간으로 변환 (방향 벡터)
                 FVector4 LocalNormal4(HitNormal.X, HitNormal.Y, HitNormal.Z, 0.0f);
                 FMatrix NormalMatrix = InvWorld.Transpose();
                 FVector4 WorldNormal4 = LocalNormal4 * NormalMatrix;
-                OutHitNormal = FVector(WorldNormal4.X, WorldNormal4.Y, WorldNormal4.Z).GetNormalized();
+                FVector WorldNormal = FVector(WorldNormal4.X, WorldNormal4.Y, WorldNormal4.Z).GetNormalized();
 
+                // 방어 코드: 월드 공간에서 노말이 레이와 같은 방향이면 무효한 히트
+                // (정상적인 표면 히트라면 노말은 레이를 향해야 함 → 내적이 음수)
+                if (FVector::Dot(WorldNormal, Direction) > 0.0f)
+                {
+                    continue;  // 이 히트 무시, 다음 메시 검사
+                }
+
+                ClosestDistance = WorldDistance;
+                OutHitPoint = FVector(WorldHitPoint4.X, WorldHitPoint4.Y, WorldHitPoint4.Z);
+                OutHitNormal = WorldNormal;
                 bHit = true;
             }
         }
@@ -271,12 +344,12 @@ bool AProceduralPlacementVolume::RaycastToSurface(const FVector& Origin, const F
     return bHit;
 }
 
-void AProceduralPlacementVolume::SpawnMeshAtSurfacePoint(const FVector& WorldPosition, const FVector& SurfaceNormal)
+void AProceduralPlacementVolume::SpawnMeshAtSurfacePoint(const FVector& WorldPosition, const FVector& SurfaceNormal, UPlacementMeshEntry* Entry)
 {
-    if (!World || !PlacementMesh)
+    if (!World || !Entry || !Entry->Mesh)
         return;
 
-    FTransform SpawnTransform = GenerateRandomTransformWithNormal(WorldPosition, SurfaceNormal);
+    FTransform SpawnTransform = GenerateRandomTransformWithNormal(WorldPosition, SurfaceNormal, Entry);
 
     AActor* SpawnedActor = World->SpawnActor(AActor::StaticClass(), SpawnTransform);
     if (SpawnedActor)
@@ -285,7 +358,7 @@ void AProceduralPlacementVolume::SpawnMeshAtSurfacePoint(const FVector& WorldPos
         if (MeshComp)
         {
             SpawnedActor->SetRootComponent(MeshComp);
-            MeshComp->SetStaticMesh(PlacementMesh->GetAssetPathFileName());
+            MeshComp->SetStaticMesh(Entry->Mesh->GetAssetPathFileName());
         }
 
         SpawnedActor->SetActorLocation(SpawnTransform.Translation);
@@ -296,24 +369,34 @@ void AProceduralPlacementVolume::SpawnMeshAtSurfacePoint(const FVector& WorldPos
     }
 }
 
-FTransform AProceduralPlacementVolume::GenerateRandomTransformWithNormal(const FVector& Position, const FVector& Normal)
+FTransform AProceduralPlacementVolume::GenerateRandomTransformWithNormal(const FVector& Position, const FVector& Normal, UPlacementMeshEntry* Entry)
 {
     FTransform Transform;
     Transform.Translation = Position;
 
-    // 스케일 설정
-    if (bUniformScale)
+    // 엔트리의 스케일 설정 사용
+    if (Entry->bRandomScale)
     {
-        float UniformScaleValue = Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X);
-        Transform.Scale3D = FVector(UniformScaleValue, UniformScaleValue, UniformScaleValue);
+        const FVector& ScaleMin = Entry->ScaleMin;
+        const FVector& ScaleMax = Entry->ScaleMax;
+
+        if (Entry->bUniformScale)
+        {
+            float UniformScaleValue = Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X);
+            Transform.Scale3D = FVector(UniformScaleValue, UniformScaleValue, UniformScaleValue);
+        }
+        else
+        {
+            Transform.Scale3D = FVector(
+                Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X),
+                Distribution.RandomFloatInRange(ScaleMin.Y, ScaleMax.Y),
+                Distribution.RandomFloatInRange(ScaleMin.Z, ScaleMax.Z)
+            );
+        }
     }
     else
     {
-        Transform.Scale3D = FVector(
-            Distribution.RandomFloatInRange(ScaleMin.X, ScaleMax.X),
-            Distribution.RandomFloatInRange(ScaleMin.Y, ScaleMax.Y),
-            Distribution.RandomFloatInRange(ScaleMin.Z, ScaleMax.Z)
-        );
+        Transform.Scale3D = FVector(1.0f, 1.0f, 1.0f);
     }
 
     // 노멀 정렬 회전 계산
@@ -336,12 +419,99 @@ FTransform AProceduralPlacementVolume::GenerateRandomTransformWithNormal(const F
         }
     }
 
-    // 랜덤 Yaw 회전
+    // 랜덤 Yaw 회전 (정렬된 후 Normal 축 기준)
     float Yaw = bRandomYaw ? Distribution.RandomFloatInRange(0.0f, 360.0f) : 0.0f;
     FQuat YawQuat = FQuat::FromAxisAngle(Normal, Yaw * (PI / 180.0f));
 
-    // 최종 회전 = 노멀 정렬 * Yaw
-    Transform.Rotation = AlignRotation * YawQuat;
+    // 최종 회전 = Yaw * 노멀 정렬 (Q1 * Q2 = Q2 먼저 적용, Q1 나중)
+    // 즉, AlignRotation 먼저 적용 → 그 다음 YawQuat 적용
+    Transform.Rotation = YawQuat * AlignRotation;
 
     return Transform;
+}
+
+void AProceduralPlacementVolume::BuildBVHCache()
+{
+    ClearBVHCache();
+
+    if (!World)
+        return;
+
+    TArray<AActor*> Actors = World->GetActors();
+    for (AActor* Actor : Actors)
+    {
+        if (!Actor || Actor == this)
+            continue;
+
+        // 이미 스폰한 액터는 제외
+        if (SpawnedActors.Contains(Actor))
+            continue;
+
+        UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Actor->GetComponent(UStaticMeshComponent::StaticClass()));
+        if (!MeshComp)
+            continue;
+
+        UStaticMesh* Mesh = MeshComp->GetStaticMesh();
+        if (!Mesh)
+            continue;
+
+        FStaticMesh* MeshAsset = Mesh->GetStaticMeshAsset();
+        if (!MeshAsset)
+            continue;
+
+        // BVH 캐시 엔트리 생성
+        FBVHCacheEntry* CacheEntry = new FBVHCacheEntry();
+        CacheEntry->WorldMatrix = Actor->GetActorTransform().ToMatrix();
+        CacheEntry->InvWorldMatrix = CacheEntry->WorldMatrix.InverseAffine();
+        CacheEntry->MeshAsset = MeshAsset;
+        CacheEntry->BVH = new FMeshBVH();
+        CacheEntry->BVH->Build(MeshAsset->Vertices, MeshAsset->Indices);
+
+        BVHCache.Add(MeshComp, CacheEntry);
+    }
+}
+
+void AProceduralPlacementVolume::ClearBVHCache()
+{
+    for (auto& Pair : BVHCache)
+    {
+        if (Pair.second)
+        {
+            delete Pair.second;
+        }
+    }
+    BVHCache.Empty();
+}
+
+UPlacementMeshEntry* AProceduralPlacementVolume::SelectMeshEntryByWeight()
+{
+    if (PlacementMeshes.Num() == 0 || TotalWeight <= 0.0f)
+    {
+        return nullptr;
+    }
+
+    // 가중치 기반 랜덤 선택
+    float RandomValue = Distribution.RandomFloatInRange(0.0f, TotalWeight);
+    float AccumulatedWeight = 0.0f;
+
+    for (UPlacementMeshEntry* Entry : PlacementMeshes)
+    {
+        if (!Entry || !Entry->Mesh)
+            continue;
+
+        AccumulatedWeight += Entry->Weight;
+        if (RandomValue <= AccumulatedWeight)
+        {
+            return Entry;
+        }
+    }
+
+    // 폴백: 마지막 유효한 엔트리
+    for (int32 i = PlacementMeshes.Num() - 1; i >= 0; --i)
+    {
+        if (PlacementMeshes[i] && PlacementMeshes[i]->Mesh)
+            return PlacementMeshes[i];
+    }
+
+    return nullptr;
 }

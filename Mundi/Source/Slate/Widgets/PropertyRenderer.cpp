@@ -20,6 +20,7 @@
 #include "ImGui/imgui_curve.hpp"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
 #include "PathUtils.h"
+#include "ObjectFactory.h"
 
 // 정적 멤버 변수 초기화
 TArray<FString> UPropertyRenderer::CachedSkeletalMeshPaths;
@@ -162,7 +163,7 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 				}
 			}
 			break;
-			case EPropertyType::ObjectPtr:
+		/*	case EPropertyType::ObjectPtr:
 			{
 				TArray<UObject*>* Arr = Property.GetValuePtr<TArray<UObject*>>(ObjectInstance);
 				ImGui::Text(Property.Name);
@@ -195,7 +196,11 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 				}
 
 				break;
-			}
+			}*/
+		case EPropertyType::ObjectPtr:
+			// Render array of UObject* - 각 요소의 프로퍼티를 펼쳐서 표시
+			bChanged = RenderObjectPtrArrayProperty(Property, ObjectInstance);
+			break;
 		}
 	
 		break;
@@ -1331,6 +1336,110 @@ bool UPropertyRenderer::RenderMaterialArrayProperty(const FProperty& Prop, void*
 	}
 
 	return bArrayChanged;
+}
+
+bool UPropertyRenderer::RenderObjectPtrArrayProperty(const FProperty& Prop, void* Instance)
+{
+	// TArray<UObject*> 형태의 배열을 렌더링
+	// Property.ClassName에서 실제 타입 정보를 얻을 수 있음 (예: "TArray<UPlacementMeshEntry*>")
+	TArray<UObject*>* ObjectArray = Prop.GetValuePtr<TArray<UObject*>>(Instance);
+	if (!ObjectArray)
+	{
+		ImGui::Text("%s: [Invalid Array Ptr]", Prop.Name);
+		return false;
+	}
+
+	bool bChanged = false;
+
+	// 배열 헤더와 Add/Clear 버튼
+	ImGui::Text("%s (%d items)", Prop.Name, ObjectArray->Num());
+	ImGui::SameLine();
+
+	// Add 버튼 - 새 UObject 인스턴스 생성
+	if (ImGui::Button(("Add##" + FString(Prop.Name)).c_str()))
+	{
+		// Prop.ClassName은 NormalizeClassName에 의해 이미 정규화됨
+		// 예: "TArray<UPlacementMeshEntry*>" -> "UPlacementMeshEntry"
+		const FString& ClassName = Prop.ClassName;
+
+		if (!ClassName.empty())
+		{
+			// 클래스 찾기 및 인스턴스 생성
+			UClass* ElementClass = UClass::FindClass(ClassName);
+			if (ElementClass)
+			{
+				UObject* NewObj = ObjectFactory::NewObject(ElementClass);
+				if (NewObj)
+				{
+					ObjectArray->Add(NewObj);
+					bChanged = true;
+				}
+			}
+		}
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button(("Clear##" + FString(Prop.Name)).c_str()))
+	{
+		ObjectArray->Empty();
+		bChanged = true;
+	}
+
+	// 각 요소 렌더링
+	for (int32 i = 0; i < ObjectArray->Num(); ++i)
+	{
+		ImGui::PushID(i);
+
+		UObject* Element = (*ObjectArray)[i];
+		FString ElementLabel = FString(Prop.Name) + " [" + std::to_string(i) + "]";
+
+		// TreeNode로 펼치기/접기 가능하게
+		bool bNodeOpen = ImGui::TreeNode(ElementLabel.c_str());
+
+		// Remove 버튼 (TreeNode 옆에)
+		ImGui::SameLine();
+		if (ImGui::SmallButton("X"))
+		{
+			ObjectArray->RemoveAt(i);
+			--i;
+			bChanged = true;
+			if (bNodeOpen) ImGui::TreePop();
+			ImGui::PopID();
+			continue;
+		}
+
+		if (bNodeOpen)
+		{
+			if (Element)
+			{
+				// 요소의 프로퍼티들을 렌더링
+				UClass* ElementClass = Element->GetClass();
+				if (ElementClass)
+				{
+					const TArray<FProperty>& ElementProps = ElementClass->GetProperties();
+					for (const FProperty& ElementProp : ElementProps)
+					{
+						if (ElementProp.bIsEditAnywhere)
+						{
+							if (RenderProperty(ElementProp, Element))
+							{
+								bChanged = true;
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "(null)");
+			}
+			ImGui::TreePop();
+		}
+
+		ImGui::PopID();
+	}
+
+	return bChanged;
 }
 
 bool UPropertyRenderer::RenderSingleMaterialSlot(const char* Label, UMaterialInterface** MaterialPtr, UObject* OwningObject, uint32 MaterialIndex)

@@ -34,7 +34,7 @@ const bool AParticleEventManager::bPropertiesRegistered = []() {
 // ===== Property Reflection =====
 
 BEGIN_PROPERTIES(AParticleEventManager)
-    MARK_AS_SPAWNABLE("파티클 이벤트 매니저", "파티클 이벤트를 관리하고 배포합니다.")
+    MARK_AS_SPAWNABLE("AParticleEventManager", "Auto-generated AParticleEventManager")
     ADD_PROPERTY(bool, bIsEnabled, "Events", true)
     ADD_PROPERTY(bool, bAutoProcessEvents, "Events", true)
 END_PROPERTIES()

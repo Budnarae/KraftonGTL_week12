@@ -1,6 +1,7 @@
 ﻿#include "ParticleSystem.h"           // 템플릿 정의
 #include "PrimitiveComponent.h"
 #include "ParticleEventTypes.h"
+#include "DynamicMeshBuffer.h"
 #include "UParticleSystemComponent.generated.h"
 
 // 전방 선언: 실제 파티클 데이터를 담는 런타임 인스턴스 구조체
@@ -38,6 +39,18 @@ public:
     void SetElapsedTime(float InElapsedTime);
     void SetCurrentLODLevel(const int32 InCurrentLODLevel);
 
+    // 거리 기반 스폰 설정 (0이면 시간 기반, > 0이면 거리 기반)
+    void SetDistancePerSpawn(float InDistance) { DistancePerSpawn = InDistance; }
+    float GetDistancePerSpawn() const { return DistancePerSpawn; }
+
+    // 빔 타겟 액터 설정 (빔이 이 액터를 향함)
+    void SetBeamTargetActor(class AActor* InActor) { BeamTargetActor = InActor; }
+    AActor* GetBeamTargetActor() const { return BeamTargetActor; }
+
+    // 빔 소스 액터 설정 (빔이 이 액터에서 시작)
+    void SetBeamSourceActor(class AActor* InActor) { BeamSourceActor = InActor; }
+    AActor* GetBeamSourceActor() const { return BeamSourceActor; }
+
     // SystemInstance 배열 관련 함수
     void AddEmitterInstance(FParticleEmitterInstance* Instance);
     bool RemoveEmitterInstance(FParticleEmitterInstance* Instance);
@@ -70,8 +83,8 @@ public:
 
 private:
     // 타입별 렌더링 헬퍼 함수
-    void RenderSpriteParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterial* Material, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
-    void RenderMeshParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterial* Material, class UStaticMesh* Mesh, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
+    void RenderSpriteParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterialInterface* Material, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
+    void RenderMeshParticles(const TArray<struct FParticleInstanceData>& InstanceData, class UMaterialInterface* Material, class UStaticMesh* Mesh, TArray<struct FMeshBatchElement>& OutMeshBatchElements);
 
 public:
 
@@ -118,4 +131,20 @@ private:
     TArray<FParticleEventCollideData> CollisionEvents{};
     TArray<FParticleEventDeathData> DeathEvents{};
     TArray<FParticleEventSpawnData> SpawnEvents{};
+
+    // 빔/리본 렌더링용 동적 버퍼 (에미터 인덱스별로 관리)
+    TMap<int32, FDynamicMeshBuffer*> BeamBuffers;
+    TMap<int32, FDynamicMeshBuffer*> RibbonBuffers;
+
+    // 리본 위치 보간을 위한 이전 프레임 위치
+    FVector PreviousWorldLocation = FVector::Zero();
+    bool bHasPreviousLocation = false;
+
+    // 거리 기반 스폰 (0이면 시간 기반, > 0이면 해당 거리마다 1개 스폰)
+    float DistancePerSpawn = 0.0f;
+    float AccumulatedDistance = 0.0f;
+
+    // 빔 타겟/소스 액터 (빔이 동적으로 이 액터들을 추적)
+    AActor* BeamTargetActor = nullptr;
+    AActor* BeamSourceActor = nullptr;
 };

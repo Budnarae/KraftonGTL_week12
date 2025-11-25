@@ -17,7 +17,7 @@ public:
     static constexpr int32 REQUIRED_MODULE_PAYLOAD_SIZE = 48;
 
     UParticleModuleRequired();
-    ~UParticleModuleRequired() = default;
+    ~UParticleModuleRequired();
 
     GENERATED_REFLECTION_BODY()
 
@@ -26,7 +26,7 @@ public:
     virtual void Update(FParticleContext& Context, float DeltaTime) override;
 
     // Getters
-    UMaterial* GetMaterial() const { return Material; }
+    UMaterialInterface* GetMaterial() const { return Material; }
     UStaticMesh* GetMesh() const { return Mesh; }
     FVector GetEmitterOrigin() const { return EmitterOrigin; }
     FQuat GetEmitterRotation() const { return EmitterRotation; }
@@ -37,7 +37,7 @@ public:
     bool GetEnableCameraFacing() const { return bEnableCameraFacing; }
 
     // Setters
-    void SetMaterial(UMaterial* InMaterial) { Material = InMaterial; }
+    void SetMaterial(UMaterialInterface* InMaterial) { Material = InMaterial; }
     void SetMesh(UStaticMesh* InMesh) { Mesh = InMesh; }
     void SetEmitterOrigin(const FVector& InOrigin) { EmitterOrigin = InOrigin; }
     void SetEmitterRotation(const FQuat& InRotation) { EmitterRotation = InRotation; }
@@ -49,7 +49,7 @@ public:
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")
-    UMaterial* Material{};
+    UMaterialInterface* Material{};
 
     // 메시 에미터 전용 (스프라이트 에미터는 nullptr)
     UPROPERTY(EditAnywhere, Category="Assets")
