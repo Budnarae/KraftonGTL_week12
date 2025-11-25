@@ -263,6 +263,8 @@ void SParticleEditWindow::OnRender()
             UParticleAsset* ParticleAsset = UParticleAsset::Create(FolderPath.string());
             ParticleAsset->Save();
             State->PreviewParticle = ParticleAsset;
+            State->SelectedEmitter = nullptr;
+            State->SelectedModule = nullptr;
         }
         ImGui::SameLine();
         if (ImGui::Button("Save"))
@@ -331,8 +333,17 @@ void SParticleEditWindow::OnRender()
         {
             HoveredWindowType = EHoveredWindowType::Detail;
         }
-        ImGui::Text("Emitter");
-
+        ImGui::Text("Detail");
+        if (State->SelectedEmitter) 
+        {
+            static char buf[128] = "";
+            const FString& Name = State->SelectedEmitter->GetEmitterName();
+            strncpy_s(buf, Name.c_str(), sizeof(buf));
+            if (ImGui::InputText("EmitterName", buf, sizeof(buf)))
+            {
+                State->SelectedEmitter->SetEmitterName(buf);
+            }
+        }
         if (State->SelectedModule)
         {
             UPropertyRenderer::RenderAllProperties(State->SelectedModule);
