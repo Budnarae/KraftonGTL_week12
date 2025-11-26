@@ -252,6 +252,23 @@ void SParticleEditWindow::RemoveModule()
     if (State->SelectedEmitter && State->SelectedModule)
     {
         UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+
+        UParticleModuleRequired* Required = Cast<UParticleModuleRequired>(State->SelectedModule);
+        UParticleModuleSpawn* Spawn = Cast<UParticleModuleSpawn>(State->SelectedModule);
+
+        int32 SpawnModuleCount = 0;
+        for (UParticleModule* Module : LOD->GetSpawnModule())
+        {
+            UParticleModuleSpawn* SpawnModules = Cast<UParticleModuleSpawn>(Module);
+            if (SpawnModules) SpawnModuleCount++;
+        }
+            
+        if (Required || (Spawn && SpawnModuleCount == 1))
+        {
+            UE_LOG("[SParticleEditWindow] You can't remove that module because that module is necessary.");
+            return;
+        }
+
         if (LOD->RemoveSpawnModule(State->SelectedModule) == false)
         {
             State->SelectedModule = nullptr;
@@ -262,6 +279,7 @@ void SParticleEditWindow::RemoveModule()
             State->SelectedModule = nullptr;
             return;
         }
+        
         State->ReStartParticle();
     }
 }

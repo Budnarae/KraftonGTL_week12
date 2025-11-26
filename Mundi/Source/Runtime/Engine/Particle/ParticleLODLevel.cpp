@@ -10,6 +10,23 @@
 UParticleLODLevel::UParticleLODLevel()
 {
     CreateRequiredModule();
+    // 기본으로 스폰 모듈을 넣어주기
+    AddSpawnModule(NewObject<UParticleModuleSpawn>());
+}
+
+UParticleLODLevel::~UParticleLODLevel()
+{
+    DeleteRequiredModule();
+    for (UParticleModule* Target : SpawnModules)
+    {
+        DeleteObject(Target);
+    }
+    for (UParticleModule* Target : UpdateModules)
+    {
+        DeleteObject(Target);
+    }
+    if (TypeDataModule)
+        DeleteObject(TypeDataModule);
 }
 
 // SpawnModule 관련 함수

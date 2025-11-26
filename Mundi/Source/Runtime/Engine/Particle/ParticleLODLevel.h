@@ -12,7 +12,7 @@ class UParticleLODLevel : public UObject
 {
 public:
     UParticleLODLevel();
-    ~UParticleLODLevel() = default;
+    ~UParticleLODLevel();
     
     GENERATED_REFLECTION_BODY()
     
