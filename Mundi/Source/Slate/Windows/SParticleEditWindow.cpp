@@ -68,8 +68,7 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
 {
     {"파티클 시스템",
     {
-        {"앞에 이미터 추가", FMenuAction::CreateAddEmitter(-1)},
-        {"뒤에 이미터 추가", FMenuAction::CreateAddEmitter(1)},
+        {"이미터 추가", FMenuAction::CreateAddEmitter(1)},
     }
     },
     {"컬러",
@@ -304,7 +303,7 @@ void SParticleEditWindow::OnRender()
         ImGui::SameLine();
         if (ImGui::Button("Restart"))
         {
-
+            State->ReStartParticle();
         }
 
 
@@ -351,15 +350,17 @@ void SParticleEditWindow::OnRender()
                 State->SelectedEmitter->SetEmitterName(buf);
             }
         }
+
+        bool bChanged = false;
         if (State->SelectedModule)
         {
-            UPropertyRenderer::RenderAllProperties(State->SelectedModule);
+            bChanged |= UPropertyRenderer::RenderAllProperties(State->SelectedModule);
         }
         else
         {
             if (State->SelectedEmitter)
             {
-                UPropertyRenderer::RenderAllProperties(State->SelectedEmitter);
+                bChanged |= UPropertyRenderer::RenderAllProperties(State->SelectedEmitter);
             }
         }
         ImGui::EndChild();
@@ -370,6 +371,9 @@ void SParticleEditWindow::OnRender()
         ImGui::BeginChild("CurveEditor", ChildSize);
         ImGui::EndChild();
         ImGui::End();
+
+
+        State->ReStartParticle();
     }
 
 

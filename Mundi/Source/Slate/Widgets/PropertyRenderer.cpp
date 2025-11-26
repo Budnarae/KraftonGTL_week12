@@ -266,10 +266,12 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 	return bChanged;
 }
 
-void UPropertyRenderer::RenderProperties(const TArray<FProperty>& Properties, UObject* Object)
+bool UPropertyRenderer::RenderProperties(const TArray<FProperty>& Properties, UObject* Object)
 {
 	if (Properties.IsEmpty())
-		return;
+		return false;
+
+	bool bChanged = false;
 
 	// 1. 카테고리 (삽입 순서 보장용 TArray)
 	TArray<TPair<FString, TArray<const FProperty*>>> CategorizedProps;
@@ -319,21 +321,22 @@ void UPropertyRenderer::RenderProperties(const TArray<FProperty>& Properties, UO
 		for (const FProperty* Prop : Props)
 		{
 			ImGui::PushID(Prop); // 프로퍼티 포인터로 고유 ID 푸시
-			RenderProperty(*Prop, Object);
+			bChanged |= RenderProperty(*Prop, Object);
 			ImGui::PopID();
 		}
 	}
+	return bChanged;
 }
 
-void UPropertyRenderer::RenderAllProperties(UObject* Object)
+bool UPropertyRenderer::RenderAllProperties(UObject* Object)
 {
 	if (!Object)
-		return;
+		return false;
 
 	UClass* Class = Object->GetClass();
 	const TArray<FProperty>& Properties = Class->GetProperties();
 
-	RenderProperties(Properties, Object);
+	return RenderProperties(Properties, Object);
 }
 
 void UPropertyRenderer::RenderAllPropertiesWithInheritance(UObject* Object)

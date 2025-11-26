@@ -23,7 +23,7 @@ void ParticleViewerState::LoadCachedParticle(const FString& Path)
 	ParticleAsset->GetDeepDuplicated(CachedParticle);
 	ParticlePath = ParticleAsset->GetFilePath();
 	ParticleActor->GetParticleSystemComponent()->SetTemplate(CachedParticle);
-	ParticleActor->GetParticleSystemComponent()->Activate(true);
+	ReStartParticle();
 	SelectedEmitter = nullptr;
 	SelectedModule = nullptr;
 }
@@ -35,4 +35,13 @@ void ParticleViewerState::SaveCachedParticle()
 		CachedParticle = nullptr;
 	}
 }
+void ParticleViewerState::ReStartParticle()
+{
+	if (ParticleActor)
+	{
+		ParticleActor->GetParticleSystemComponent()->Deactivate();
+		ParticleActor->GetParticleSystemComponent()->Activate(true);
+	}
+}
+
 

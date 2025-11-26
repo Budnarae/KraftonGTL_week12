@@ -45,6 +45,7 @@ struct FMenuAction
     }
     static FMenuAction CreateAddEmitter(const int InEmitterOffset)
     {
+        //현재 오프셋 미적용
         FMenuAction Action;
         Action.MenuActionType = EMenuActionType::AddEmitter;
         Action.EmitterOffset = InEmitterOffset;
