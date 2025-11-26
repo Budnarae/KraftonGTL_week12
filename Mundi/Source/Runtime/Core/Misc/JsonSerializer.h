@@ -361,6 +361,38 @@ public:
 						static_cast<float>(MaxJson.at(2).ToFloat()),
 				};
 			}
+
+			// Curve 데이터 읽기
+			if (RawDistributionJson.hasKey("Curve"))
+			{
+				const JSON& CurveJson = RawDistributionJson.at("Curve");
+				if (CurveJson.JSONType() == JSON::Class::Array)
+				{
+					OutValue.Curve.Points.Empty();
+					for (size_t i = 0; i < CurveJson.size(); ++i)
+					{
+						const JSON& PointJson = CurveJson.at(i);
+						float InVal = static_cast<float>(PointJson.at("InVal").ToFloat());
+
+						if constexpr (std::is_same_v<T, float>)
+						{
+							float OutVal = static_cast<float>(PointJson.at("OutVal").ToFloat());
+							OutValue.Curve.Points.Add(FInterpCurvePoint<float>(InVal, OutVal));
+						}
+						else if constexpr (std::is_same_v<T, FVector>)
+						{
+							const JSON& OutValJson = PointJson.at("OutVal");
+							FVector OutVal = {
+								static_cast<float>(OutValJson.at(0).ToFloat()),
+								static_cast<float>(OutValJson.at(1).ToFloat()),
+								static_cast<float>(OutValJson.at(2).ToFloat())
+							};
+							OutValue.Curve.Points.Add(FInterpCurvePoint<FVector>(InVal, OutVal));
+						}
+					}
+				}
+			}
+
 			return true;
 		}
 		return false;
@@ -414,6 +446,27 @@ public:
 			DistributionJson["Max"] = VectorToJson(RawDistribution.Max);
 		}
 		DistributionJson["Mode"] = static_cast<int>(RawDistribution.Mode);
+
+		// Curve 데이터 저장
+		JSON CurveArray = JSON::Make(JSON::Class::Array);
+		for (const auto& Point : RawDistribution.Curve.Points)
+		{
+			JSON PointJson = json::Object();
+			PointJson["InVal"] = Point.InVal;
+
+			if constexpr (std::is_same_v<T, float>)
+			{
+				PointJson["OutVal"] = Point.OutVal;
+			}
+			else if constexpr (std::is_same_v<T, FVector>)
+			{
+				PointJson["OutVal"] = VectorToJson(Point.OutVal);
+			}
+
+			CurveArray.append(PointJson);
+		}
+		DistributionJson["Curve"] = CurveArray;
+
 		return DistributionJson;
 	}
 
