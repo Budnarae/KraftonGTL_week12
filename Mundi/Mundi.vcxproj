@@ -414,6 +414,7 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataMesh.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystem.cpp" />
@@ -634,6 +635,7 @@
     <ClCompile Include="Generated\UParticleModuleSizeOverLife.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataMesh.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" />
     <ClCompile Include="Generated\UPlacementMeshEntry.generated.cpp" />
   </ItemGroup>
@@ -892,6 +894,7 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataMesh.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystem.h" />
@@ -1137,6 +1140,7 @@
     <ClInclude Include="Generated\UParticleModuleSizeOverLife.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataMesh.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" />
     <ClInclude Include="Generated\UPlacementMeshEntry.generated.h" />
   </ItemGroup>

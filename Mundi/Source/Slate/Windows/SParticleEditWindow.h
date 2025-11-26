@@ -14,6 +14,8 @@ enum class EMenuActionType
     AddEmitter,
     AddSpawnModule,
     AddUpdateModule,
+    SetTypeData,
+    RemoveTypeData,
 };
 enum class EHoveredWindowType
 {
@@ -28,6 +30,7 @@ struct FMenuAction
     EMenuActionType MenuActionType;
     int EmitterOffset;
     FString ClassName;
+    int32 TypeDataType;
 
     static FMenuAction CreateSpawnModule(const FString& InClassName)
     {
@@ -49,6 +52,19 @@ struct FMenuAction
         FMenuAction Action;
         Action.MenuActionType = EMenuActionType::AddEmitter;
         Action.EmitterOffset = InEmitterOffset;
+        return Action;
+    }
+    static FMenuAction CreateSetTypeData(int32 InTypeDataType)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::SetTypeData;
+        Action.TypeDataType = InTypeDataType;
+        return Action;
+    }
+    static FMenuAction CreateRemoveTypeData()
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::RemoveTypeData;
         return Action;
     }
     void Action(SParticleEditWindow* ParticleEditWindow) const;
@@ -87,6 +103,8 @@ public:
     void AddEmitter(const int EmitterOffset);
     void AddSpawnModule(const FString& ClassName);
     void AddUpdateModule(const FString& ClassName);
+    void SetTypeDataModule(int32 TypeDataType);
+    void RemoveTypeDataModule();
 
 
 private:
@@ -102,6 +120,9 @@ private:
 
     ImVec2 ModuleDropdownPos;
     bool bModuleDropdown = false;
+
+    ImVec2 TypeDataDropdownPos;
+    bool bTypeDataDropdown = false;
 
     // Cached center region used for viewport sizing and input mapping
     FRect ViewportRect;
@@ -122,5 +143,6 @@ private:
     void DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size);
     void DrawEmitterDropdown();
     void DrawModuleDropdown();
+    void DrawTypeDataDropdown();
 
 };

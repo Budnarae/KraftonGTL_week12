@@ -27,7 +27,6 @@ public:
 
     // Getters
     UMaterialInterface* GetMaterial() const { return Material; }
-    UStaticMesh* GetMesh() const { return Mesh; }
     FVector GetEmitterOrigin() const { return EmitterOrigin; }
     FQuat GetEmitterRotation() const { return EmitterRotation; }
     float GetEmitterDuration() const { return EmitterDuration; }
@@ -38,7 +37,6 @@ public:
 
     // Setters
     void SetMaterial(UMaterialInterface* InMaterial) { Material = InMaterial; }
-    void SetMesh(UStaticMesh* InMesh) { Mesh = InMesh; }
     void SetEmitterOrigin(const FVector& InOrigin) { EmitterOrigin = InOrigin; }
     void SetEmitterRotation(const FQuat& InRotation) { EmitterRotation = InRotation; }
     void SetEmitterDuration(float InDuration) { EmitterDuration = InDuration; }
@@ -50,10 +48,6 @@ public:
 private:
     UPROPERTY(EditAnywhere, Category="Assets")
     UMaterialInterface* Material{};
-
-    // 메시 에미터 전용 (스프라이트 에미터는 nullptr)
-    UPROPERTY(EditAnywhere, Category="Assets")
-    UStaticMesh* Mesh{};
 
     UPROPERTY(EditAnywhere, Category="Basic")
     FVector EmitterOrigin{};

@@ -935,6 +935,9 @@
     <ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp">
       <Filter>Generated</Filter>
     </ClCompile>
+    <ClCompile Include="Generated\UParticleModuleTypeDataMesh.generated.cpp">
+      <Filter>Generated</Filter>
+    </ClCompile>
     <ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp">
       <Filter>Generated</Filter>
     </ClCompile>
@@ -959,6 +962,7 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataMesh.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleVariable.cpp" />
@@ -2011,6 +2015,9 @@
     <ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h">
       <Filter>Generated</Filter>
     </ClInclude>
+    <ClInclude Include="Generated\UParticleModuleTypeDataMesh.generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
     <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h">
       <Filter>Generated</Filter>
     </ClInclude>
@@ -2035,6 +2042,7 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataMesh.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleVariable.h" />
