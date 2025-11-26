@@ -23,6 +23,8 @@
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataMesh.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBeam.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataRibbon.h"
+#include "Source/Runtime/Core/Math/Statistics.h"
+#include "Source/Runtime/Core/Object/Property.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -482,8 +484,541 @@ void SParticleEditWindow::OnRender()
         ImGui::SameLine();
 
 
-        //커브 미구현
+        //커브 편집기
         ImGui::BeginChild("CurveEditor", ChildSize);
+        if (ImGui::IsWindowHovered())
+        {
+            HoveredWindowType = EHoveredWindowType::Detail;
+        }
+        ImGui::Text("Curve Editor");
+        ImGui::Separator();
+
+        // 선택된 모듈의 Curve 모드 프로퍼티 표시
+        UObject* TargetObject = State->SelectedModule ? (UObject*)State->SelectedModule : (UObject*)State->SelectedEmitter;
+        if (TargetObject)
+        {
+            UClass* Class = TargetObject->GetClass();
+            const TArray<FProperty>& Properties = Class->GetProperties();
+
+            bool bHasCurveProperty = false;
+
+            // Curve 모드인 Distribution 프로퍼티 찾아서 그래픽으로 표시
+            for (const FProperty& Prop : Properties)
+            {
+                // FRawDistribution<float> 타입 체크
+                if (Prop.Type == EPropertyType::RawDistribution_Float)
+                {
+                    FRawDistribution<float>* Value = Prop.GetValuePtr<FRawDistribution<float>>(TargetObject);
+                    if (Value && Value->Mode == EDistributionMode::Curve)
+                    {
+                        bHasCurveProperty = true;
+
+                        // 커브 이름 표시
+                        ImGui::PushID(Prop.Name);
+                        if (ImGui::CollapsingHeader(Prop.Name, ImGuiTreeNodeFlags_DefaultOpen))
+                        {
+                            // 그래프 영역 (축 라벨 공간 확보)
+                            const float AxisLabelHeight = 20.0f;
+                            const float AxisLabelWidth = 40.0f;
+                            ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+                            canvas_pos.x += AxisLabelWidth;
+                            canvas_pos.y += 10.0f;
+                            ImVec2 canvas_size = ImVec2(ImGui::GetContentRegionAvail().x - AxisLabelWidth - 10.0f, 220.0f);
+                            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+                            // 실제 데이터 범위 계산
+                            float calcMinVal = FLT_MAX;
+                            float calcMaxVal = -FLT_MAX;
+                            for (const auto& Point : Value->Curve.Points)
+                            {
+                                if (std::isfinite(Point.OutVal))
+                                {
+                                    calcMinVal = FMath::Min(calcMinVal, Point.OutVal);
+                                    calcMaxVal = FMath::Max(calcMaxVal, Point.OutVal);
+                                }
+                            }
+
+                            // 기본값 설정
+                            if (calcMinVal == FLT_MAX || !std::isfinite(calcMinVal)) calcMinVal = 0.0f;
+                            if (calcMaxVal == -FLT_MAX || !std::isfinite(calcMaxVal)) calcMaxVal = 1.0f;
+
+                            // 데이터 범위 (최소 1.0 확보)
+                            float dataRange = FMath::Max(calcMaxVal - calcMinVal, 1.0f);
+                            float dataMinVal = calcMinVal;
+
+                            // 표시용 범위 (패딩 20% 추가)
+                            float padding = dataRange * 0.2f;
+                            float displayMinVal = dataMinVal - padding;
+                            float displayMaxVal = calcMaxVal + padding;
+                            float displayRange = displayMaxVal - displayMinVal;
+
+                            // 범위 안전성 검사
+                            if (!std::isfinite(displayMinVal) || !std::isfinite(displayMaxVal) || !std::isfinite(displayRange))
+                            {
+                                displayMinVal = 0.0f;
+                                displayMaxVal = 1.0f;
+                                displayRange = 1.0f;
+                            }
+
+                            // 배경
+                            draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(30, 30, 35, 255));
+                            draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(120, 120, 140, 255), 0.0f, 0, 1.5f);
+
+                            // 그리드
+                            for (int i = 0; i <= 10; ++i)
+                            {
+                                float alpha = (i == 0 || i == 10) ? 100.0f : 60.0f;
+                                float x = canvas_pos.x + (canvas_size.x * i / 10.0f);
+                                draw_list->AddLine(ImVec2(x, canvas_pos.y), ImVec2(x, canvas_pos.y + canvas_size.y), IM_COL32(70, 70, 80, (int)alpha));
+
+                                float y = canvas_pos.y + (canvas_size.y * i / 10.0f);
+                                draw_list->AddLine(ImVec2(canvas_pos.x, y), ImVec2(canvas_pos.x + canvas_size.x, y), IM_COL32(70, 70, 80, (int)alpha));
+                            }
+
+                            // 축 라벨
+                            draw_list->AddText(ImVec2(canvas_pos.x + canvas_size.x * 0.5f - 20.0f, canvas_pos.y + canvas_size.y + 5.0f), IM_COL32(200, 200, 200, 255), "Time");
+
+                            ImVec2 value_label_pos = ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y * 0.5f);
+                            draw_list->AddText(value_label_pos, IM_COL32(200, 200, 200, 255), "Value");
+
+                            // 축 값 표시
+                            char buf[32];
+                            sprintf_s(buf, "%.2f", displayMaxVal);
+                            draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y - 5.0f), IM_COL32(150, 150, 150, 255), buf);
+                            sprintf_s(buf, "%.2f", displayMinVal);
+                            draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y - 10.0f), IM_COL32(150, 150, 150, 255), buf);
+
+                            // 커브 선 그리기
+                            if (Value->Curve.Points.Num() > 1)
+                            {
+                                for (int i = 0; i < Value->Curve.Points.Num() - 1; ++i)
+                                {
+                                    const auto& p1 = Value->Curve.Points[i];
+                                    const auto& p2 = Value->Curve.Points[i + 1];
+
+                                    if (std::isfinite(p1.OutVal) && std::isfinite(p2.OutVal))
+                                    {
+                                        float x1 = canvas_pos.x + FMath::Clamp(p1.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                        float y1 = canvas_pos.y + canvas_size.y - FMath::Clamp((p1.OutVal - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+                                        float x2 = canvas_pos.x + FMath::Clamp(p2.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                        float y2 = canvas_pos.y + canvas_size.y - FMath::Clamp((p2.OutVal - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+
+                                        draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), IM_COL32(100, 200, 255, 255), 2.5f);
+                                    }
+                                }
+                            }
+
+                            // 키프레임 점 그리기 및 인터랙션
+                            ImGui::SetCursorScreenPos(canvas_pos);
+                            ImGui::InvisibleButton("canvas", canvas_size);
+                            bool is_hovered = ImGui::IsItemHovered();
+
+                            // Static 변수 대신 ImGui ID 사용
+                            int selected_point = -1;
+                            bool dragging = false;
+                            ImGuiStorage* storage = ImGui::GetStateStorage();
+                            int state_key_selected = ImGui::GetID("selected");
+                            int state_key_dragging = ImGui::GetID("dragging");
+                            int state_key_prev_mouse_x = ImGui::GetID("prev_mouse_x");
+                            int state_key_prev_mouse_y = ImGui::GetID("prev_mouse_y");
+                            selected_point = storage->GetInt(state_key_selected, -1);
+                            dragging = storage->GetBool(state_key_dragging, false);
+
+                            for (int i = 0; i < Value->Curve.Points.Num(); ++i)
+                            {
+                                auto& Point = Value->Curve.Points[i];
+                                if (!std::isfinite(Point.OutVal)) continue;
+
+                                float x = canvas_pos.x + FMath::Clamp(Point.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                float y = canvas_pos.y + canvas_size.y - FMath::Clamp((Point.OutVal - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+
+                                bool is_point_hovered = ImGui::IsMouseHoveringRect(ImVec2(x - 6, y - 6), ImVec2(x + 6, y + 6));
+
+                                // 마우스 클릭으로 선택
+                                if (is_point_hovered && ImGui::IsMouseClicked(0))
+                                {
+                                    selected_point = i;
+                                    dragging = true;
+                                    storage->SetInt(state_key_selected, i);
+                                    storage->SetBool(state_key_dragging, true);
+                                    // 드래그 시작 시 마우스 위치 저장
+                                    ImVec2 mouse_pos = ImGui::GetMousePos();
+                                    storage->SetFloat(state_key_prev_mouse_x, mouse_pos.x);
+                                    storage->SetFloat(state_key_prev_mouse_y, mouse_pos.y);
+                                }
+
+                                // 드래그 (변화량 기반)
+                                if (dragging && selected_point == i && ImGui::IsMouseDown(0))
+                                {
+                                    ImVec2 mouse_pos = ImGui::GetMousePos();
+                                    float prev_mouse_x = storage->GetFloat(state_key_prev_mouse_x, mouse_pos.x);
+                                    float prev_mouse_y = storage->GetFloat(state_key_prev_mouse_y, mouse_pos.y);
+
+                                    // 마우스 이동량 계산
+                                    float delta_x = mouse_pos.x - prev_mouse_x;
+                                    float delta_y = mouse_pos.y - prev_mouse_y;
+
+                                    // 감도 설정 (1.0 = 정상 속도)
+                                    const float sensitivity = 1.0f;
+
+                                    // X축: Time (0~1)
+                                    float time_delta = (delta_x / canvas_size.x) * sensitivity;
+                                    Point.InVal = FMath::Clamp(Point.InVal + time_delta, 0.0f, 1.0f);
+
+                                    // Y축: Value
+                                    float value_delta = -(delta_y / canvas_size.y) * displayRange * sensitivity;
+                                    Point.OutVal += value_delta;
+
+                                    // NaN/Inf 방지 및 최종 값 제한
+                                    if (!std::isfinite(Point.OutVal)) Point.OutVal = 0.0f;
+                                    Point.OutVal = FMath::Clamp(Point.OutVal, -100000.0f, 100000.0f);
+
+                                    // 현재 마우스 위치 저장
+                                    storage->SetFloat(state_key_prev_mouse_x, mouse_pos.x);
+                                    storage->SetFloat(state_key_prev_mouse_y, mouse_pos.y);
+
+                                    bChanged = true;
+                                }
+
+                                // 우클릭으로 삭제
+                                if (is_point_hovered && ImGui::IsMouseClicked(1))
+                                {
+                                    Value->Curve.Points.RemoveAt(i);
+                                    storage->SetInt(state_key_selected, -1);
+                                    bChanged = true;
+                                    break;
+                                }
+
+                                // 점 그리기
+                                ImU32 color = (selected_point == i) ? IM_COL32(255, 255, 255, 255) : IM_COL32(100, 200, 255, 255);
+                                draw_list->AddCircleFilled(ImVec2(x, y), 6.0f, color);
+                                draw_list->AddCircle(ImVec2(x, y), 6.0f, IM_COL32(0, 0, 0, 255), 16, 2.0f);
+
+                                // 호버 시 값 표시
+                                if (is_point_hovered)
+                                {
+                                    char tooltip[64];
+                                    sprintf_s(tooltip, "T: %.3f\nV: %.3f", Point.InVal, Point.OutVal);
+                                    ImGui::SetTooltip("%s", tooltip);
+                                }
+                            }
+
+                            if (ImGui::IsMouseReleased(0))
+                            {
+                                storage->SetBool(state_key_dragging, false);
+                                // 정렬
+                                if (selected_point != -1)
+                                {
+                                    std::sort(Value->Curve.Points.begin(), Value->Curve.Points.end(),
+                                        [](const FInterpCurvePoint<float>& A, const FInterpCurvePoint<float>& B)
+                                        {
+                                            return A.InVal < B.InVal;
+                                        });
+                                }
+                            }
+
+                            // 더블클릭으로 키프레임 추가
+                            if (is_hovered && ImGui::IsMouseDoubleClicked(0))
+                            {
+                                ImVec2 mouse_pos = ImGui::GetMousePos();
+                                float t = FMath::Clamp((mouse_pos.x - canvas_pos.x) / canvas_size.x, 0.0f, 1.0f);
+                                float normalized_y = 1.0f - (mouse_pos.y - canvas_pos.y) / canvas_size.y;
+                                // normalized_y를 합리적인 범위로 제한
+                                normalized_y = FMath::Clamp(normalized_y, -1.0f, 2.0f);
+                                float v = displayMinVal + normalized_y * displayRange;
+                                v = FMath::Clamp(v, -100000.0f, 100000.0f);
+
+                                if (std::isfinite(v))
+                                {
+                                    Value->Curve.AddPoint(t, v);
+                                    bChanged = true;
+                                }
+                            }
+
+                            // 하단 여백 확보
+                            ImGui::SetCursorScreenPos(ImVec2(canvas_pos.x, canvas_pos.y + canvas_size.y + AxisLabelHeight + 5.0f));
+                            ImGui::Dummy(ImVec2(0, 5));
+
+                            // 인터랙션 가이드
+                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "LClick: Select | Drag: Move | RClick: Delete | DblClick: Add");
+                        }
+                        ImGui::PopID();
+                    }
+                }
+                // FRawDistribution<FVector> 타입 체크
+                else if (Prop.Type == EPropertyType::RawDistribution_FVector)
+                {
+                    FRawDistribution<FVector>* Value = Prop.GetValuePtr<FRawDistribution<FVector>>(TargetObject);
+                    if (Value && Value->Mode == EDistributionMode::Curve)
+                    {
+                        bHasCurveProperty = true;
+
+                        // FVector 커브는 X, Y, Z 별도 표시
+                        ImGui::PushID(Prop.Name);
+                        if (ImGui::CollapsingHeader(Prop.Name, ImGuiTreeNodeFlags_DefaultOpen))
+                        {
+                            const char* AxisNames[] = { "X", "Y", "Z" };
+                            ImU32 AxisColors[] = { IM_COL32(255, 80, 80, 255), IM_COL32(80, 255, 80, 255), IM_COL32(80, 180, 255, 255) };
+
+                            for (int axis = 0; axis < 3; ++axis)
+                            {
+                                ImGui::PushID(axis);
+                                if (ImGui::TreeNode(AxisNames[axis]))
+                                {
+                                    // 그래프 영역 (축 라벨 공간 확보)
+                                    const float AxisLabelHeight = 20.0f;
+                                    const float AxisLabelWidth = 40.0f;
+                                    ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+                                    canvas_pos.x += AxisLabelWidth;
+                                    canvas_pos.y += 10.0f;
+                                    ImVec2 canvas_size = ImVec2(ImGui::GetContentRegionAvail().x - AxisLabelWidth - 10.0f, 170.0f);
+                                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+                                    // 실제 데이터 범위 계산
+                                    float calcMinVal = FLT_MAX;
+                                    float calcMaxVal = -FLT_MAX;
+                                    for (const auto& Point : Value->Curve.Points)
+                                    {
+                                        float val = (axis == 0) ? Point.OutVal.X : (axis == 1) ? Point.OutVal.Y : Point.OutVal.Z;
+                                        if (std::isfinite(val))
+                                        {
+                                            calcMinVal = FMath::Min(calcMinVal, val);
+                                            calcMaxVal = FMath::Max(calcMaxVal, val);
+                                        }
+                                    }
+
+                                    // 기본값 설정
+                                    if (calcMinVal == FLT_MAX || !std::isfinite(calcMinVal)) calcMinVal = 0.0f;
+                                    if (calcMaxVal == -FLT_MAX || !std::isfinite(calcMaxVal)) calcMaxVal = 1.0f;
+
+                                    // 데이터 범위 (최소 1.0 확보)
+                                    float dataRange = FMath::Max(calcMaxVal - calcMinVal, 1.0f);
+                                    float dataMinVal = calcMinVal;
+
+                                    // 표시용 범위 (패딩 20% 추가)
+                                    float padding = dataRange * 0.2f;
+                                    float displayMinVal = dataMinVal - padding;
+                                    float displayMaxVal = calcMaxVal + padding;
+                                    float displayRange = displayMaxVal - displayMinVal;
+
+                                    // 범위 안전성 검사
+                                    if (!std::isfinite(displayMinVal) || !std::isfinite(displayMaxVal) || !std::isfinite(displayRange))
+                                    {
+                                        displayMinVal = 0.0f;
+                                        displayMaxVal = 1.0f;
+                                        displayRange = 1.0f;
+                                    }
+
+                                    // 배경
+                                    draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(30, 30, 35, 255));
+                                    draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(120, 120, 140, 255), 0.0f, 0, 1.5f);
+
+                                    // 그리드
+                                    for (int i = 0; i <= 10; ++i)
+                                    {
+                                        float alpha = (i == 0 || i == 10) ? 100.0f : 60.0f;
+                                        float x = canvas_pos.x + (canvas_size.x * i / 10.0f);
+                                        draw_list->AddLine(ImVec2(x, canvas_pos.y), ImVec2(x, canvas_pos.y + canvas_size.y), IM_COL32(70, 70, 80, (int)alpha));
+
+                                        float y = canvas_pos.y + (canvas_size.y * i / 10.0f);
+                                        draw_list->AddLine(ImVec2(canvas_pos.x, y), ImVec2(canvas_pos.x + canvas_size.x, y), IM_COL32(70, 70, 80, (int)alpha));
+                                    }
+
+                                    // 축 라벨
+                                    draw_list->AddText(ImVec2(canvas_pos.x + canvas_size.x * 0.5f - 20.0f, canvas_pos.y + canvas_size.y + 5.0f), IM_COL32(200, 200, 200, 255), "Time");
+                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y * 0.5f), IM_COL32(200, 200, 200, 255), "Value");
+
+                                    // 축 값 표시
+                                    char buf[32];
+                                    sprintf_s(buf, "%.2f", displayMaxVal);
+                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y - 5.0f), IM_COL32(150, 150, 150, 255), buf);
+                                    sprintf_s(buf, "%.2f", displayMinVal);
+                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y - 10.0f), IM_COL32(150, 150, 150, 255), buf);
+
+                                    // 커브 선 그리기
+                                    if (Value->Curve.Points.Num() > 1)
+                                    {
+                                        for (int i = 0; i < Value->Curve.Points.Num() - 1; ++i)
+                                        {
+                                            const auto& p1 = Value->Curve.Points[i];
+                                            const auto& p2 = Value->Curve.Points[i + 1];
+
+                                            float v1 = (axis == 0) ? p1.OutVal.X : (axis == 1) ? p1.OutVal.Y : p1.OutVal.Z;
+                                            float v2 = (axis == 0) ? p2.OutVal.X : (axis == 1) ? p2.OutVal.Y : p2.OutVal.Z;
+
+                                            if (std::isfinite(v1) && std::isfinite(v2))
+                                            {
+                                                float x1 = canvas_pos.x + FMath::Clamp(p1.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                                float y1 = canvas_pos.y + canvas_size.y - FMath::Clamp((v1 - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+                                                float x2 = canvas_pos.x + FMath::Clamp(p2.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                                float y2 = canvas_pos.y + canvas_size.y - FMath::Clamp((v2 - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+
+                                                draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), AxisColors[axis], 2.5f);
+                                            }
+                                        }
+                                    }
+
+                                    // 키프레임 점 그리기 및 인터랙션
+                                    ImGui::SetCursorScreenPos(canvas_pos);
+                                    ImGui::InvisibleButton("canvas", canvas_size);
+                                    bool is_hovered = ImGui::IsItemHovered();
+
+                                    // Static 변수 대신 ImGui ID 사용
+                                    ImGuiStorage* storage = ImGui::GetStateStorage();
+                                    int state_key_selected = ImGui::GetID("selected_vec");
+                                    int state_key_dragging = ImGui::GetID("dragging_vec");
+                                    int state_key_prev_mouse_x_vec = ImGui::GetID("prev_mouse_x_vec");
+                                    int state_key_prev_mouse_y_vec = ImGui::GetID("prev_mouse_y_vec");
+                                    int selected_point_vec = storage->GetInt(state_key_selected, -1);
+                                    bool dragging_vec = storage->GetBool(state_key_dragging, false);
+
+                                    for (int i = 0; i < Value->Curve.Points.Num(); ++i)
+                                    {
+                                        auto& Point = Value->Curve.Points[i];
+                                        float val = (axis == 0) ? Point.OutVal.X : (axis == 1) ? Point.OutVal.Y : Point.OutVal.Z;
+                                        if (!std::isfinite(val)) continue;
+
+                                        float x = canvas_pos.x + FMath::Clamp(Point.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                        float y = canvas_pos.y + canvas_size.y - FMath::Clamp((val - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+
+                                        bool is_point_hovered = ImGui::IsMouseHoveringRect(ImVec2(x - 6, y - 6), ImVec2(x + 6, y + 6));
+
+                                        if (is_point_hovered && ImGui::IsMouseClicked(0))
+                                        {
+                                            selected_point_vec = i;
+                                            dragging_vec = true;
+                                            storage->SetInt(state_key_selected, i);
+                                            storage->SetBool(state_key_dragging, true);
+                                            // 드래그 시작 시 마우스 위치 저장
+                                            ImVec2 mouse_pos = ImGui::GetMousePos();
+                                            storage->SetFloat(state_key_prev_mouse_x_vec, mouse_pos.x);
+                                            storage->SetFloat(state_key_prev_mouse_y_vec, mouse_pos.y);
+                                        }
+
+                                        if (dragging_vec && selected_point_vec == i && ImGui::IsMouseDown(0))
+                                        {
+                                            ImVec2 mouse_pos = ImGui::GetMousePos();
+                                            float prev_mouse_x = storage->GetFloat(state_key_prev_mouse_x_vec, mouse_pos.x);
+                                            float prev_mouse_y = storage->GetFloat(state_key_prev_mouse_y_vec, mouse_pos.y);
+
+                                            // 마우스 이동량 계산
+                                            float delta_x = mouse_pos.x - prev_mouse_x;
+                                            float delta_y = mouse_pos.y - prev_mouse_y;
+
+                                            // 감도 설정 (1.0 = 정상 속도)
+                                            const float sensitivity = 1.0f;
+
+                                            // X축: Time (0~1)
+                                            float time_delta = (delta_x / canvas_size.x) * sensitivity;
+                                            Point.InVal = FMath::Clamp(Point.InVal + time_delta, 0.0f, 1.0f);
+
+                                            // Y축: Value
+                                            float value_delta = -(delta_y / canvas_size.y) * displayRange * sensitivity;
+                                            float newVal = val + value_delta;
+                                            newVal = FMath::Clamp(newVal, -100000.0f, 100000.0f);
+
+                                            // NaN/Inf 방지
+                                            if (std::isfinite(newVal))
+                                            {
+                                                if (axis == 0) Point.OutVal.X = newVal;
+                                                else if (axis == 1) Point.OutVal.Y = newVal;
+                                                else Point.OutVal.Z = newVal;
+                                            }
+
+                                            // 현재 마우스 위치 저장
+                                            storage->SetFloat(state_key_prev_mouse_x_vec, mouse_pos.x);
+                                            storage->SetFloat(state_key_prev_mouse_y_vec, mouse_pos.y);
+
+                                            bChanged = true;
+                                        }
+
+                                        if (is_point_hovered && ImGui::IsMouseClicked(1))
+                                        {
+                                            Value->Curve.Points.RemoveAt(i);
+                                            storage->SetInt(state_key_selected, -1);
+                                            bChanged = true;
+                                            break;
+                                        }
+
+                                        ImU32 color = (selected_point_vec == i) ? IM_COL32(255, 255, 255, 255) : AxisColors[axis];
+                                        draw_list->AddCircleFilled(ImVec2(x, y), 6.0f, color);
+                                        draw_list->AddCircle(ImVec2(x, y), 6.0f, IM_COL32(0, 0, 0, 255), 16, 2.0f);
+
+                                        // 호버 시 값 표시
+                                        if (is_point_hovered)
+                                        {
+                                            char tooltip[64];
+                                            sprintf_s(tooltip, "T: %.3f\nV: %.3f", Point.InVal, val);
+                                            ImGui::SetTooltip("%s", tooltip);
+                                        }
+                                    }
+
+                                    if (ImGui::IsMouseReleased(0))
+                                    {
+                                        storage->SetBool(state_key_dragging, false);
+                                        if (selected_point_vec != -1)
+                                        {
+                                            std::sort(Value->Curve.Points.begin(), Value->Curve.Points.end(),
+                                                [](const FInterpCurvePoint<FVector>& A, const FInterpCurvePoint<FVector>& B)
+                                                {
+                                                    return A.InVal < B.InVal;
+                                                });
+                                        }
+                                    }
+
+                                    if (is_hovered && ImGui::IsMouseDoubleClicked(0))
+                                    {
+                                        ImVec2 mouse_pos = ImGui::GetMousePos();
+                                        float t = FMath::Clamp((mouse_pos.x - canvas_pos.x) / canvas_size.x, 0.0f, 1.0f);
+                                        float normalized_y = 1.0f - (mouse_pos.y - canvas_pos.y) / canvas_size.y;
+                                        // normalized_y를 합리적인 범위로 제한
+                                        normalized_y = FMath::Clamp(normalized_y, -1.0f, 2.0f);
+                                        float v = displayMinVal + normalized_y * displayRange;
+                                        v = FMath::Clamp(v, -100000.0f, 100000.0f);
+
+                                        if (std::isfinite(v))
+                                        {
+                                            // 해당 시간에서의 기존 값을 가져오거나 보간
+                                            FVector newVec = Value->Curve.HasKeys() ? Value->Curve.Eval(t) : FVector::Zero();
+
+                                            // 현재 축만 업데이트
+                                            if (axis == 0) newVec.X = v;
+                                            else if (axis == 1) newVec.Y = v;
+                                            else newVec.Z = v;
+
+                                            Value->Curve.AddPoint(t, newVec);
+                                            bChanged = true;
+                                        }
+                                    }
+
+                                    // 하단 여백 확보
+                                    ImGui::SetCursorScreenPos(ImVec2(canvas_pos.x, canvas_pos.y + canvas_size.y + AxisLabelHeight + 5.0f));
+                                    ImGui::Dummy(ImVec2(0, 5));
+
+                                    ImGui::TreePop();
+                                }
+                                ImGui::PopID();
+                            }
+
+                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "LClick: Select | Drag: Move | RClick: Delete | DblClick: Add");
+                        }
+                        ImGui::PopID();
+                    }
+                }
+            }
+
+            if (!bHasCurveProperty)
+            {
+                ImGui::TextWrapped("No Curve properties found.");
+                ImGui::Spacing();
+                ImGui::TextWrapped("Set a Distribution property's Mode to 'Curve' in the Detail panel to edit curves here.");
+            }
+        }
+        else
+        {
+            ImGui::Text("No module or emitter selected.");
+        }
+
         ImGui::EndChild();
         ImGui::End();
 

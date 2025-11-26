@@ -21,6 +21,9 @@ public:
 	// 객체의 모든 프로퍼티를 카테고리별로 렌더링 (부모 클래스 프로퍼티 포함)
 	static void RenderAllPropertiesWithInheritance(UObject* Object);
 
+	// Distribution 프로퍼티 렌더링 (Curve 편집 지원)
+	static bool RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance);
+	static bool RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance);
 
 private:
 	// 타입별 렌더링 함수들
@@ -58,8 +61,6 @@ private:
 	static bool RenderFloatProperty(const FProperty& Prop, void* Instance);
 	static bool RenderVectorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderQuaternionProperty(const FProperty& Prop, void* Instance);
-	static bool RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance);
-	static bool RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderColorProperty(const FProperty& Prop, void* Instance);
 	static bool RenderStringProperty(const FProperty& Prop, void* Instance);
 	static bool RenderNameProperty(const FProperty& Prop, void* Instance);

@@ -619,36 +619,62 @@ bool UPropertyRenderer::RenderQuaternionProperty(const FProperty& Prop, void* In
 bool UPropertyRenderer::RenderRawDistributionFloatProperty(const FProperty& Prop, void* Instance)
 {
 	FRawDistribution<float>* Value = Prop.GetValuePtr<FRawDistribution<float>>(Instance);
-	bool bDrag = false;
+	bool bChanged = false;
+
 	ImGui::Text(Prop.Name);
-	if (ImGui::DragFloat("Min", &Value->Min, 0.1f))
+
+	// Mode 선택
+	bChanged |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
+
+	if (Value->Mode == EDistributionMode::Uniform)
 	{
-		bDrag = true;
+		// Uniform 모드: Min/Max
+		if (ImGui::DragFloat("Min", &Value->Min, 0.1f))
+		{
+			bChanged = true;
+		}
+		if (ImGui::DragFloat("Max", &Value->Max, 0.1f))
+		{
+			bChanged = true;
+		}
 	}
-	if (ImGui::DragFloat("Max", &Value->Max, 0.1f))
+	else if (Value->Mode == EDistributionMode::Curve)
 	{
-		bDrag |= true;
+		// Curve 모드: 그래픽 에디터로 편집
+		ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Edit in Curve Editor (right panel)");
 	}
 
-	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
-	return bDrag;
+	return bChanged;
 }
 bool UPropertyRenderer::RenderRawDistributionFVectorProperty(const FProperty& Prop, void* Instance)
 {
 	FRawDistribution<FVector>* Value = Prop.GetValuePtr<FRawDistribution<FVector>>(Instance);
-	bool bDrag = false;
+	bool bChanged = false;
+
 	ImGui::Text(Prop.Name);
-	if (ImGui::DragFloat3("Min", &Value->Min.X, 0.1f))
+
+	// Mode 선택
+	bChanged |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
+
+	if (Value->Mode == EDistributionMode::Uniform)
 	{
-		bDrag = true;
+		// Uniform 모드: Min/Max
+		if (ImGui::DragFloat3("Min", &Value->Min.X, 0.1f))
+		{
+			bChanged = true;
+		}
+		if (ImGui::DragFloat3("Max", &Value->Max.X, 0.1f))
+		{
+			bChanged = true;
+		}
 	}
-	if (ImGui::DragFloat3("Max", &Value->Max.X, 0.1f))
+	else if (Value->Mode == EDistributionMode::Curve)
 	{
-		bDrag = true;
+		// Curve 모드: 그래픽 에디터로 편집
+		ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Edit in Curve Editor (right panel)");
 	}
 
-	bDrag |= RenderEnumProperty("Mode", Value->Mode, EDistributionModeNames, static_cast<int>(EDistributionMode::Count));
-	return bDrag;
+	return bChanged;
 }
 
 bool UPropertyRenderer::RenderColorProperty(const FProperty& Prop, void* Instance)
