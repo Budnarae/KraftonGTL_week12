@@ -13,10 +13,10 @@ public:
 	static bool RenderProperty(const FProperty& Property, void* ObjectInstance);
 
 	// 객체의 원하는 프로퍼티를 카테고리별로 렌더링
-	static void RenderProperties(const TArray<FProperty>& Properties, UObject* Object);
+	static bool RenderProperties(const TArray<FProperty>& Properties, UObject* Object);
 
 	// 객체의 모든 프로퍼티를 카테고리별로 렌더링
-	static void RenderAllProperties(UObject* Object);
+	static bool RenderAllProperties(UObject* Object);
 
 	// 객체의 모든 프로퍼티를 카테고리별로 렌더링 (부모 클래스 프로퍼티 포함)
 	static void RenderAllPropertiesWithInheritance(UObject* Object);
@@ -109,4 +109,6 @@ private:
 	static TArray<const char*> CachedSoundItems;
 	static TArray<FString> CachedScriptPaths;
 	static TArray<const char*> CachedScriptItems;
+	static TArray<FString> CachedParticleSystemPaths;
+	static TArray<FString> CachedParticleSystemItems;
 };

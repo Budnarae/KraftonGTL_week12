@@ -36,7 +36,8 @@ public:
 
     // TypeDataModule 관련 함수
     UParticleModuleTypeDataBase* GetTypeDataModule() const { return TypeDataModule; }
-    void SetTypeDataModule(UParticleModuleTypeDataBase* InTypeDataModule) { TypeDataModule = InTypeDataModule; }
+    void SetTypeDataModule(UParticleModuleTypeDataBase* InTypeDataModule);
+    void RemoveTypeDataModule();
 
     // Find module by type in all module arrays (Spawn, Update)
     template<typename T>

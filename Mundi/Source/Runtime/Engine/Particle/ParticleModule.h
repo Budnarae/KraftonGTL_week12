@@ -47,10 +47,15 @@ public:
     // UPROPERTY(EditAnywhere, Category="Basic")
     // float Value_Max;
 
+    virtual void SetActive(const bool InActive) { bActive = InActive; }
+    bool GetActive() const { return bActive; }
     void Serialize(const bool bInIsLoading, JSON& InOutHandle);
 
 protected:
     // 계산된 페이로드 오프셋을 저장하는 변수 (Payload 접근 시 사용됨)
     int32 PayloadOffset{};
     int32 PayloadSize{};
+
+    UPROPERTY(EditAnywhere, Category = "Active")
+    bool bActive = true;
 };

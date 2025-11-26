@@ -300,6 +300,11 @@ void UParticleSystemComponent::Activate(bool bReset)
 
     for (UParticleEmitter* Emitter : Template->GetEmitters())
     {
+        if (Emitter->GetActive() == false)
+        {
+            continue;
+        }
+
         // 페이로드 관련 정보 초기화
         Emitter->CacheEmitterModuleInfo();
         

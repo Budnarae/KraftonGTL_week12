@@ -47,11 +47,14 @@ public:
 
     void SetEmitterName(const FString& InName) { EmitterName = InName; }
     const FString& GetEmitterName() const { return EmitterName; }
-
+    void SetActive(const bool InActive) { bActive = InActive; }
+    bool GetActive() const { return bActive; }
 private:
     // -------------------------------------------
     // 1. 데이터 멤버 (Data Members)
     // -------------------------------------------
+    UPROPERTY(EditAnywhere, Category = "Basic")
+    bool bActive = true;
 
     UPROPERTY(EditAnywhere, Category = "Emitter")
     FString EmitterName;
@@ -72,4 +75,5 @@ private:
     // 이 에미터가 가질 수 있는 파티클의 최대 개수 (메모리 Precache를 위한 값)
     UPROPERTY(EditAnywhere, Category="Basic")
     int32 MaxParticleCount; 
+
 };

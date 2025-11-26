@@ -6,6 +6,7 @@
 #include "ParticleSystemComponent.h"
 #include "ParticleModuleRequired.h"
 #include "ParticleModuleTypeDataBase.h"
+#include "ParticleModuleTypeDataMesh.h"
 #include "ParticleHelper.h"
 
 #include <algorithm>
@@ -173,12 +174,30 @@ void FDynamicMeshEmitterData::Init(FParticleEmitterInstance* Instance, int32 Ind
         }
     }
 
-    // 머티리얼 및 메시 정보 설정 (RequiredModule에서 가져옴)
+    // 머티리얼 및 메시 정보 설정
     if (Instance->CurrentLODLevel && Instance->CurrentLODLevel->GetRequiredModule())
     {
         UParticleModuleRequired* RequiredModule = Instance->CurrentLODLevel->GetRequiredModule();
         Source.MaterialInterface = RequiredModule->GetMaterial();
-        StaticMesh = RequiredModule->GetMesh();
+
+        // 메시는 TypeDataModule에서 가져옴
+        UParticleModuleTypeDataBase* TypeDataModule = Instance->CurrentLODLevel->GetTypeDataModule();
+        if (TypeDataModule && TypeDataModule->GetEmitterType() == EDET_Mesh)
+        {
+            UParticleModuleTypeDataMesh* MeshTypeData = Cast<UParticleModuleTypeDataMesh>(TypeDataModule);
+            if (MeshTypeData)
+            {
+                StaticMesh = MeshTypeData->GetMesh();
+            }
+            else
+            {
+                StaticMesh = nullptr;
+            }
+        }
+        else
+        {
+            StaticMesh = nullptr;
+        }
     }
     else
     {

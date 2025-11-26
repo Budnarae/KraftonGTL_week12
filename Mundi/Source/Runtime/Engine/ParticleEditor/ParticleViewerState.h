@@ -20,6 +20,7 @@ public:
 	const char* GetPathConstChar() { return ParticlePath.empty() ? "None" : ParticlePath.c_str(); }
 	void LoadCachedParticle(const FString& Path);
 	void SaveCachedParticle();
+	void ReStartParticle();
 
 	const UParticleSystem* GetCachedParticle()const { return CachedParticle; }
 	UParticleSystem* GetCachedParticle() { return CachedParticle; }

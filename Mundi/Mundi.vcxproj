@@ -115,7 +115,8 @@
       <Message>[CodeGen] Generating Lua binding code...</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"</Command>
+      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"
+"C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\symstore.exe" add /r /f "$(TargetDir)*.pdb" /s "\\172.21.11.107\SymbolServer" /t "$(ProjectName)" /v "$(Configuration)”</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_StandAlone|x64'">
@@ -174,7 +175,8 @@
       <Message>[CodeGen] Generating Lua binding code...</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"</Command>
+      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"
+"C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\symstore.exe" add /r /f "$(TargetDir)*.pdb" /s "\\172.21.11.107\SymbolServer" /t "$(ProjectName)" /v "$(Configuration)”</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_StandAlone|x64'">
@@ -414,6 +416,7 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataMesh.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleBeamTarget.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleBeamNoise.cpp" />
@@ -638,6 +641,7 @@
     <ClCompile Include="Generated\UParticleModuleSizeOverLife.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleTypeDataBase.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleTypeDataBeam.generated.cpp" />
+    <ClCompile Include="Generated\UParticleModuleTypeDataMesh.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleTypeDataRibbon.generated.cpp" />
     <ClCompile Include="Generated\UPlacementMeshEntry.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleBeamTarget.generated.cpp" />
@@ -900,6 +904,7 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleSpawn.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBase.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataBeam.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataMesh.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleTypeDataRibbon.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleBeamTarget.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleBeamNoise.h" />
@@ -1149,6 +1154,7 @@
     <ClInclude Include="Generated\UParticleModuleSizeOverLife.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataBase.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataBeam.generated.h" />
+    <ClInclude Include="Generated\UParticleModuleTypeDataMesh.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" />
     <ClInclude Include="Generated\UPlacementMeshEntry.generated.h" />
   <ClInclude Include="Generated\UParticleModuleBeamTarget.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamNoise.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamWidth.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamColorOverLength.generated.h" /></ItemGroup>

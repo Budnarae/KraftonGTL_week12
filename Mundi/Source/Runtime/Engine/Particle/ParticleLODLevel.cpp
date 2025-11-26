@@ -1,6 +1,9 @@
 ﻿#include "pch.h"
 #include "ParticleLODLevel.h"
 #include "ParticleModuleRequired.h"
+#include "ParticleModuleTypeDataMesh.h"
+#include "StaticMesh.h"
+#include "Material.h"
 
 #include "Keyboard.h"
 
@@ -78,13 +81,37 @@ TArray<UParticleModule*>& UParticleLODLevel::GetUpdateModule()
 {
     return UpdateModules;
 }
-    
+
 // 이 LOD 레벨의 설정이 유효한지 확인
 bool UParticleLODLevel::IsValid() const
 {
     if (!RequiredModule) return false;
-    
+
     return true;
+}
+
+void UParticleLODLevel::SetTypeDataModule(UParticleModuleTypeDataBase* InTypeDataModule)
+{
+    if (TypeDataModule && TypeDataModule != InTypeDataModule)
+    {
+        UE_LOG("[ParticleLODLevel] Replacing existing TypeData module");
+    }
+
+    TypeDataModule = InTypeDataModule;
+
+    if (TypeDataModule)
+    {
+        UE_LOG("[ParticleLODLevel] TypeData module set (Type: %d)", TypeDataModule->GetEmitterType());
+    }
+}
+
+void UParticleLODLevel::RemoveTypeDataModule()
+{
+    if (TypeDataModule)
+    {
+        UE_LOG("[ParticleLODLevel] Removing TypeData module");
+        TypeDataModule = nullptr;
+    }
 }
 void UParticleLODLevel::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 {

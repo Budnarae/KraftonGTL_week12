@@ -26,6 +26,7 @@
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBase.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBeam.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataRibbon.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataMesh.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -35,6 +36,7 @@ ImVec4 ActiveColor = ImVec4(0.9f, 0.9f, 0.9f, 1.0f); //선택했을때 클릭
 
 ImVec4 EmitterColor = ImVec4(0.25f, 0.25f, 0.8f, 1.0f);//선택된
 ImVec4 ModuleColor = ImVec4(0.25f, 0.8f, 0.25f, 1.0f);
+ImVec4 TypeDataColor = ImVec4(0.8f, 0.25f, 0.8f, 1.0f);//TypeData 모듈
 
 ImVec2 EmitterSize = ImVec2(100, 40);
 ImVec2 RequireModuleSize = ImVec2(100, 30);
@@ -69,7 +71,10 @@ void FMenuAction::Action(SParticleEditWindow* ParticleEditWindow) const
         ParticleEditWindow->AddUpdateModule(ClassName);
         break;
     case EMenuActionType::SetTypeData:
-        ParticleEditWindow->SetTypeDataModule(ClassName);
+        ParticleEditWindow->SetTypeDataModule(TypeDataType);
+        break;
+    case EMenuActionType::RemoveTypeData:
+        ParticleEditWindow->RemoveTypeDataModule();
         break;
     }
 }
@@ -78,8 +83,15 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
 {
     {"파티클 시스템",
     {
-        {"앞에 이미터 추가", FMenuAction::CreateAddEmitter(-1)},
-        {"뒤에 이미터 추가", FMenuAction::CreateAddEmitter(1)},
+        {"이미터 추가", FMenuAction::CreateAddEmitter(1)},
+    }
+    },
+    {"타입",
+    {
+        {"기본 (스프라이트)", FMenuAction::CreateRemoveTypeData()},
+        {"메시", FMenuAction::CreateSetTypeData(EDET_Mesh)},
+        {"빔", FMenuAction::CreateSetTypeData(EDET_Beam)},
+        {"리본", FMenuAction::CreateSetTypeData(EDET_Ribbon)},
     }
     },
     {"컬러",
@@ -142,7 +154,7 @@ void SParticleEditWindow::AddEmitter(const int EmitterOffset)
     if (State->GetCachedParticle())
     {
         State->GetCachedParticle()->AddEmitter(NewObject<UParticleEmitter>());
-        ReStart();  // 새 이미터에 대한 EmitterInstance 생성을 위해 재활성화
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
@@ -197,6 +209,7 @@ void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
         {
             LOD->AddUpdateModule(Module);
         }
+        State->ReStartParticle();
     }
 }
 
@@ -220,10 +233,80 @@ void SParticleEditWindow::SetTypeDataModule(const FString& ClassName)
                 LOD->SetTypeDataModule(TypeData);
             }
         }
-
-        // TypeData 변경 후 파티클 시스템 재활성화
-        ReStart();
+        State->ReStartParticle();
     }
+}
+
+void SParticleEditWindow::SetTypeDataModule(int32 TypeDataType)
+{
+    if (!State->SelectedEmitter)
+    {
+        UE_LOG("[SParticleEditWindow] No emitter selected");
+        return;
+    }
+
+    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+    if (!LOD)
+    {
+        UE_LOG("[SParticleEditWindow] LODLevel not found");
+        return;
+    }
+
+    // 기존 TypeData 제거
+    LOD->RemoveTypeDataModule();
+
+    // 새로운 TypeData 생성
+    UParticleModuleTypeDataBase* NewTypeData = nullptr;
+
+    switch (TypeDataType)
+    {
+    case EDET_Mesh:
+        NewTypeData = NewObject<UParticleModuleTypeDataMesh>();
+        UE_LOG("[SParticleEditWindow] Created Mesh TypeData");
+        break;
+    case EDET_Beam:
+        NewTypeData = NewObject<UParticleModuleTypeDataBeam>();
+        UE_LOG("[SParticleEditWindow] Created Beam TypeData");
+        break;
+    case EDET_Ribbon:
+        NewTypeData = NewObject<UParticleModuleTypeDataRibbon>();
+        UE_LOG("[SParticleEditWindow] Created Ribbon TypeData");
+        break;
+    default:
+        UE_LOG("[SParticleEditWindow] Unknown TypeData type: %d", TypeDataType);
+        break;
+    }
+
+    if (NewTypeData)
+    {
+        LOD->SetTypeDataModule(NewTypeData);
+    }
+}
+
+void SParticleEditWindow::RemoveTypeDataModule()
+{
+    if (!State->SelectedEmitter)
+    {
+        UE_LOG("[SParticleEditWindow] No emitter selected");
+        return;
+    }
+
+    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+    if (!LOD)
+    {
+        UE_LOG("[SParticleEditWindow] LODLevel not found");
+        return;
+    }
+
+    LOD->RemoveTypeDataModule();
+
+    // TypeData 모듈이 선택된 상태였다면 선택 해제
+    if (State->SelectedModule && Cast<UParticleModuleTypeDataBase>(State->SelectedModule))
+    {
+        State->SelectedModule = nullptr;
+    }
+
+    UE_LOG("[SParticleEditWindow] TypeData removed (reverted to Sprite)");
 }
 
 void SParticleEditWindow::RemoveEmitter()
@@ -233,7 +316,7 @@ void SParticleEditWindow::RemoveEmitter()
         State->GetCachedParticle()->RemoveEmitter(State->SelectedEmitter);
         State->SelectedEmitter = nullptr;
         State->SelectedModule = nullptr;
-        ReStart();  // 삭제된 이미터의 EmitterInstance 정리를 위해 재활성화
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::RemoveModule()
@@ -251,6 +334,7 @@ void SParticleEditWindow::RemoveModule()
             State->SelectedModule = nullptr;
             return;
         }
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::ResetModule()
@@ -405,7 +489,7 @@ void SParticleEditWindow::OnRender()
         ImGui::SameLine();
         if (ImGui::Button("Restart"))
         {
-
+            State->ReStartParticle();
         }
 
 
@@ -433,6 +517,7 @@ void SParticleEditWindow::OnRender()
         DrawEmitterView();
         DrawEmitterDropdown();
         DrawModuleDropdown();
+        DrawTypeDataDropdown();
         ImGui::EndChild();
 
         //디테일
@@ -442,7 +527,7 @@ void SParticleEditWindow::OnRender()
             HoveredWindowType = EHoveredWindowType::Detail;
         }
         ImGui::Text("Detail");
-        if (State->SelectedEmitter) 
+        if (State->SelectedEmitter)
         {
             static char buf[128] = "";
             const FString& Name = State->SelectedEmitter->GetEmitterName();
@@ -452,15 +537,17 @@ void SParticleEditWindow::OnRender()
                 State->SelectedEmitter->SetEmitterName(buf);
             }
         }
+
+        bool bChanged = false;
         if (State->SelectedModule)
         {
-            UPropertyRenderer::RenderAllProperties(State->SelectedModule);
+            bChanged |= UPropertyRenderer::RenderAllProperties(State->SelectedModule);
         }
         else
         {
             if (State->SelectedEmitter)
             {
-                UPropertyRenderer::RenderAllProperties(State->SelectedEmitter);
+                bChanged |= UPropertyRenderer::RenderAllProperties(State->SelectedEmitter);
             }
         }
         ImGui::EndChild();
@@ -471,6 +558,12 @@ void SParticleEditWindow::OnRender()
         ImGui::BeginChild("CurveEditor", ChildSize);
         ImGui::EndChild();
         ImGui::End();
+
+
+        if (bChanged) 
+        {
+            State->ReStartParticle();
+        }
     }
 
 
@@ -529,6 +622,7 @@ void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
     case EHoveredWindowType::Viewport:
         bEmitterDropdown = false;
         bModuleDropdown = false;
+        bTypeDataDropdown = false;
         break;
     case EHoveredWindowType::Emitter:
         if (Button == 1 && ImGui::IsAnyItemHovered() == false)
@@ -540,14 +634,14 @@ void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
     case EHoveredWindowType::Detail:
         bEmitterDropdown = false;
         bModuleDropdown = false;
+        bTypeDataDropdown = false;
         break;
     default:
         bEmitterDropdown = false;
         bModuleDropdown = false;
+        bTypeDataDropdown = false;
         break;
     }
-
-   
 }
 
 void SParticleEditWindow::OnRenderViewport()
@@ -567,15 +661,26 @@ void SParticleEditWindow::OnRenderViewport()
 
 //window우클릭
 //module 우클릭
+//void SParticleEditWindow::DrawModule(UParticleEmitter* ParentEmitter, UParticleModule* Module)
+//{
+//    if (Module == nullptr)
+//    {
+//        return;
+//    }
+//    FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+//    bool bSelected = Module == State->SelectedModule;
+//    if(ImGui::T)
+//}
 void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size)
 {
     if (Module == nullptr)
     {
         return;
     }
-    FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+    //FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+    ImGui::PushID(reinterpret_cast<uintptr_t>(Module));
     bool bSelected = Module == State->SelectedModule;
-    if (ImGui::Selectable(RequireModuleGUIID.c_str(), bSelected, 0, Size))
+    if (ImGui::Selectable(Module->GetClass()->DisplayName, bSelected, 0, Size))
     {
         State->SelectedModule = Module;
         State->SelectedEmitter = ParentEmitter;
@@ -584,9 +689,28 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitte
     {
         State->SelectedModule = Module;
         State->SelectedEmitter = ParentEmitter;
-        bModuleDropdown = true;
-        ModuleDropdownPos = ImGui::GetMousePos();
+
+        // TypeData 모듈인지 확인
+        if (Cast<UParticleModuleTypeDataBase>(Module))
+        {
+            bTypeDataDropdown = true;
+            TypeDataDropdownPos = ImGui::GetMousePos();
+        }
+        else
+        {
+            bModuleDropdown = true;
+            ModuleDropdownPos = ImGui::GetMousePos();
+        }
     }
+    ImGui::SameLine();
+    bool bActvie = Module->GetActive();
+    if (ImGui::Checkbox("##", &bActvie))
+    {
+        Module->SetActive(bActvie);
+        State->ReStartParticle();
+    }
+    ImGui::PopID();
+
 }
 
 void SParticleEditWindow::DrawEmitterView()
@@ -602,11 +726,13 @@ void SParticleEditWindow::DrawEmitterView()
     for (UParticleEmitter* Emitter : Emitters)
     {
         UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);
+        UParticleModuleTypeDataBase* TypeDataModule = ParticleLOD->GetTypeDataModule();
         UParticleModule* RequireModule = ParticleLOD->GetRequiredModule();
         TArray<UParticleModule*>& SpawnModules = ParticleLOD->GetSpawnModule();
         TArray<UParticleModule*>& UpdateModules = ParticleLOD->GetUpdateModule();
 
         ImGui::BeginGroup();
+        ImGui::PushID(reinterpret_cast<uintptr_t>(Emitter));
         FString GUIID = GetUniqueGUIIDWithPointer(Emitter->GetEmitterName(), Emitter);
         bool bSelected = Emitter == State->SelectedEmitter;
         ImGui::PushStyleColor(ImGuiCol_Header, EmitterColor);
@@ -617,9 +743,32 @@ void SParticleEditWindow::DrawEmitterView()
             State->SelectedEmitter = Emitter;
             State->SelectedModule = nullptr;
         }
+        ImGui::SameLine();
+        bool bActvie = Emitter->GetActive();
+        if (ImGui::Checkbox("##", &bActvie))
+        {
+            Emitter->SetActive(bActvie);
+            State->ReStartParticle();
+        }
         ImGui::PopStyleColor();
+
+        // TypeData 모듈 렌더링 (RequiredModule 위에 표시)
+        ImGui::PushStyleColor(ImGuiCol_Header, TypeDataColor);
+        if (TypeDataModule)
+        {
+            // TypeData가 있으면 실제 타입 표시
+            DrawModuleInEmitterView(Emitter, TypeDataModule, RequireModuleSize);
+        }
+        else
+        {
+            // TypeData가 없으면 기본 스프라이트 표시 (선택 불가능)
+            FString DefaultLabel = GetUniqueGUIIDWithPointer("타입: 스프라이트 (기본)", Emitter);
+            ImGui::Selectable(DefaultLabel.c_str(), false, ImGuiSelectableFlags_Disabled, RequireModuleSize);
+        }
+        ImGui::PopStyleColor();
+
         ImGui::PushStyleColor(ImGuiCol_Header, ModuleColor);
-        
+
 
         DrawModuleInEmitterView(Emitter, RequireModule, RequireModuleSize);
 
@@ -642,6 +791,7 @@ void SParticleEditWindow::DrawEmitterView()
         ImGui::EndGroup();
         ImGui::SameLine();
         ImGui::PopStyleColor();
+        ImGui::PopID();
     }
     ImGui::PopStyleColor(2);
 
@@ -669,6 +819,58 @@ void SParticleEditWindow::DrawModuleDropdown()
         ImGui::EndPopup();
     }
 }
+
+void SParticleEditWindow::DrawTypeDataDropdown()
+{
+    if (!bTypeDataDropdown)
+    {
+        return;
+    }
+
+    ImGui::OpenPopup("TypeDataDropdown");
+    ImGui::SetNextWindowPos(TypeDataDropdownPos);
+
+    if (ImGui::BeginPopup("TypeDataDropdown"))
+    {
+        if (ImGui::BeginMenu("타입 변경"))
+        {
+            if (ImGui::Selectable("기본 (스프라이트)"))
+            {
+                RemoveTypeDataModule();
+                bTypeDataDropdown = false;
+            }
+            if (ImGui::Selectable("메시"))
+            {
+                SetTypeDataModule(EDET_Mesh);
+                bTypeDataDropdown = false;
+            }
+            if (ImGui::Selectable("빔"))
+            {
+                SetTypeDataModule(EDET_Beam);
+                bTypeDataDropdown = false;
+            }
+            if (ImGui::Selectable("리본"))
+            {
+                SetTypeDataModule(EDET_Ribbon);
+                bTypeDataDropdown = false;
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::Selectable("타입 제거"))
+        {
+            RemoveTypeDataModule();
+            bTypeDataDropdown = false;
+        }
+
+        ImGui::EndPopup();
+    }
+    else
+    {
+        bTypeDataDropdown = false;
+    }
+}
+
 void SParticleEditWindow::DrawEmitterDropdown()
 {
     if (bEmitterDropdown == false)
