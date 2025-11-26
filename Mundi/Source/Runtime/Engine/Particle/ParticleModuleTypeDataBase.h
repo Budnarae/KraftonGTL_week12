@@ -34,6 +34,6 @@ public:
 
     // Check if this TypeData requires special rendering
     virtual bool RequiresSpecialRendering() const { return false; }
-    void SetActive(const bool InActive) override {}
+    void SetActive(const bool InActive) override { bActive = InActive; }
 
 };

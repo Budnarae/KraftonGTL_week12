@@ -3,9 +3,9 @@
 #include "Source/Runtime/Engine/Particle/ParticleSystem.h"
 
 /**
- * @brief 모든 애니메이션 에셋의 추상 베이스 클래스
- * @details AnimSequence, AnimMontage, BlendSpace 등이 상속받습니다
- */       
+ * @brief 파티클 시스템 에셋 클래스
+ * @details 파티클 시스템 데이터를 파일로 저장/로드합니다
+ */
 class UParticleAsset : public UResourceBase
 {
     DECLARE_CLASS(UParticleAsset, UResourceBase)
@@ -28,7 +28,9 @@ public:
     virtual bool Save(const FString& InFilePath = "") override;
     void GetDeepDuplicated(UParticleSystem* OutParticleSystem) const;
 
-    UParticleSystem ParticleSystem;
-private:
+    // ParticleSystem 접근자
+    UParticleSystem* GetParticleSystem() { return &ParticleSystem; }
+    const UParticleSystem* GetParticleSystem() const { return &ParticleSystem; }
 
+    UParticleSystem ParticleSystem;
 };

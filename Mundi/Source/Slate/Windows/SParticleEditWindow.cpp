@@ -19,10 +19,18 @@
 #include "Source/Runtime/Engine/Particle/ParticleModuleCollision.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSizeOverLife.h"
 #include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamTarget.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamNoise.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamWidth.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamColorOverLength.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleRibbonWidth.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleRibbonColorOverLength.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBase.h"
-#include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataMesh.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBeam.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataRibbon.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataMesh.h"
+#include "Source/Runtime/Engine/Particle/ParticleVariable.h"
+#include "Source/Runtime/Engine/Particle/ParticleLODLevel.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -124,7 +132,29 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     },
     {"충돌",
     {
-        {"콜리전", FMenuAction::CreateSpawnModule(UParticleModuleCollision::StaticClass()->Name)},
+        {"콜리전", FMenuAction::CreateUpdateModule(UParticleModuleCollision::StaticClass()->Name)},
+    }
+    },
+    {"빔",
+    {
+        {"빔 타겟", FMenuAction::CreateSpawnModule(UParticleModuleBeamTarget::StaticClass()->Name)},
+        {"빔 노이즈", FMenuAction::CreateSpawnModule(UParticleModuleBeamNoise::StaticClass()->Name)},
+        {"빔 너비", FMenuAction::CreateSpawnModule(UParticleModuleBeamWidth::StaticClass()->Name)},
+        {"빔 길이별 색상", FMenuAction::CreateSpawnModule(UParticleModuleBeamColorOverLength::StaticClass()->Name)},
+    }
+    },
+    {"리본",
+    {
+        {"리본 너비", FMenuAction::CreateSpawnModule(UParticleModuleRibbonWidth::StaticClass()->Name)},
+        {"리본 길이별 색상", FMenuAction::CreateSpawnModule(UParticleModuleRibbonColorOverLength::StaticClass()->Name)},
+    }
+    },
+    {"타입 데이터",
+    {
+        {"스프라이트 (기본)", FMenuAction::CreateRemoveTypeData()},  // TypeData 제거 = Sprite (default)
+        {"메시", FMenuAction::CreateSetTypeData(EDET_Mesh)},
+        {"빔", FMenuAction::CreateSetTypeData(EDET_Beam)},
+        {"리본", FMenuAction::CreateSetTypeData(EDET_Ribbon)},
     }
     },
 };
@@ -140,22 +170,51 @@ void SParticleEditWindow::AddEmitter(const int EmitterOffset)
 }
 void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
 {
-    if (State->SelectedEmitter)
+    UE_LOG("[AddSpawnModule] ClassName: %s", ClassName.c_str());
+
+    if (!State->SelectedEmitter)
     {
-        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
-        UObject* obj = NewObject(UClass::FindClass(ClassName));
-        if (UParticleModule* Module = Cast<UParticleModule>(obj))
-        {
-            LOD->AddSpawnModule(Module);
-        }
-        State->ReStartParticle();
+        UE_LOG("[AddSpawnModule] ERROR: No emitter selected!");
+        return;
     }
+
+    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(State->GetSelectedLODLevel());
+    if (!LOD)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: LOD is null!");
+        return;
+    }
+
+    UClass* FoundClass = UClass::FindClass(ClassName);
+    if (!FoundClass)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: Class not found: %s", ClassName.c_str());
+        return;
+    }
+
+    UObject* obj = NewObject(FoundClass);
+    if (!obj)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: Failed to create object!");
+        return;
+    }
+
+    UParticleModule* Module = Cast<UParticleModule>(obj);
+    if (!Module)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: Cast to UParticleModule failed!");
+        return;
+    }
+
+    LOD->AddSpawnModule(Module);
+    UE_LOG("[AddSpawnModule] SUCCESS: Added module %s, SpawnModules count: %d",
+           ClassName.c_str(), LOD->GetSpawnModule().Num());
 }
 void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
 {
     if (State->SelectedEmitter)
     {
-        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(State->GetSelectedLODLevel());
         UObject* obj = NewObject(UClass::FindClass(ClassName));
         if (UParticleModule* Module = Cast<UParticleModule>(obj))
         {
@@ -173,7 +232,7 @@ void SParticleEditWindow::SetTypeDataModule(int32 TypeDataType)
         return;
     }
 
-    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(State->GetSelectedLODLevel());
     if (!LOD)
     {
         UE_LOG("[SParticleEditWindow] LODLevel not found");
@@ -219,7 +278,7 @@ void SParticleEditWindow::RemoveTypeDataModule()
         return;
     }
 
-    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(State->GetSelectedLODLevel());
     if (!LOD)
     {
         UE_LOG("[SParticleEditWindow] LODLevel not found");
@@ -286,6 +345,24 @@ void SParticleEditWindow::RemoveModule()
 void SParticleEditWindow::ResetModule()
 {
 
+}
+
+void SParticleEditWindow::ReStart()
+{
+    // 파티클 시스템 재활성화 (TypeData 변경 등 적용)
+    if (State && State->ParticleActor)
+    {
+        UParticleSystemComponent* PSC = State->ParticleActor->GetParticleSystemComponent();
+        if (PSC)
+        {
+            PSC->Activate(true);  // bReset = true로 완전 재시작
+        }
+    }
+}
+
+void SParticleEditWindow::Save()
+{
+    // TODO: 저장 로직 구현
 }
 
 
@@ -500,17 +577,14 @@ void SParticleEditWindow::OnRender()
         //커브 미구현
         ImGui::BeginChild("CurveEditor", ChildSize);
         ImGui::EndChild();
-        ImGui::End();
 
-
-        if (bChanged) 
+        if (bChanged)
         {
             State->ReStartParticle();
         }
     }
-
-
-
+    // ImGui::Begin()이 false를 반환해도 반드시 End()를 호출해야 함
+    ImGui::End();
 }
 void SParticleEditWindow::OnUpdate(float DeltaSeconds)
 {
@@ -656,19 +730,79 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitte
 
 }
 
+void SParticleEditWindow::DrawLODSelector()
+{
+    if (!State->GetCachedParticle())
+    {
+        return;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("LOD 레벨");
+    ImGui::SameLine();
+
+    // LOD 레벨 선택 (< 버튼, 숫자, > 버튼)
+    int32 CurrentLOD = State->GetSelectedLODLevel();
+
+    if (ImGui::Button("<##LOD"))
+    {
+        if (CurrentLOD > 0)
+        {
+            State->SetSelectedLODLevel(CurrentLOD - 1);
+        }
+    }
+    ImGui::SameLine();
+    ImGui::Text("%d", CurrentLOD);
+    ImGui::SameLine();
+    if (ImGui::Button(">##LOD"))
+    {
+        if (CurrentLOD < MAX_PARTICLE_LODLEVEL - 1)
+        {
+            State->SetSelectedLODLevel(CurrentLOD + 1);
+        }
+    }
+
+    // 현재 LOD의 거리 설정 (선택된 에미터가 있을 때만)
+    if (State->SelectedEmitter)
+    {
+        UParticleLODLevel* LODLevel = State->SelectedEmitter->GetParticleLODLevelWithIndex(CurrentLOD);
+        if (LODLevel)
+        {
+            ImGui::SameLine();
+            float LODDistance = LODLevel->GetLODDistance();
+            ImGui::SetNextItemWidth(80);
+            if (ImGui::DragFloat("거리##LODDist", &LODDistance, 10.0f, 0.0f, 100000.0f, "%.0f"))
+            {
+                LODLevel->SetLODDistance(LODDistance);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("이 LOD가 활성화되는 최소 거리\nLOD 0은 항상 0.0");
+            }
+        }
+    }
+
+    ImGui::Separator();
+}
+
 void SParticleEditWindow::DrawEmitterView()
 {
     if (State->GetCachedParticle() == nullptr)
     {
         return;
     }
+
+    // LOD 선택 UI 먼저 렌더링
+    DrawLODSelector();
+
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ActiveColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HoveredColor);
     UParticleSystem* CurParticle = State->GetCachedParticle();
     TArray<UParticleEmitter*> Emitters = CurParticle->GetEmitters();
+    int32 SelectedLOD = State->GetSelectedLODLevel();
     for (UParticleEmitter* Emitter : Emitters)
     {
-        UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(0);
+        UParticleLODLevel* ParticleLOD = Emitter->GetParticleLODLevelWithIndex(SelectedLOD);
         UParticleModuleTypeDataBase* TypeDataModule = ParticleLOD->GetTypeDataModule();
         UParticleModule* RequireModule = ParticleLOD->GetRequiredModule();
         TArray<UParticleModule*>& SpawnModules = ParticleLOD->GetSpawnModule();
@@ -714,6 +848,7 @@ void SParticleEditWindow::DrawEmitterView()
 
 
         DrawModuleInEmitterView(Emitter, RequireModule, RequireModuleSize);
+
         for (UParticleModule* Module : SpawnModules)
         {
             DrawModuleInEmitterView(Emitter, Module, ModuleSize);

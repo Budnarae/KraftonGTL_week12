@@ -25,6 +25,7 @@ enum class EPropertyType : uint8
 	FQuat,
 	RawDistribution_Float,
 	RawDistribution_FVector,
+	Enum,			// Enum 타입 (콤보박스로 표시)
 	// 추후 추가될 프로퍼티들은 직접 해줘야함.
 	Count			// 요소 개수, 항상 마지막!
 };
@@ -42,6 +43,8 @@ struct FProperty
 	bool bIsEditAnywhere = false;            // UI에 노출 여부
 	const char* Tooltip = nullptr;           // 툴팁 설명
 	FString ClassName;
+	const char* EnumTypeName = nullptr;      // Enum 타입 이름 (Enum 프로퍼티용)
+	size_t EnumSize = 0;                     // Enum의 크기 (sizeof)
 
 	TMap<FName, FString> Metadata;			 // 모든 부가 정보를 key-value 문자열로 저장합니다.
 

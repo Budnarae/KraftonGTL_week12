@@ -96,7 +96,8 @@ private:
         FVector& OutHitLocation,
         FVector& OutHitNormal,
         AActor*& OutHitActor,
-        UPrimitiveComponent*& OutHitComponent
+        UPrimitiveComponent*& OutHitComponent,
+        AActor* OwnerActor = nullptr
     );
 
     // Apply collision response to particle

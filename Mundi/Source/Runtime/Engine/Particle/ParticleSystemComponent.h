@@ -39,6 +39,33 @@ public:
     void SetElapsedTime(float InElapsedTime);
     void SetCurrentLODLevel(const int32 InCurrentLODLevel);
 
+    // -------------------------------------------
+    // LOD 관련 함수 (LOD Functions)
+    // -------------------------------------------
+
+    /**
+     * 카메라와의 거리를 계산하여 적절한 LOD 레벨을 결정합니다.
+     * LODMethod가 Automatic일 때 TickComponent에서 주기적으로 호출됩니다.
+     *
+     * @param CameraLocation 현재 카메라의 월드 위치
+     */
+    void UpdateLODFromDistance(const FVector& CameraLocation);
+
+    /**
+     * 외부에서 카메라 위치를 설정합니다.
+     * 렌더러 또는 게임 코드에서 호출하여 LOD 계산에 사용됩니다.
+     */
+    void SetCachedCameraLocation(const FVector& InCameraLocation) { CachedCameraLocation = InCameraLocation; bHasCachedCameraLocation = true; }
+    const FVector& GetCachedCameraLocation() const { return CachedCameraLocation; }
+    bool HasCachedCameraLocation() const { return bHasCachedCameraLocation; }
+
+    /**
+     * 강제 LOD 모드를 설정합니다 (에디터용).
+     * true로 설정하면 자동 LOD 전환을 무시하고 수동으로 설정된 LOD를 유지합니다.
+     */
+    void SetOverrideLOD(bool bInOverride) { bOverrideLOD = bInOverride; }
+    bool IsOverridingLOD() const { return bOverrideLOD; }
+
     // 거리 기반 스폰 설정 (0이면 시간 기반, > 0이면 거리 기반)
     void SetDistancePerSpawn(float InDistance) { DistancePerSpawn = InDistance; }
     float GetDistancePerSpawn() const { return DistancePerSpawn; }
@@ -104,9 +131,9 @@ public:
     // void BeginDestroy();
     
 private:
-    // [Template] 이 컴포넌트가 재생할 파티클 시스템의 마스터 설계도 (Asset)
+    // 이 컴포넌트가 사용하는 파티클 시스템 템플릿
     UPROPERTY(EditAnywhere, Category="Assets")
-    UParticleSystem* Template{}; 
+    UParticleSystem* Template{};
 
     // 이펙트가 현재 재생/시뮬레이션 중인지 여부
     // UPROPERTY(EditAnywhere, Category="Basic")
@@ -117,8 +144,22 @@ private:
     float ElapsedTime{};
 
     // 현재 LOD 레벨
-    // TODO: 현재는 최소 구현으로 무조건 LOD == 0이라고 설정한다. 추후 추가 구현 필요
     int32 CurrentLODLevel{};
+
+    // -------------------------------------------
+    // LOD 거리 체크 관련 (LOD Distance Check)
+    // -------------------------------------------
+
+    // 마지막으로 LOD 거리 체크를 수행한 시간 (ElapsedTime 기준)
+    float LastLODDistanceCheckTime = 0.0f;
+
+    // 캐시된 카메라 위치 (렌더러에서 설정)
+    FVector CachedCameraLocation = FVector::Zero();
+    bool bHasCachedCameraLocation = false;
+
+    // 강제 LOD 모드 (에디터에서 사용)
+    // true이면 자동 LOD 전환을 무시하고 SetCurrentLODLevel()로 설정된 LOD 유지
+    bool bOverrideLOD = false;
 
     // 템플릿을 기반으로 실제 수많은 파티클의 데이터와 상태를 관리하는 내부 런타임 인스턴스
     TArray<FParticleEmitterInstance*> EmitterInstances{};

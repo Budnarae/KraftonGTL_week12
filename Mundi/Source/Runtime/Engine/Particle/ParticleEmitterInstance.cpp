@@ -8,6 +8,14 @@
 FParticleEmitterInstance::~FParticleEmitterInstance()
 {
     KillAllParticles();
+
+    // ParticleData 메모리 해제
+    // (Deactivate()에서 이미 해제했으면 nullptr이므로 안전)
+    if (ParticleData)
+    {
+        free(ParticleData);
+        ParticleData = nullptr;
+    }
 }
 
 // ============================================================================
@@ -83,6 +91,20 @@ void FParticleEmitterInstance::CopyFrom(const FParticleEmitterInstance& Other)
 
 void FParticleEmitterInstance::Update(float DeltaTime)
 {
+    // null 체크
+    if (!SpriteTemplate)
+        return;
+
+    UParticleLODLevel* LODLevel = SpriteTemplate->GetCurrentLODLevelInstance();
+    if (!LODLevel)
+        return;
+
+    UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+    TArray<UParticleModule*>& UpdateModules = LODLevel->GetUpdateModule();
+
+    // 현재 LOD 인덱스 가져오기
+    const int32 CurrentLOD = CurrentLODLevelIndex;
+
     for (int32 Index = ActiveParticles - 1; Index >= 0; Index--)
     {
         DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
@@ -90,17 +112,17 @@ void FParticleEmitterInstance::Update(float DeltaTime)
         // FParticleContext 생성
         FParticleContext Context(ParticleBase, OwnerComponent);
 
-        UParticleModuleRequired* RequiredModule = \
-            SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
+        // RequiredModule은 항상 실행 (LOD 체크 없음)
+        if (RequiredModule)
+        {
+            RequiredModule->Update(Context, DeltaTime);
+        }
 
-        RequiredModule->Update(Context, DeltaTime);
-
-        TArray<UParticleModule*>& UpdateModules = \
-            SpriteTemplate->GetCurrentLODLevelInstance()->GetUpdateModule();
-
+        // UpdateModule은 LOD별 활성화 상태 체크
         for (UParticleModule* UpdateModule : UpdateModules)
         {
-            if (UpdateModule->GetActive()) 
+            // ShouldExecuteInLOD: bActive && bEnabledInLOD[CurrentLOD] 모두 체크
+            if (UpdateModule && UpdateModule->ShouldExecuteInLOD(CurrentLOD))
             {
                 UpdateModule->Update(Context, DeltaTime);
             }
@@ -125,16 +147,66 @@ void FParticleEmitterInstance::SpawnParticles
     FParticleEventInstancePayload* EventPayload
 )
 {
+    // null 체크
+    if (!SpriteTemplate)
+        return;
+
+    UParticleLODLevel* LODLevel = SpriteTemplate->GetCurrentLODLevelInstance();
+    if (!LODLevel)
+        return;
+
+    UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+    TArray<UParticleModule*>& SpawnModules = LODLevel->GetSpawnModule();
+    UParticleModuleTypeDataBase* TypeDataModule = LODLevel->GetTypeDataModule();
+
+    // 현재 LOD 인덱스 가져오기
+    const int32 CurrentLOD = CurrentLODLevelIndex;
+
+    // Ribbon/Trail 에미터인지 확인 (파티클 재활용 필요)
+    bool bIsRibbonEmitter = TypeDataModule &&
+        (TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Ribbon);
+
     for (int32 Index = 0; Index < SpawnNum; Index++)
     {
+        int32 ParticleIndex = ActiveParticles;
+
         if (ActiveParticles >= MaxActiveParticles)
         {
-            // UE_LOG("[FParticleEmitterInstance::SpawnParticles][Warning] Reached max particle count.");
-            break;
+            if (bIsRibbonEmitter && ActiveParticles > 0)
+            {
+                // Ribbon: 가장 오래된 파티클을 찾아서 재활용
+                // SpawnTime이 가장 작은(오래된) 파티클 찾기
+                int32 OldestIndex = 0;
+                float OldestTime = FLT_MAX;
+
+                for (int32 i = 0; i < ActiveParticles; ++i)
+                {
+                    DECLARE_PARTICLE_PTR(CheckParticle, ParticleData + ParticleStride * i);
+                    FBaseParticle* BaseCheck = reinterpret_cast<FBaseParticle*>(CheckParticle);
+
+                    // RelativeTime이 가장 큰 파티클 = 가장 오래 살아있는 파티클
+                    if (BaseCheck->RelativeTime > OldestTime || OldestTime == FLT_MAX)
+                    {
+                        OldestTime = BaseCheck->RelativeTime;
+                        OldestIndex = i;
+                    }
+                }
+
+                // 가장 오래된 파티클 위치에 새 파티클 스폰
+                ParticleIndex = OldestIndex;
+            }
+            else
+            {
+                // 일반 에미터: 그냥 중지
+                break;
+            }
+        }
+        else
+        {
+            ActiveParticles++;
         }
 
-        DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ActiveParticles);
-        ActiveParticles++;
+        DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ParticleIndex);
 
         FBaseParticle& ParticleBase = *((FBaseParticle*)ParticlePtr);
 
@@ -158,25 +230,24 @@ void FParticleEmitterInstance::SpawnParticles
         // FParticleContext 생성
         FParticleContext Context(&ParticleBase, OwnerComponent);
 
-        // RequiredModule의 Spawn 호출 (필수)
-        UParticleModuleRequired* RequiredModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
+        // RequiredModule의 Spawn 호출 (필수, LOD 체크 없음)
         if (RequiredModule)
         {
             RequiredModule->Spawn(Context, StartTime);
         }
 
-        // 추가 SpawnModules 호출
-        for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
+        // 추가 SpawnModules 호출 (LOD별 활성화 상태 체크)
+        for (UParticleModule* Module : SpawnModules)
         {
-            if (Module->GetActive()) 
+            // ShouldExecuteInLOD: bActive && bEnabledInLOD[CurrentLOD] 모두 체크
+            if (Module && Module->ShouldExecuteInLOD(CurrentLOD))
             {
                 Module->Spawn(Context, StartTime);
             }
         }
 
         // TypeDataModule의 Spawn 호출 (Ribbon/Beam 등에서 SpawnTime 설정)
-        // Index * Increment로 시간 분산하여 각 파티클이 고유한 SpawnTime을 가짐
-        UParticleModuleTypeDataBase* TypeDataModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetTypeDataModule();
+        // TypeData는 항상 실행 (LOD 체크 없음 - 렌더링 타입은 고정)
         if (TypeDataModule)
         {
             TypeDataModule->Spawn(Context, StartTime + (float)Index * Increment);
@@ -215,8 +286,25 @@ void FParticleEmitterInstance::KillAllParticles()
 
 float FParticleEmitterInstance::GetLifeTimeValue()
 {
-    return SpriteTemplate->
-        GetCurrentLODLevelInstance()->
-        GetRequiredModule()->
-        GetLifeTime();
+    if (!SpriteTemplate)
+    {
+        UE_LOG("[GetLifeTimeValue] SpriteTemplate is null");
+        return 1.0f;  // 기본값
+    }
+
+    UParticleLODLevel* LODLevel = SpriteTemplate->GetCurrentLODLevelInstance();
+    if (!LODLevel)
+    {
+        UE_LOG("[GetLifeTimeValue] LODLevel is null");
+        return 1.0f;
+    }
+
+    UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+    if (!RequiredModule)
+    {
+        UE_LOG("[GetLifeTimeValue] RequiredModule is null");
+        return 1.0f;
+    }
+
+    return RequiredModule->GetLifeTime();
 }

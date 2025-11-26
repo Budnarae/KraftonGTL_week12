@@ -5,6 +5,9 @@
 #include "UEContainer.h"
 #include "UParticleModuleTypeDataBeam.generated.h"
 
+// Forward declaration
+class UTexture;
+
 /**
  * Beam method - how the beam endpoints are determined
  */
@@ -33,6 +36,21 @@ enum class EBeamNoiseAlgorithm : uint8
     MidpointDisplacement,   // 중간 변위 알고리즘 (번개 효과 - 지직거림)
     PerlinNoise             // Perlin 노이즈 (부드러운 출렁임)
 };
+
+/**
+ * Beam taper method - how the beam width changes along its length
+ */
+enum class EBeamTaperMethod : uint8
+{
+    None,       // 테이퍼 없음 (균일한 너비)
+    Source,     // 소스에서 가늘어짐 (시작점이 얇음)
+    Target,     // 타겟에서 가늘어짐 (끝점이 얇음)
+    Both        // 양쪽에서 가늘어짐 (중간이 두꺼움)
+};
+
+// Forward declarations
+struct FBeamNoiseParams;
+struct FBeamWidthParams;
 
 /**
  * TypeData module for Beam emitters
@@ -65,7 +83,7 @@ public:
     float GetNoiseAmplitude() const { return NoiseAmplitude; }
     float GetNoiseFrequency() const { return NoiseFrequency; }
     float GetTextureRepeat() const { return TextureRepeat; }
-    bool GetTaperBeam() const { return bTaperBeam; }
+    EBeamTaperMethod GetTaperMethod() const { return TaperMethod; }
     float GetTaperFactor() const { return TaperFactor; }
     FVector GetBeamDirection() const { return BeamDirection; }
     FVector4 GetBeamColor() const { return BeamColor; }
@@ -74,6 +92,7 @@ public:
     float GetGlowIntensity() const { return GlowIntensity; }
     bool GetUseTexture() const { return bUseTexture; }
     EBeamNoiseAlgorithm GetNoiseAlgorithm() const { return NoiseAlgorithm; }
+    UTexture* GetBeamTexture() const { return BeamTexture; }
 
     // Setters
     void SetBeamMethod(EBeamMethod Value) { BeamMethod = Value; }
@@ -85,7 +104,7 @@ public:
     void SetNoiseAmplitude(float Value) { NoiseAmplitude = Value; }
     void SetNoiseFrequency(float Value) { NoiseFrequency = Value; }
     void SetTextureRepeat(float Value) { TextureRepeat = Value; }
-    void SetTaperBeam(bool Value) { bTaperBeam = Value; }
+    void SetTaperMethod(EBeamTaperMethod Value) { TaperMethod = Value; }
     void SetTaperFactor(float Value) { TaperFactor = Value; }
     void SetBeamDirection(const FVector& Value) { BeamDirection = Value; }
     void SetBeamColor(const FVector4& Value) { BeamColor = Value; }
@@ -94,13 +113,21 @@ public:
     void SetGlowIntensity(float Value) { GlowIntensity = Value; }
     void SetUseTexture(bool Value) { bUseTexture = Value; }
     void SetNoiseAlgorithm(EBeamNoiseAlgorithm Value) { NoiseAlgorithm = Value; }
+    void SetBeamTexture(UTexture* Value) { BeamTexture = Value; }
 
     // Calculate beam points for rendering
+    // EmitterLocation: world location of the emitter
+    // EmitterRotation: rotation matrix (for transforming local direction/points to world)
+    // NoiseParams: if not null, apply noise with these parameters; if null, no noise
+    // WidthParams: if not null, apply width with these parameters; if null, use internal BeamWidth
     void CalculateBeamPoints(
         const FVector& EmitterLocation,
+        const FMatrix& EmitterRotation,
         TArray<FVector>& OutPoints,
         TArray<float>& OutWidths,
-        float Time = 0.0f
+        float Time = 0.0f,
+        const FBeamNoiseParams* NoiseParams = nullptr,
+        const FBeamWidthParams* WidthParams = nullptr
     ) const;
 
 private:
@@ -146,10 +173,11 @@ private:
     UPROPERTY(EditAnywhere, Category="Beam|Texture")
     float TextureRepeat = 1.0f;
 
-    // Taper (beam gets thinner at the end)
+    // Taper method (how width changes along beam)
     UPROPERTY(EditAnywhere, Category="Beam|Appearance")
-    bool bTaperBeam = false;
+    EBeamTaperMethod TaperMethod = EBeamTaperMethod::None;
 
+    // Taper factor (minimum width ratio at tapered ends, 0.0 ~ 1.0)
     UPROPERTY(EditAnywhere, Category="Beam|Appearance")
     float TaperFactor = 0.5f;
 
@@ -176,4 +204,8 @@ private:
     // Use texture instead of solid color
     UPROPERTY(EditAnywhere, Category="Beam|Texture")
     bool bUseTexture = false;
+
+    // Direct texture for beam (bypasses material system)
+    UPROPERTY(EditAnywhere, Category="Beam|Texture")
+    UTexture* BeamTexture = nullptr;
 };

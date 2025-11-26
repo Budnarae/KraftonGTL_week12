@@ -100,7 +100,7 @@ struct FRawDistribution
     FInterpCurve<T> Curve;
 
     // 모드에 따른 값 반환
-    T GetValue(float Time)
+    T GetValue(float Time) const
     {
         if (Mode == EDistributionMode::Curve && Curve.HasKeys())
         {
@@ -111,13 +111,13 @@ struct FRawDistribution
     }
 
     // 단일 T 값으로 보간 (Uniform 모드용)
-    T GetLerpValue(float T)
+    T GetLerpValue(float T) const
     {
         return FMath::Lerp(Min, Max, T);
     }
 
     // 랜덤 값 반환 (기본 구현: 단일 랜덤 T 사용)
-    T GetRandomValue()
+    T GetRandomValue() const
     {
         return FMath::Lerp(Min, Max, FMath::GetRandZeroOneRange());
     }
@@ -133,7 +133,7 @@ struct FRawDistribution<FVector>
     FInterpCurve<FVector> Curve;
 
     // 모드에 따른 값 반환
-    FVector GetValue(float Time)
+    FVector GetValue(float Time) const
     {
         if (Mode == EDistributionMode::Curve && Curve.HasKeys())
         {
@@ -144,13 +144,13 @@ struct FRawDistribution<FVector>
     }
 
     // 단일 T 값으로 보간 (Uniform 모드용)
-    FVector GetLerpValue(float T)
+    FVector GetLerpValue(float T) const
     {
         return FMath::Lerp(Min, Max, T);
     }
 
     // 각 축에 독립적인 랜덤 값 사용
-    FVector GetRandomValue()
+    FVector GetRandomValue() const
     {
         return FVector(
             FMath::Lerp(Min.X, Max.X, FMath::GetRandZeroOneRange()),

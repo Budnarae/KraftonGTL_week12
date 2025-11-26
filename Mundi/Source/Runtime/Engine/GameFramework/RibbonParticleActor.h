@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Actor.h"
 #include "ARibbonParticleActor.generated.h"
@@ -61,7 +61,7 @@ protected:
 	bool bOrbitEnabled = true;          // 피봇 기준 회전 활성화
 	FVector PivotOffset = FVector::Zero(); // 피봇 오프셋 (액터 기준)
 	float OrbitRadius = 2.0f;            // 궤도 반경
-	float OrbitSpeed = 90.0f;            // 회전 속도 (도/초) - 느리게
+	float OrbitSpeed = 360.0f;            // 회전 속도 (도/초) - 느리게
 
 	// 나선(헬릭스) 설정
 	bool bHelixEnabled = false;          // 헬릭스 모드 활성화

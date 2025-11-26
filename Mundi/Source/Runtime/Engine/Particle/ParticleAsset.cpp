@@ -1,7 +1,9 @@
 ﻿#include "pch.h"
 #include "ParticleAsset.h"
+#include "ParticleSystemComponent.h"
 #include "Source/Editor/PlatformProcess.h"
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
+#include "Source/Runtime/Engine/GameFramework/World.h"
 #include <filesystem>
 
 const std::filesystem::path UParticleAsset::FolderPath = GDataDir + "/Particle";
@@ -83,6 +85,33 @@ void UParticleAsset::Save(const FString& InFilePath, UParticleSystem* InParticle
 
 	//Json 파일 강제로 다시 로드해오기
 	UResourceManager::GetInstance().ForceLoad<UParticleAsset>(InFilePath);
+
+	// ForceLoad 후, 해당 ParticleSystem을 참조하는 컴포넌트들을 재활성화
+	// (ForceLoad로 인해 Emitters 배열의 UParticleEmitter*가 재생성되므로
+	//  FParticleEmitterInstance::SpriteTemplate이 dangling pointer가 됨)
+	UParticleAsset* ReloadedAsset = UResourceManager::GetInstance().Get<UParticleAsset>(InFilePath);
+	if (ReloadedAsset && GWorld)
+	{
+		UParticleSystem* ReloadedParticleSystem = ReloadedAsset->GetParticleSystem();
+
+		// 월드의 모든 액터를 순회하여 ParticleSystemComponent 찾기
+		for (AActor* Actor : GWorld->GetActors())
+		{
+			if (!Actor || Actor->IsPendingDestroy())
+				continue;
+
+			for (UActorComponent* Component : Actor->GetOwnedComponents())
+			{
+				UParticleSystemComponent* PSC = Cast<UParticleSystemComponent>(Component);
+				if (PSC && PSC->GetTemplate() == ReloadedParticleSystem)
+				{
+					// 재활성화하여 EmitterInstance를 새로 생성
+					PSC->Deactivate();
+					PSC->Activate(true);
+				}
+			}
+		}
+	}
 }
 
 void UParticleAsset::Load(const FString& InFilePath, ID3D11Device* InDevice)

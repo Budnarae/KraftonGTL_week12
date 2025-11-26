@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "ParticleModuleTypeDataRibbon.h"
+#include "ParticleModuleRibbonWidth.h"      // FRibbonWidthParams
+#include "ParticleModuleRibbonColorOverLength.h"  // FRibbonColorParams
 #include "ParticleData.h"
 #include "ParticleEmitterInstance.h"
 #include <algorithm>
@@ -35,7 +37,9 @@ void UParticleModuleTypeDataRibbon::BuildRibbonFromParticles(
     const FVector& EmitterLocation,
     TArray<FVector>& OutPoints,
     TArray<float>& OutWidths,
-    TArray<FLinearColor>& OutColors
+    TArray<FLinearColor>& OutColors,
+    const FRibbonWidthParams* WidthParams,
+    const FRibbonColorParams* ColorParams
 ) const
 {
     OutPoints.Empty();
@@ -116,21 +120,42 @@ void UParticleModuleTypeDataRibbon::BuildRibbonFromParticles(
 
         // Calculate width with taper
         float Width = Data.Width;
-        if (bTaperRibbon)
+        if (WidthParams && WidthParams->bEnabled)
         {
-            // Taper from TaperFactor at tail to full width at head
+            // RibbonWidth 모듈이 있으면 스케일 팩터로 적용
+            float Scale = WidthParams->EvaluateAtT(T);
+            Width = RibbonWidth * Scale;
+        }
+        else if (bTaperRibbon)
+        {
+            // 모듈 없으면 기존 TypeData의 테이퍼 설정 사용
             Width = Data.Width * (TaperFactor + (1.0f - TaperFactor) * T);
         }
 
-        // Apply ribbon color tint to particle color
+        // Apply ribbon color
         FLinearColor FinalColor = Data.Color;
-        FinalColor.R *= RibbonColor.X;
-        FinalColor.G *= RibbonColor.Y;
-        FinalColor.B *= RibbonColor.Z;
-        FinalColor.A *= RibbonColor.W;
 
-        // Fade alpha at tail
-        FinalColor.A *= T;
+        if (ColorParams && ColorParams->bEnabled)
+        {
+            // RibbonColorOverLength 모듈이 있으면 그라데이션 적용
+            FLinearColor GradientColor = ColorParams->EvaluateAtT(T);
+            FinalColor.R *= GradientColor.R;
+            FinalColor.G *= GradientColor.G;
+            FinalColor.B *= GradientColor.B;
+            FinalColor.A *= GradientColor.A;
+        }
+        else
+        {
+            // 모듈 없으면 기존 TypeData의 색상 설정 사용
+            FinalColor.R *= RibbonColor.X;
+            FinalColor.G *= RibbonColor.Y;
+            FinalColor.B *= RibbonColor.Z;
+            FinalColor.A *= RibbonColor.W;
+
+            // Fade alpha at tail (최소 알파 유지하여 완전 투명 방지)
+            float MinAlpha = 0.05f;
+            FinalColor.A *= FMath::Max(T, MinAlpha);
+        }
 
         OutPoints.Add(Data.Location);
         OutWidths.Add(Width);

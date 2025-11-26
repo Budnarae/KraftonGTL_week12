@@ -150,6 +150,7 @@ public:
 
     bool CanEverTick() const { return bCanEverTick; }
 	bool CanTickInEditor() const { return bTickInEditor; }
+
     // ───── 충돌 관련 ─────────────────────────  
     void OnBeginOverlap(UPrimitiveComponent* MyComp, UPrimitiveComponent* OtherComp);
     void OnEndOverlap(UPrimitiveComponent* MyComp, UPrimitiveComponent* OtherComp);

@@ -10,6 +10,13 @@
 #include "ParticleModuleTypeDataBase.h"
 #include "ParticleModuleTypeDataBeam.h"
 #include "ParticleModuleTypeDataRibbon.h"
+#include "ParticleModuleBeamTarget.h"
+#include "ParticleModuleBeamNoise.h"
+#include "ParticleModuleBeamWidth.h"
+#include "ParticleModuleBeamColorOverLength.h"
+#include "ParticleModuleRibbonWidth.h"
+#include "ParticleModuleRibbonColorOverLength.h"
+#include "ParticleModuleColor.h"
 #include "ParticleModuleSpawn.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
@@ -26,6 +33,11 @@
 UParticleSystemComponent::UParticleSystemComponent()
 {
     bCanEverTick = true;
+
+    // 에디터에서도 파티클 시뮬레이션이 실행되도록 설정
+    // (어떤 액터에 붙어있든 에디터 뷰포트에서 실시간 미리보기 제공)
+    bTickInEditor = true;
+
     // BeamBuffers, RibbonBuffers는 TMap으로 자동 초기화됨
 }
 
@@ -187,15 +199,173 @@ void UParticleSystemComponent::SetCurrentLODLevel(const int32 InCurrentLODLevel)
         UE_LOG("[UParticleSystemComponent::SetCurrentLODLevel][Warning] There's no such LOD Level.");
         return;
     }
-    
-    CurrentLODLevel = InCurrentLODLevel;
+
+    // 같은 LOD 레벨이면 아무 작업도 하지 않음
+    if (CurrentLODLevel == InCurrentLODLevel)
+    {
+        return;
+    }
 
     // 템플릿의 하위 에미터들에도 Current Level을 설정한다.
     if (!Template) return;
 
+    // -------------------------------------------
+    // TypeData 일관성 검증 (LOD 간 TypeData가 다르면 경고)
+    // -------------------------------------------
     for (UParticleEmitter* ParticleEmitter : Template->GetEmitters())
     {
+        if (!ParticleEmitter) continue;
+
+        UParticleLODLevel* OldLODLevel = ParticleEmitter->GetParticleLODLevelWithIndex(CurrentLODLevel);
+        UParticleLODLevel* NewLODLevel = ParticleEmitter->GetParticleLODLevelWithIndex(InCurrentLODLevel);
+
+        if (OldLODLevel && NewLODLevel)
+        {
+            UParticleModuleTypeDataBase* OldTypeData = OldLODLevel->GetTypeDataModule();
+            UParticleModuleTypeDataBase* NewTypeData = NewLODLevel->GetTypeDataModule();
+
+            // TypeData 타입이 다르면 경고 (Sprite→Ribbon 등 변경 시 문제 발생)
+            EDynamicEmitterType OldType = OldTypeData ? OldTypeData->GetEmitterType() : EDynamicEmitterType::EDET_Sprite;
+            EDynamicEmitterType NewType = NewTypeData ? NewTypeData->GetEmitterType() : EDynamicEmitterType::EDET_Sprite;
+
+            if (OldType != NewType)
+            {
+                UE_LOG("[UParticleSystemComponent::SetCurrentLODLevel][Warning] "
+                       "Emitter '%s' has different TypeData between LOD %d (%d) and LOD %d (%d). "
+                       "This may cause rendering issues!",
+                       ParticleEmitter->GetEmitterName().c_str(),
+                       CurrentLODLevel, (int)OldType,
+                       InCurrentLODLevel, (int)NewType);
+            }
+        }
+    }
+
+    // -------------------------------------------
+    // Step 1: 기존 파티클 모두 제거 (리플레이 준비)
+    // 언리얼 Cascade 방식: LOD 전환 시 처음부터 다시 시작
+    // -------------------------------------------
+    for (FParticleEmitterInstance* Instance : EmitterInstances)
+    {
+        if (Instance)
+        {
+            Instance->KillAllParticles();
+        }
+    }
+
+    CurrentLODLevel = InCurrentLODLevel;
+
+    // -------------------------------------------
+    // Step 2: 에미터들의 LOD 설정 및 PayloadOffset 재계산
+    // -------------------------------------------
+    TArray<UParticleEmitter*>& Emitters = Template->GetEmitters();
+    for (UParticleEmitter* ParticleEmitter : Emitters)
+    {
         ParticleEmitter->SetCurrentLODLevel(CurrentLODLevel);
+        // 새 LOD의 모듈 구성에 맞게 PayloadOffset 재계산
+        ParticleEmitter->CacheEmitterModuleInfo();
+    }
+
+    // -------------------------------------------
+    // Step 3: EmitterInstance 메모리 재할당
+    // 새 LOD의 ParticleStride에 맞게 메모리 재할당
+    // -------------------------------------------
+    for (int32 i = 0; i < EmitterInstances.Num() && i < Emitters.Num(); ++i)
+    {
+        FParticleEmitterInstance* Instance = EmitterInstances[i];
+        UParticleEmitter* Emitter = Emitters[i];
+
+        if (!Instance || !Emitter) continue;
+
+        // 기존 메모리 해제
+        if (Instance->ParticleData)
+        {
+            free(Instance->ParticleData);
+            Instance->ParticleData = nullptr;
+        }
+
+        // 새 LOD 기준으로 ParticleStride 재계산
+        int32 NewParticleStride = Emitter->GetRequiredMemorySize();
+        Instance->ParticleStride = NewParticleStride;
+
+        // 새 메모리 할당
+        if (Instance->MaxActiveParticles > 0 && NewParticleStride > 0)
+        {
+            Instance->ParticleData = (uint8*)malloc(
+                Instance->MaxActiveParticles * NewParticleStride
+            );
+        }
+
+        // LOD 참조 갱신
+        Instance->CurrentLODLevelIndex = CurrentLODLevel;
+        Instance->CurrentLODLevel = Emitter->GetCurrentLODLevelInstance();
+
+        // EmitterType 갱신 (TypeData가 다를 수 있으므로)
+        UParticleModuleTypeDataBase* TypeDataModule = Instance->CurrentLODLevel ?
+            Instance->CurrentLODLevel->GetTypeDataModule() : nullptr;
+        if (TypeDataModule)
+        {
+            Instance->EmitterType = TypeDataModule->GetEmitterType();
+        }
+        else
+        {
+            Instance->EmitterType = EDynamicEmitterType::EDET_Sprite;
+        }
+
+        // SpawnRate 갱신 (새 LOD의 RequiredModule에서)
+        if (Instance->CurrentLODLevel && Instance->CurrentLODLevel->GetRequiredModule())
+        {
+            Instance->SpawnRate = Instance->CurrentLODLevel->GetRequiredModule()->GetSpawnRate();
+        }
+
+        // 스폰 관련 변수 리셋
+        Instance->SpawnFraction = 0.0f;
+        Instance->SpawnNum = 0;
+        Instance->ActiveParticles = 0;
+    }
+
+    // -------------------------------------------
+    // Step 4: 시뮬레이션 시간 리셋 (처음부터 다시 시작)
+    // -------------------------------------------
+    ElapsedTime = 0.0f;
+    LastLODDistanceCheckTime = 0.0f;
+
+    UE_LOG("[UParticleSystemComponent::SetCurrentLODLevel] LOD changed to %d, replay started.", CurrentLODLevel);
+}
+
+// -------------------------------------------
+// LOD 거리 기반 전환 (LOD Distance-Based Switching)
+// -------------------------------------------
+
+void UParticleSystemComponent::UpdateLODFromDistance(const FVector& CameraLocation)
+{
+    if (!Template)
+    {
+        return;
+    }
+
+    // 강제 LOD 모드에서는 자동 LOD 전환하지 않음 (에디터에서 LOD 미리보기용)
+    if (bOverrideLOD)
+    {
+        return;
+    }
+
+    // DirectSet 모드에서는 자동 LOD 전환하지 않음
+    if (Template->GetLODMethod() == EParticleLODMethod::DirectSet)
+    {
+        return;
+    }
+
+    // 파티클 시스템의 월드 위치와 카메라 간의 거리 계산
+    FVector ParticleLocation = GetWorldLocation();
+    float DistanceToCamera = (CameraLocation - ParticleLocation).Size();
+
+    // 거리에 해당하는 LOD 레벨 결정
+    int32 NewLODLevel = Template->GetLODLevelForDistance(DistanceToCamera);
+
+    // LOD 레벨이 변경되었으면 적용
+    if (NewLODLevel != CurrentLODLevel)
+    {
+        SetCurrentLODLevel(NewLODLevel);
     }
 }
 
@@ -285,9 +455,36 @@ void UParticleSystemComponent::Activate(bool bReset)
         return;
     }
 
-    // TODO: 현재는 최소 구현으로 무조건 LOD == 0이라고 설정한다. 추후 추가 구현 필요
-    // SetCurrentLODLevel을 호출하여 모든 Emitter의 CurrentLODLevel도 함께 설정
-    SetCurrentLODLevel(0);
+    // -------------------------------------------
+    // LOD 초기화 (LODMethod에 따른 분기)
+    // -------------------------------------------
+    EParticleLODMethod LODMethod = Template->GetLODMethod();
+
+    if (LODMethod == EParticleLODMethod::Automatic || LODMethod == EParticleLODMethod::ActivateAutomatic)
+    {
+        // 카메라 위치가 캐시되어 있으면 거리 기반 LOD 설정
+        if (bHasCachedCameraLocation)
+        {
+            UpdateLODFromDistance(CachedCameraLocation);
+        }
+        else if (!bOverrideLOD)
+        {
+            // 카메라 위치가 없으면 기본값 LOD 0
+            // bOverrideLOD가 true면 현재 설정된 LOD 레벨 유지 (에디터 LOD 미리보기용)
+            SetCurrentLODLevel(0);
+        }
+    }
+    else // DirectSet
+    {
+        // DirectSet 모드: 기존 LOD 레벨 유지 (처음이면 0)
+        if (CurrentLODLevel < MIN_PARTICLE_LODLEVEL || CurrentLODLevel >= MAX_PARTICLE_LODLEVEL)
+        {
+            SetCurrentLODLevel(0);
+        }
+    }
+
+    // LOD 거리 체크 타이머 초기화
+    LastLODDistanceCheckTime = 0.0f;
     for (FParticleEmitterInstance* EmitterInstance : EmitterInstances)
     {
         delete EmitterInstance;
@@ -471,6 +668,26 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
 
     ElapsedTime += DeltaTime;
 
+    // -------------------------------------------
+    // LOD 거리 체크 (Automatic 모드)
+    // bOverrideLOD가 true이면 자동 LOD 전환 건너뜀 (에디터에서 직접 LOD 지정)
+    // -------------------------------------------
+    if (Template && Template->GetLODMethod() == EParticleLODMethod::Automatic && !bOverrideLOD)
+    {
+        float LODCheckInterval = Template->GetLODDistanceCheckTime();
+
+        // 주기적으로 LOD 거리 체크 수행
+        if (ElapsedTime - LastLODDistanceCheckTime >= LODCheckInterval)
+        {
+            LastLODDistanceCheckTime = ElapsedTime;
+
+            if (bHasCachedCameraLocation)
+            {
+                UpdateLODFromDistance(CachedCameraLocation);
+            }
+        }
+    }
+
     // 현재 위치 저장
     FVector CurrentLocation = GetWorldLocation();
 
@@ -589,7 +806,7 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
     for (int32 EmitterIndex = 0; EmitterIndex < EmitterInstances.Num(); ++EmitterIndex)
     {
         FParticleEmitterInstance* Instance = EmitterInstances[EmitterIndex];
-        if (!Instance)
+        if (!Instance || !Instance->SpriteTemplate)
         {
             continue;
         }
@@ -618,7 +835,20 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        UShader* ShaderToUse = ParticleMaterial->GetShader();
+        // Beam/Ribbon은 전용 셰이더(Beam.hlsl)를 사용해야 함
+        // RequiredModule의 머티리얼 셰이더(UberLit 등)는 InputLayout이 다르므로 사용 불가
+        // 머티리얼은 텍스처 정보만 사용
+        UShader* ShaderToUse = nullptr;
+        if (EmitterType == EDynamicEmitterType::EDET_Beam || EmitterType == EDynamicEmitterType::EDET_Ribbon)
+        {
+            // Beam/Ribbon 전용 셰이더 사용 (FBillboardVertex InputLayout과 호환)
+            ShaderToUse = UResourceManager::GetInstance().Load<UShader>("Shaders/Effects/Beam.hlsl");
+        }
+        else
+        {
+            ShaderToUse = ParticleMaterial->GetShader();
+        }
+
         if (!ShaderToUse)
         {
             continue;
@@ -635,20 +865,105 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         {
             UParticleModuleTypeDataBeam* BeamModule = static_cast<UParticleModuleTypeDataBeam*>(TypeDataModule);
 
-            // 빔 타겟/소스 위치 동적 업데이트
-            if (BeamTargetActor && BeamModule->GetBeamMethod() == EBeamMethod::Target)
+            // 빔 타겟 위치 결정 (우선순위: BeamTarget 모듈 > BeamTargetActor > TypeData 기본값)
+            // BeamTarget 모듈이 있으면 자동으로 Target 방식 사용
+            UParticleModuleBeamTarget* TargetModule = LODLevel->FindModule<UParticleModuleBeamTarget>();
+            bool bUseTargetMethod = (BeamModule->GetBeamMethod() == EBeamMethod::Target) || (TargetModule != nullptr);
+
+            if (bUseTargetMethod)
             {
-                BeamModule->SetTargetPoint(BeamTargetActor->GetActorLocation());
+                FVector ResolvedTarget;
+                bool bTargetResolved = false;
+
+                // 1순위: BeamTarget 모듈 확인
+                if (TargetModule)
+                {
+                    bTargetResolved = TargetModule->ResolveTargetPoint(this, ResolvedTarget);
+                }
+
+                // 2순위: Component의 BeamTargetActor
+                if (!bTargetResolved && BeamTargetActor)
+                {
+                    ResolvedTarget = BeamTargetActor->GetActorLocation();
+                    bTargetResolved = true;
+                }
+
+                // 타겟이 결정되었으면 적용
+                if (bTargetResolved)
+                {
+                    // BeamMethod를 Target으로 설정하고 타겟 포인트 적용
+                    BeamModule->SetBeamMethod(EBeamMethod::Target);
+                    BeamModule->SetTargetPoint(ResolvedTarget);
+                }
             }
+
+            // 빔 소스 위치 (기존 로직 유지 - 추후 BeamSource 모듈로 분리 가능)
             if (BeamSourceActor)
             {
                 BeamModule->SetSourcePoint(BeamSourceActor->GetActorLocation() - GetWorldLocation());
             }
 
-            // 빔 포인트 계산
+            // 빔 노이즈 파라미터 준비 (모듈이 있으면 가져옴)
+            const FBeamNoiseParams* NoiseParams = nullptr;
+            FBeamNoiseParams NoiseParamsStorage;
+
+            if (UParticleModuleBeamNoise* NoiseModule = LODLevel->FindModule<UParticleModuleBeamNoise>())
+            {
+                if (NoiseModule->GetActive())
+                {
+                    NoiseParamsStorage = NoiseModule->GetParams();
+                    NoiseParams = &NoiseParamsStorage;
+                }
+            }
+
+            // 빔 너비 파라미터 준비 (모듈이 있으면 가져옴)
+            const FBeamWidthParams* WidthParams = nullptr;
+            FBeamWidthParams WidthParamsStorage;
+
+            if (UParticleModuleBeamWidth* WidthModule = LODLevel->FindModule<UParticleModuleBeamWidth>())
+            {
+                if (WidthModule->GetActive())
+                {
+                    WidthParamsStorage = WidthModule->GetParams();
+                    WidthParams = &WidthParamsStorage;
+                }
+            }
+
+            // 빔 컬러 파라미터 준비 (Color 모듈 우선, 없으면 TypeDataBeam의 BeamColor)
+            UParticleModuleColor* ColorModule = LODLevel->FindModule<UParticleModuleColor>();
+
+            // 기본 색상: TypeDataBeam의 BeamColor (흰색 기본)
+            FLinearColor BaseBeamColor(1.0f, 1.0f, 1.0f, 1.0f);
+            if (ColorModule)
+            {
+                // Color 모듈이 있으면 초기 색상 사용
+                FVector ColorVec = ColorModule->GetStartColor().GetValue(ElapsedTime);
+                float Alpha = ColorModule->GetStartAlpha().GetValue(ElapsedTime);
+                if (ColorModule->GetClampAlpha())
+                    Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
+                BaseBeamColor = FLinearColor(ColorVec.X, ColorVec.Y, ColorVec.Z, Alpha);
+            }
+            else
+            {
+                // Color 모듈이 없으면 TypeDataBeam의 BeamColor 사용
+                FVector4 TypeDataColor = BeamModule->GetBeamColor();
+                BaseBeamColor = FLinearColor(TypeDataColor.X, TypeDataColor.Y, TypeDataColor.Z, TypeDataColor.W);
+            }
+
+            // 빔 길이별 색상 모듈 (공간 기반 그라데이션)
+            UParticleModuleBeamColorOverLength* ColorOverLengthModule = LODLevel->FindModule<UParticleModuleBeamColorOverLength>();
+            FBeamColorParams ColorOverLengthParams;
+            bool bHasColorOverLength = (ColorOverLengthModule && ColorOverLengthModule->GetActive());
+            if (bHasColorOverLength)
+            {
+                ColorOverLengthParams = ColorOverLengthModule->GetParams();
+            }
+
+            // 빔 포인트 계산 (nullptr이면 해당 기능 비활성화)
             TArray<FVector> BeamPoints;
             TArray<float> BeamWidths;
-            BeamModule->CalculateBeamPoints(GetWorldLocation(), BeamPoints, BeamWidths, ElapsedTime);
+            FMatrix EmitterRotation = GetWorldTransform().ToRotationScaleMatrix();
+            BeamModule->CalculateBeamPoints(GetWorldLocation(), EmitterRotation, BeamPoints, BeamWidths, ElapsedTime, NoiseParams, WidthParams);
 
             if (BeamPoints.Num() < 2)
                 continue;
@@ -700,13 +1015,28 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 FVector Point = BeamPoints[i];
                 FVector Right = PointRightVectors[i];
                 float Width = BeamWidths[i];
-                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1);
+                float T = static_cast<float>(i) / static_cast<float>(NumPoints - 1);  // 0=시작, 1=끝
+
+                // 정점 색상 = BaseBeamColor (Color 모듈 또는 TypeDataBeam의 BeamColor)
+                FLinearColor VertexColor = BaseBeamColor;
+
+                // ColorOverLength 모듈이 있으면 위치에 따른 그라데이션 적용 (곱연산)
+                if (bHasColorOverLength)
+                {
+                    FLinearColor LengthColor = ColorOverLengthParams.EvaluateAtT(T);
+                    VertexColor.R *= LengthColor.R;
+                    VertexColor.G *= LengthColor.G;
+                    VertexColor.B *= LengthColor.B;
+                    VertexColor.A *= LengthColor.A;
+                }
 
                 Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
-                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+                Vertices[i * 2].UV = FVector2D(T, 0.0f);
+                Vertices[i * 2].Color = VertexColor;
 
                 Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
-                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+                Vertices[i * 2 + 1].UV = FVector2D(T, 1.0f);
+                Vertices[i * 2 + 1].Color = VertexColor;
             }
 
             for (uint32 i = 0; i < NumSegments; ++i)
@@ -754,13 +1084,14 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
             BatchElement.WorldMatrix = FMatrix::Identity();
 
-            FVector4 BeamColor = BeamModule->GetBeamColor();
+            // 정점 색상을 사용하므로 InstanceColor는 GlowIntensity만 적용
+            // (정점 색상이 이미 Color/ColorOverLife 모듈 값을 반영함)
             float GlowIntensity = BeamModule->GetGlowIntensity();
             BatchElement.InstanceColor = FLinearColor(
-                BeamColor.X * GlowIntensity,
-                BeamColor.Y * GlowIntensity,
-                BeamColor.Z * GlowIntensity,
-                BeamColor.W
+                GlowIntensity,
+                GlowIntensity,
+                GlowIntensity,
+                1.0f
             );
 
             BatchElement.UVStart = 0.0f;
@@ -769,11 +1100,24 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             bool bUseTexture = BeamModule->GetUseTexture();
             BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
 
-            if (bUseTexture && ParticleMaterial)
+            if (bUseTexture)
             {
-                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                // BeamModule에 직접 설정된 텍스처 우선 사용
+                if (UTexture* DirectTexture = BeamModule->GetBeamTexture())
                 {
-                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    BatchElement.InstanceShaderResourceView = DirectTexture->GetShaderResourceView();
+                }
+                // 없으면 머티리얼에서 가져옴
+                else if (ParticleMaterial)
+                {
+                    if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                    {
+                        BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    }
+                    else
+                    {
+                        BatchElement.InstanceShaderResourceView = nullptr;
+                    }
                 }
                 else
                 {
@@ -795,10 +1139,36 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         {
             UParticleModuleTypeDataRibbon* RibbonModule = static_cast<UParticleModuleTypeDataRibbon*>(TypeDataModule);
 
+            // 리본 너비 파라미터 준비 (모듈이 있으면 가져옴)
+            const FRibbonWidthParams* WidthParams = nullptr;
+            FRibbonWidthParams WidthParamsStorage;
+
+            if (UParticleModuleRibbonWidth* WidthModule = LODLevel->FindModule<UParticleModuleRibbonWidth>())
+            {
+                if (WidthModule->GetActive())
+                {
+                    WidthParamsStorage = WidthModule->GetParams();
+                    WidthParams = &WidthParamsStorage;
+                }
+            }
+
+            // 리본 길이별 색상 파라미터 준비 (모듈이 있으면 가져옴)
+            const FRibbonColorParams* ColorParams = nullptr;
+            FRibbonColorParams ColorParamsStorage;
+
+            if (UParticleModuleRibbonColorOverLength* ColorModule = LODLevel->FindModule<UParticleModuleRibbonColorOverLength>())
+            {
+                if (ColorModule->GetActive())
+                {
+                    ColorParamsStorage = ColorModule->GetParams();
+                    ColorParams = &ColorParamsStorage;
+                }
+            }
+
             TArray<FVector> RibbonPoints;
             TArray<float> RibbonWidths;
             TArray<FLinearColor> RibbonColors;
-            RibbonModule->BuildRibbonFromParticles(Instance, GetWorldLocation(), RibbonPoints, RibbonWidths, RibbonColors);
+            RibbonModule->BuildRibbonFromParticles(Instance, GetWorldLocation(), RibbonPoints, RibbonWidths, RibbonColors, WidthParams, ColorParams);
 
             if (RibbonPoints.Num() < 2)
                 continue;
@@ -910,11 +1280,24 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             bool bUseTexture = RibbonModule->GetUseTexture();
             BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
 
-            if (bUseTexture && ParticleMaterial)
+            if (bUseTexture)
             {
-                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                // RibbonModule에 직접 설정된 텍스처 우선 사용
+                if (UTexture* DirectTexture = RibbonModule->GetRibbonTexture())
                 {
-                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    BatchElement.InstanceShaderResourceView = DirectTexture->GetShaderResourceView();
+                }
+                // 없으면 머티리얼에서 가져옴
+                else if (ParticleMaterial)
+                {
+                    if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                    {
+                        BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    }
+                    else
+                    {
+                        BatchElement.InstanceShaderResourceView = nullptr;
+                    }
                 }
                 else
                 {

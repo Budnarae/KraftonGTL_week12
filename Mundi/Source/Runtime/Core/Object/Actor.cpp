@@ -57,14 +57,19 @@ void AActor::BeginPlay()
 
 void AActor::Tick(float DeltaSeconds)
 {
-	// 에디터에서 틱 Off면 스킵
-	if (!bTickInEditor && World->bPie == false) return;
-	
+	// 에디터 모드인지 체크 (World에서 이미 Actor의 bTickInEditor 체크 후 호출됨)
+	const bool bIsEditorMode = !World->bPie;
+
 	for (UActorComponent* Comp : OwnedComponents)
 	{
 		if (Comp && Comp->IsComponentTickEnabled())
 		{
-			Comp->TickComponent(DeltaSeconds /*, … 필요 인자*/);
+			// PIE 모드: 모든 컴포넌트 틱
+			// 에디터 모드: 컴포넌트의 bTickInEditor가 true인 것만 틱
+			if (!bIsEditorMode || Comp->CanTickInEditor())
+			{
+				Comp->TickComponent(DeltaSeconds /*, … 필요 인자*/);
+			}
 		}
 	}
 }

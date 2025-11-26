@@ -8,6 +8,9 @@
 
 // Forward declarations
 struct FParticleEmitterInstance;
+class UTexture;
+struct FRibbonWidthParams;
+struct FRibbonColorParams;
 
 /**
  * Ribbon facing mode - how the ribbon faces the camera
@@ -84,6 +87,7 @@ public:
     float GetTextureRepeat() const { return TextureRepeat; }
     bool GetUseTexture() const { return bUseTexture; }
     int32 GetMaxParticlesPerRibbon() const { return MaxParticlesPerRibbon; }
+    UTexture* GetRibbonTexture() const { return RibbonTexture; }
 
     // Setters
     void SetFacingMode(ERibbonFacingMode Value) { FacingMode = Value; }
@@ -94,6 +98,7 @@ public:
     void SetTextureRepeat(float Value) { TextureRepeat = Value; }
     void SetUseTexture(bool Value) { bUseTexture = Value; }
     void SetMaxParticlesPerRibbon(int32 Value) { MaxParticlesPerRibbon = Value; }
+    void SetRibbonTexture(UTexture* Value) { RibbonTexture = Value; }
 
     /**
      * Build ribbon geometry from all active particles in the emitter
@@ -104,13 +109,17 @@ public:
      * @param OutPoints - Output array of ribbon points (sorted by spawn time)
      * @param OutWidths - Output array of widths at each point
      * @param OutColors - Output array of colors at each point
+     * @param WidthParams - Optional width parameters from RibbonWidth module
+     * @param ColorParams - Optional color parameters from RibbonColorOverLength module
      */
     void BuildRibbonFromParticles(
         FParticleEmitterInstance* EmitterInstance,
         const FVector& EmitterLocation,
         TArray<FVector>& OutPoints,
         TArray<float>& OutWidths,
-        TArray<FLinearColor>& OutColors
+        TArray<FLinearColor>& OutColors,
+        const FRibbonWidthParams* WidthParams = nullptr,
+        const FRibbonColorParams* ColorParams = nullptr
     ) const;
 
     // Get payload from particle
@@ -143,6 +152,10 @@ private:
     // Use texture instead of solid color
     UPROPERTY(EditAnywhere, Category="Ribbon|Texture")
     bool bUseTexture = false;
+
+    // Direct texture for ribbon (bypasses material system)
+    UPROPERTY(EditAnywhere, Category="Ribbon|Texture")
+    UTexture* RibbonTexture = nullptr;
 
     // Maximum particles per ribbon (for sorting performance)
     UPROPERTY(EditAnywhere, Category="Ribbon|Performance")
