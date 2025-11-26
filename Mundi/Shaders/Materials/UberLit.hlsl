@@ -171,6 +171,38 @@ struct PS_OUTPUT
 };
 
 //================================================================================================
+// 파티클 공통 헬퍼 함수
+//================================================================================================
+#if defined(PARTICLE_SPRITE) || defined(PARTICLE_MESH)
+
+// Z축 기준 2D 회전 (cosR, sinR 사전 계산)
+float3 RotateZ(float3 v, float cosR, float sinR)
+{
+    float3 result;
+    result.x = v.x * cosR - v.y * sinR;
+    result.y = v.x * sinR + v.y * cosR;
+    result.z = v.z;
+    return result;
+}
+
+// CameraFacing에 따른 최종 위치 계산
+float3 ApplyCameraFacing(float3 localPos, float cameraFacing)
+{
+    if (cameraFacing > 0.5f)
+    {
+        // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
+        return mul(float4(localPos, 0.0f), InverseViewMatrix).xyz;
+    }
+    else
+    {
+        // 회전만 적용 (빌보드 없음)
+        return localPos;
+    }
+}
+
+#endif
+
+//================================================================================================
 // 버텍스 셰이더 (Vertex Shader)
 //================================================================================================
 PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
@@ -179,39 +211,22 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
 
 #ifdef PARTICLE_SPRITE
     // ========================================================================
-    // 파티클 스프라이트 처리 (CameraFacing 플래그에 따라 빌보드 또는 회전 사용)
+    // 파티클 스프라이트 처리 (GPU 인스턴싱)
     // ========================================================================
     FParticleInstanceData particle = g_ParticleInstances[InstanceID];
 
-    // 로컬 위치에 파티클 크기 적용
+    // 로컬 위치에 파티클 크기 적용 및 회전
     float3 scaledPos = Input.Position * float3(particle.Size.x, particle.Size.y, 1.0f);
-
-    // 회전 적용 (Z축 기준)
     float cosR = cos(particle.Rotation);
     float sinR = sin(particle.Rotation);
-    float3 rotatedPos;
-    rotatedPos.x = scaledPos.x * cosR - scaledPos.y * sinR;
-    rotatedPos.y = scaledPos.x * sinR + scaledPos.y * cosR;
-    rotatedPos.z = scaledPos.z;
+    float3 rotatedPos = RotateZ(scaledPos, cosR, sinR);
 
-    // CameraFacing 플래그에 따라 빌보드 또는 회전 사용
-    float3 finalPos;
-    if (particle.CameraFacing > 0.5f)
-    {
-        // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
-        finalPos = mul(float4(rotatedPos, 0.0f), InverseViewMatrix).xyz;
-    }
-    else
-    {
-        // 회전만 적용 (빌보드 없음)
-        finalPos = rotatedPos;
-    }
+    // CameraFacing에 따른 최종 로컬 위치
+    float3 finalPos = ApplyCameraFacing(rotatedPos, particle.CameraFacing);
 
-    // 월드 위치 = 파티클 위치 + 정렬된/회전된 오프셋
+    // 월드 위치 및 투영 변환
     float4 worldPos = float4(particle.Position + finalPos, 1.0f);
     Out.WorldPos = worldPos.xyz;
-
-    // 뷰/프로젝션 변환
     float4 viewPos = mul(worldPos, ViewMatrix);
     Out.Position = mul(viewPos, ProjectionMatrix);
 
@@ -219,7 +234,7 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
     float3 worldNormal = normalize(CameraPosition - Out.WorldPos);
     Out.Normal = worldNormal;
 
-    // TBN 매트릭스 (파티클용 간소화)
+    // TBN 매트릭스 (스프라이트용 간소화)
     float3 Tangent = mul(float4(1, 0, 0, 0), InverseViewMatrix).xyz;
     float3 BiTangent = mul(float4(0, 1, 0, 0), InverseViewMatrix).xyz;
     row_major float3x3 TBN;
@@ -238,81 +253,28 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
     // ========================================================================
     FParticleInstanceData particle = g_ParticleInstances[InstanceID];
 
-    // 로컬 스케일 행렬
-    float4x4 scaleMatrix = float4x4(
-        particle.Size.x, 0, 0, 0,
-        0, particle.Size.y, 0, 0,
-        0, 0, particle.Size.x, 0,  // Z축도 X 크기 사용
-        0, 0, 0, 1
-    );
-
-    // 로컬 회전 행렬 (Z축 기준)
+    // 로컬 스케일 및 회전 적용
+    float3 scaledPos = Input.Position * float3(particle.Size.x, particle.Size.y, particle.Size.x);
     float cosR = cos(particle.Rotation);
     float sinR = sin(particle.Rotation);
-    float4x4 rotationMatrix = float4x4(
-        cosR, -sinR, 0, 0,
-        sinR, cosR, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    );
+    float3 rotatedPos = RotateZ(scaledPos, cosR, sinR);
 
-    // 로컬 변환 적용
-    float4 localPos = mul(float4(Input.Position, 1.0f), scaleMatrix);
-    localPos = mul(localPos, rotationMatrix);
+    // CameraFacing에 따른 최종 로컬 위치
+    float3 finalLocalPos = ApplyCameraFacing(rotatedPos, particle.CameraFacing);
 
-    // CameraFacing 지원
-    float3 finalLocalPos;
-    if (particle.CameraFacing > 0.5f)
-    {
-        // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
-        finalLocalPos = mul(float4(localPos.xyz, 0.0f), InverseViewMatrix).xyz;
-    }
-    else
-    {
-        // 회전만 적용 (빌보드 없음)
-        finalLocalPos = localPos.xyz;
-    }
-
-    // 월드 위치 = 파티클 위치 + 로컬 변환
+    // 월드 위치 및 투영 변환
     float4 worldPos = float4(particle.Position + finalLocalPos, 1.0f);
     Out.WorldPos = worldPos.xyz;
-
-    // 뷰/프로젝션 변환
     float4 viewPos = mul(worldPos, ViewMatrix);
     Out.Position = mul(viewPos, ProjectionMatrix);
 
-    // 노멀 변환 (회전 적용)
-    float3 rotatedNormal;
-    rotatedNormal.x = Input.Normal.x * cosR - Input.Normal.y * sinR;
-    rotatedNormal.y = Input.Normal.x * sinR + Input.Normal.y * cosR;
-    rotatedNormal.z = Input.Normal.z;
-
-    if (particle.CameraFacing > 0.5f)
-    {
-        // 빌보드: 노멀도 InverseViewMatrix로 변환
-        Out.Normal = normalize(mul(float4(rotatedNormal, 0.0f), InverseViewMatrix).xyz);
-    }
-    else
-    {
-        Out.Normal = normalize(rotatedNormal);
-    }
+    // 노멀 변환 (회전 적용 후 CameraFacing)
+    float3 rotatedNormal = RotateZ(Input.Normal, cosR, sinR);
+    Out.Normal = normalize(ApplyCameraFacing(rotatedNormal, particle.CameraFacing));
 
     // TBN 매트릭스 (Tangent 변환)
-    float3 rotatedTangent;
-    rotatedTangent.x = Input.Tangent.x * cosR - Input.Tangent.y * sinR;
-    rotatedTangent.y = Input.Tangent.x * sinR + Input.Tangent.y * cosR;
-    rotatedTangent.z = Input.Tangent.z;
-
-    float3 Tangent;
-    if (particle.CameraFacing > 0.5f)
-    {
-        Tangent = normalize(mul(float4(rotatedTangent, 0.0f), InverseViewMatrix).xyz);
-    }
-    else
-    {
-        Tangent = normalize(rotatedTangent);
-    }
-
+    float3 rotatedTangent = RotateZ(Input.Tangent.xyz, cosR, sinR);
+    float3 Tangent = normalize(ApplyCameraFacing(rotatedTangent, particle.CameraFacing));
     float3 BiTangent = normalize(cross(Tangent, Out.Normal) * Input.Tangent.w);
     row_major float3x3 TBN;
     TBN._m00_m01_m02 = Tangent;

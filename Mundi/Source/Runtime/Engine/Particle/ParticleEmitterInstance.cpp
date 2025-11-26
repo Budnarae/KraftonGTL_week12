@@ -123,7 +123,7 @@ void FParticleEmitterInstance::SpawnParticles
     {
         if (ActiveParticles >= MaxActiveParticles)
         {
-            UE_LOG("[FParticleEmitterInstance::SpawnParticles][Warning] Reached max particle count.");
+            // UE_LOG("[FParticleEmitterInstance::SpawnParticles][Warning] Reached max particle count.");
             break;
         }
 
@@ -196,10 +196,11 @@ void FParticleEmitterInstance::KillParticle(int32 Index)
 
 void FParticleEmitterInstance::KillAllParticles()
 {
-    for (int32 i = ActiveParticles - 1; i >= 0; i--)
+    // KillParticle()이 내부적으로 ActiveParticles--를 하므로
+    // 역순으로 순회하면서 마지막 파티클만 계속 제거
+    while (ActiveParticles > 0)
     {
-        KillParticle(i);
-        ActiveParticles--;
+        KillParticle(ActiveParticles - 1);
     }
 }
 
