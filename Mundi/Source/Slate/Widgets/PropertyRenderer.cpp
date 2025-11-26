@@ -465,6 +465,35 @@ void UPropertyRenderer::CacheResources()
             CachedSoundItems.push_back(path.c_str());
         }
     }
+
+	// 6. ParticleSystem (.uasset)
+	if (CachedParticleSystemPaths.IsEmpty() && CachedParticleSystemItems.IsEmpty())
+	{
+		// "None" 항목 추가
+		CachedParticleSystemPaths.Add("");
+		CachedParticleSystemItems.Add("None");
+
+		// Content/Resources/Particle 디렉토리 스캔
+		const FString ParticleDir = GContentDir + "/Resources/Particle";
+		if (fs::exists(ParticleDir) && fs::is_directory(ParticleDir))
+		{
+			for (const auto& Entry : fs::recursive_directory_iterator(ParticleDir))
+			{
+				if (Entry.is_regular_file() && Entry.path().extension() == ".uasset")
+				{
+					FString Path = WideToUTF8(Entry.path().generic_wstring());
+					CachedParticleSystemPaths.Add(NormalizePath(Path));
+				}
+			}
+		}
+
+		// 콤보박스 아이템 채우기 (파일명만 표시)
+		for (size_t i = 1; i < CachedParticleSystemPaths.size(); ++i)
+		{
+			std::filesystem::path fsPath(UTF8ToWide(CachedParticleSystemPaths[i]));
+			CachedParticleSystemItems.Add(WideToUTF8(fsPath.filename().wstring()));
+		}
+	}
 }
 
 void UPropertyRenderer::ClearResourcesCache()
@@ -702,6 +731,19 @@ bool UPropertyRenderer::RenderObjectPtrProperty(const FProperty& Prop, void* Ins
 		UParticleSystem** ParticleSystemPtr = reinterpret_cast<UParticleSystem**>(ObjPtr);
 		UParticleSystem* CurrentPS = *ParticleSystemPtr;
 
+		// 리소스 캐시가 비어있으면 캐시 수행
+		if (CachedParticleSystemItems.IsEmpty())
+		{
+			CacheResources();
+		}
+
+		// 캐시가 여전히 비어있으면 기본 텍스트 표시
+		if (CachedParticleSystemItems.IsEmpty())
+		{
+			ImGui::Text("%s: <No Particle Systems Found>", Prop.Name);
+			return false;
+		}
+
 		// 현재 선택된 파티클 시스템의 인덱스 찾기
 		int CurrentIndex = 0;
 		if (CurrentPS)
@@ -719,6 +761,12 @@ bool UPropertyRenderer::RenderObjectPtrProperty(const FProperty& Prop, void* Ins
 					}
 				}
 			}
+		}
+
+		// CurrentIndex가 유효한 범위인지 확인
+		if (CurrentIndex < 0 || CurrentIndex >= CachedParticleSystemItems.Num())
+		{
+			CurrentIndex = 0; // "None"으로 기본 설정
 		}
 
 		// 콤보박스 표시

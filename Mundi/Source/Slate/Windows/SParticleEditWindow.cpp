@@ -340,17 +340,6 @@ void SParticleEditWindow::OnRender()
             HoveredWindowType = EHoveredWindowType::Detail;
         }
         ImGui::Text("Detail");
-
-        // ParticleSystemComponent 섹션
-        if (State->ParticleActor && State->ParticleActor->GetParticleSystemComponent())
-        {
-            if (ImGui::CollapsingHeader("Particle System Component", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                UParticleSystemComponent* PSC = State->ParticleActor->GetParticleSystemComponent();
-                UPropertyRenderer::RenderAllProperties(PSC);
-            }
-        }
-
         if (State->SelectedEmitter)
         {
             static char buf[128] = "";
