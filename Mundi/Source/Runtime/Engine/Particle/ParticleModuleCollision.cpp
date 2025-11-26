@@ -292,16 +292,45 @@ bool UParticleModuleCollision::CheckCollisionWithWorld(
                     else if (OtherShape.Kind == EShapeKind::Capsule)
                     {
                         FVector CapsuleUp = OtherTransform.Rotation.RotateVector(FVector(0, 0, 1));
-                        float HalfHeight = OtherShape.Capsule.CapsuleHalfHeight * OtherTransform.Scale3D.Z;
-                        float CapRadius = OtherShape.Capsule.CapsuleRadius * OtherTransform.Scale3D.X;
+                        float ScaledHalfHeight = OtherShape.Capsule.CapsuleHalfHeight * FMath::Abs(OtherTransform.Scale3D.Z);
+                        float CapRadius = OtherShape.Capsule.CapsuleRadius * FMath::Max(FMath::Abs(OtherTransform.Scale3D.X), FMath::Abs(OtherTransform.Scale3D.Y));
+
+                        // 캡슐의 내부 실린더 영역 = HalfHeight - Radius (반구를 제외한 부분)
+                        float CylinderHalfHeight = FMath::Max(0.0f, ScaledHalfHeight - CapRadius);
 
                         FVector CapsuleCenter = OtherTransform.Translation;
-                        float AxisProj = FMath::Clamp(FVector::Dot(HitLocation - CapsuleCenter, CapsuleUp), -HalfHeight, HalfHeight);
-                        FVector ClosestOnAxis = CapsuleCenter + CapsuleUp * AxisProj;
+                        FVector ToHit = HitLocation - CapsuleCenter;
+                        float AxisProj = FVector::Dot(ToHit, CapsuleUp);
+
+                        // 캡슐의 축 위 가장 가까운 점 계산 (실린더 영역 + 반구 중심)
+                        float ClampedAxisProj = FMath::Clamp(AxisProj, -CylinderHalfHeight, CylinderHalfHeight);
+                        FVector ClosestOnAxis = CapsuleCenter + CapsuleUp * ClampedAxisProj;
+
                         FVector ToHitFromAxis = HitLocation - ClosestOnAxis;
                         float DistFromAxis = ToHitFromAxis.Size();
 
-                        OutHitNormal = (DistFromAxis > 0.001f) ? ToHitFromAxis / DistFromAxis : FVector(0, 0, 1);
+                        if (DistFromAxis > 0.001f)
+                        {
+                            // 일반적인 경우: 축에서 파티클 방향으로 Normal 설정
+                            OutHitNormal = ToHitFromAxis / DistFromAxis;
+                        }
+                        else
+                        {
+                            // 파티클이 캡슐 축 위에 있는 경우: 이동 방향 또는 축 수직 방향 사용
+                            FVector MoveDir = (NewLocation - OldLocation).GetSafeNormal();
+                            FVector MovePerpendicular = MoveDir - CapsuleUp * FVector::Dot(MoveDir, CapsuleUp);
+                            if (MovePerpendicular.SizeSquared() > 0.001f)
+                            {
+                                OutHitNormal = -MovePerpendicular.GetSafeNormal();
+                            }
+                            else
+                            {
+                                // 이동 방향도 축과 평행한 경우: 임의의 수직 방향 선택
+                                FVector Arbitrary = FMath::Abs(CapsuleUp.Z) < 0.9f ? FVector(0, 0, 1) : FVector(1, 0, 0);
+                                OutHitNormal = FVector::Cross(CapsuleUp, Arbitrary).GetSafeNormal();
+                            }
+                        }
+
                         OutHitLocation = ClosestOnAxis + OutHitNormal * CapRadius;
                     }
 
