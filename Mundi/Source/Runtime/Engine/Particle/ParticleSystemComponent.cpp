@@ -10,6 +10,7 @@
 #include "ParticleModuleTypeDataBase.h"
 #include "ParticleModuleTypeDataBeam.h"
 #include "ParticleModuleTypeDataRibbon.h"
+#include "ParticleModuleSpawn.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
 #include "ResourceManager.h"
@@ -332,10 +333,41 @@ void UParticleSystemComponent::Activate(bool bReset)
             Instance->MaxActiveParticles * Instance->ParticleStride
         );
 
-        // 런타입 파티클 생성 관리
-        Instance->SpawnRate =
-            Emitter->GetCurrentLODLevelInstance()->GetRequiredModule()->GetSpawnRate();
+        // 런타임 파티클 생성 관리
+        UParticleLODLevel* LODLevel = Emitter->GetCurrentLODLevelInstance();
+
+        // SpawnModule 검색
+        UParticleModuleSpawn* SpawnModule = nullptr;
+        for (UParticleModule* Module : LODLevel->GetSpawnModule())
+        {
+            SpawnModule = Cast<UParticleModuleSpawn>(Module);
+            if (SpawnModule && SpawnModule->GetActive())
+            {
+                break;
+            }
+        }
+
+        // SpawnModule이 있으면 그쪽 사용, 없으면 RequiredModule 사용
+        if (SpawnModule)
+        {
+            Instance->SpawnRate = SpawnModule->GetMaxSpawnRate();
+
+            // BurstFired 배열 초기화
+            int32 BurstCount = SpawnModule->GetBurstCount();
+            Instance->BurstFired.SetNum(BurstCount);
+            for (int32 i = 0; i < BurstCount; ++i)
+            {
+                Instance->BurstFired[i] = false;
+            }
+        }
+        else
+        {
+            Instance->SpawnRate = LODLevel->GetRequiredModule()->GetSpawnRate();
+        }
+
         Instance->Duration = Emitter->GetCalculatedDuration();
+        Instance->EmitterTime = 0.0f;
+        Instance->EmitterDuration = LODLevel->GetRequiredModule()->GetEmitterDuration();
         
         EmitterInstances.Add(Instance);
     }
@@ -459,7 +491,25 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
             // 기존 파티클 업데이트 (수명 체크 등)
             Instance->Update(DeltaTime);
 
-            // 스폰 수 결정: 거리 기반 vs 시간 기반
+            // EmitterTime 업데이트
+            Instance->EmitterTime += DeltaTime;
+
+            // SpawnModule 검색
+            UParticleLODLevel* LODLevel = Instance->CurrentLODLevel;
+            UParticleModuleSpawn* SpawnModule = nullptr;
+            if (LODLevel)
+            {
+                for (UParticleModule* Module : LODLevel->GetSpawnModule())
+                {
+                    SpawnModule = Cast<UParticleModuleSpawn>(Module);
+                    if (SpawnModule && SpawnModule->GetActive())
+                    {
+                        break;
+                    }
+                }
+            }
+
+            // 스폰 수 결정: 거리 기반 vs 시간 기반 vs SpawnModule
             if (DistancePerSpawn > 0.0f)
             {
                 // 거리 기반 스폰
@@ -468,7 +518,32 @@ void UParticleSystemComponent::TickComponent(float DeltaTime)
                 AccumulatedDistance -= SpawnsNeeded * DistancePerSpawn;
                 Instance->SpawnNum = SpawnsNeeded;
             }
-            // else: 시간 기반은 Update()에서 이미 SpawnNum 계산됨
+            else if (SpawnModule)
+            {
+                // SpawnModule이 있으면 GetSpawnAmount() 사용
+                float NewLeftover = 0.0f;
+                Instance->SpawnNum = 0;
+
+                SpawnModule->GetSpawnAmount(
+                    Instance->EmitterTime,
+                    Instance->SpawnFraction,
+                    DeltaTime,
+                    Instance->SpawnNum,
+                    NewLeftover
+                );
+
+                Instance->SpawnFraction = NewLeftover;
+
+                // Burst 스폰 추가
+                int32 BurstCount = SpawnModule->GetBurstCount(
+                    Instance->EmitterTime,
+                    Instance->EmitterDuration,
+                    Instance->BurstFired
+                );
+
+                Instance->SpawnNum += BurstCount;
+            }
+            // else: SpawnModule이 없으면 기존 SpawnRate 사용 (Update()에서 이미 계산됨)
 
             // Increment 계산 (파티클들이 시간/공간적으로 균등 분산)
             float Increment = (Instance->SpawnNum > 0) ? (DeltaTime / Instance->SpawnNum) : 0.0f;

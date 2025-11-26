@@ -51,9 +51,12 @@ public:
     float SpawnRate{};              // 파티클 스폰 레이트 (초당 개수)
     int32 SpawnNum{};               // 이번 프레임에 스폰할 파티클의 개수
     float SpawnFraction{};          // 다음 프레임에 합산할 소수부 나머지
+    TArray<bool> BurstFired;        // Burst 발사 추적 배열 (각 버스트의 발사 여부 기록)
 
+    float EmitterTime{};            // 현재 에미터 경과 시간 (초)
+    float EmitterDuration{};        // 에미터 전체 지속 시간 (초, 0이면 무한 루프)
     float Duration{};
-    
+
     int32 ActiveParticles{};        // 현재 시뮬레이션 루프에서 실제 활성화된 파티클의 수 (현재 카운트).
 
     // 파티클 갱신 함수 (Update 모듈 호출)

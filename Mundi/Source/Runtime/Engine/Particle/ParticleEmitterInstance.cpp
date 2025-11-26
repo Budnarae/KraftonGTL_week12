@@ -62,6 +62,9 @@ void FParticleEmitterInstance::CopyFrom(const FParticleEmitterInstance& Other)
     SpawnRate = Other.SpawnRate;
     SpawnNum = Other.SpawnNum;
     SpawnFraction = Other.SpawnFraction;
+    BurstFired = Other.BurstFired;
+    EmitterTime = Other.EmitterTime;
+    EmitterDuration = Other.EmitterDuration;
     Duration = Other.Duration;
     ActiveParticles = Other.ActiveParticles;
 

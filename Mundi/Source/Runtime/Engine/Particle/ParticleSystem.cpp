@@ -3,7 +3,8 @@
 
 UParticleSystem::UParticleSystem()
 {
-
+    // 기본 에미터 추가
+    AddEmitter(NewObject<UParticleEmitter>());
 }
 
 // 새 Emitter를 시스템에 추가합니다. (에디터 기능)
