@@ -2,7 +2,7 @@
 #include "Source/Runtime/Engine/Particle/ParticleSystem.h"
 #include "Source/Runtime/Engine/GameFramework/ParticleSystemActor.h"
 #include "Source/Runtime/Engine/GameFramework/AmbientLightActor.h"
-class UWorld; class FViewport; class FViewportClient;
+class UWorld; class FViewport; class FViewportClient; class UParticleLODLevel;
 
 class ParticleViewerState
 {
@@ -16,6 +16,14 @@ public:
 	FString ParticlePath;
 	UParticleEmitter* SelectedEmitter = nullptr;
 	UParticleModule* SelectedModule = nullptr;
+	int32 SelectedLODLevel = 0;  // 현재 편집 중인 LOD 레벨
+
+	// 선택된 LOD 레벨 접근자
+	int32 GetSelectedLODLevel() const { return SelectedLODLevel; }
+	void SetSelectedLODLevel(int32 InLODLevel);
+
+	// 선택된 에미터의 현재 LOD 레벨 가져오기
+	UParticleLODLevel* GetSelectedLODLevelInstance() const;
 
 	const char* GetPathConstChar() { return ParticlePath.empty() ? "None" : ParticlePath.c_str(); }
 	void LoadCachedParticle(const FString& Path);

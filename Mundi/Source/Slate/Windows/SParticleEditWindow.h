@@ -139,6 +139,7 @@ private:
     void RemoveModule();
     void RemoveEmitter();
 
+    void DrawLODSelector();  // LOD 선택 UI
     void DrawEmitterView();
     void DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size);
     void DrawEmitterDropdown();

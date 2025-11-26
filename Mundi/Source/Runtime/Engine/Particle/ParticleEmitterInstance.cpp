@@ -8,6 +8,14 @@
 FParticleEmitterInstance::~FParticleEmitterInstance()
 {
     KillAllParticles();
+
+    // ParticleData 메모리 해제
+    // (Deactivate()에서 이미 해제했으면 nullptr이므로 안전)
+    if (ParticleData)
+    {
+        free(ParticleData);
+        ParticleData = nullptr;
+    }
 }
 
 // ============================================================================
@@ -91,6 +99,9 @@ void FParticleEmitterInstance::Update(float DeltaTime)
     UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
     TArray<UParticleModule*>& UpdateModules = LODLevel->GetUpdateModule();
 
+    // 현재 LOD 인덱스 가져오기
+    const int32 CurrentLOD = CurrentLODLevelIndex;
+
     for (int32 Index = ActiveParticles - 1; Index >= 0; Index--)
     {
         DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
@@ -98,14 +109,17 @@ void FParticleEmitterInstance::Update(float DeltaTime)
         // FParticleContext 생성
         FParticleContext Context(ParticleBase, OwnerComponent);
 
+        // RequiredModule은 항상 실행 (LOD 체크 없음)
         if (RequiredModule)
         {
             RequiredModule->Update(Context, DeltaTime);
         }
 
+        // UpdateModule은 LOD별 활성화 상태 체크
         for (UParticleModule* UpdateModule : UpdateModules)
         {
-            if (UpdateModule && UpdateModule->GetActive())
+            // ShouldExecuteInLOD: bActive && bEnabledInLOD[CurrentLOD] 모두 체크
+            if (UpdateModule && UpdateModule->ShouldExecuteInLOD(CurrentLOD))
             {
                 UpdateModule->Update(Context, DeltaTime);
             }
@@ -141,6 +155,9 @@ void FParticleEmitterInstance::SpawnParticles
     UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
     TArray<UParticleModule*>& SpawnModules = LODLevel->GetSpawnModule();
     UParticleModuleTypeDataBase* TypeDataModule = LODLevel->GetTypeDataModule();
+
+    // 현재 LOD 인덱스 가져오기
+    const int32 CurrentLOD = CurrentLODLevelIndex;
 
     // Ribbon/Trail 에미터인지 확인 (파티클 재활용 필요)
     bool bIsRibbonEmitter = TypeDataModule &&
@@ -210,23 +227,24 @@ void FParticleEmitterInstance::SpawnParticles
         // FParticleContext 생성
         FParticleContext Context(&ParticleBase, OwnerComponent);
 
-        // RequiredModule의 Spawn 호출 (필수)
+        // RequiredModule의 Spawn 호출 (필수, LOD 체크 없음)
         if (RequiredModule)
         {
             RequiredModule->Spawn(Context, StartTime);
         }
 
-        // 추가 SpawnModules 호출
+        // 추가 SpawnModules 호출 (LOD별 활성화 상태 체크)
         for (UParticleModule* Module : SpawnModules)
         {
-            if (Module && Module->GetActive())
+            // ShouldExecuteInLOD: bActive && bEnabledInLOD[CurrentLOD] 모두 체크
+            if (Module && Module->ShouldExecuteInLOD(CurrentLOD))
             {
                 Module->Spawn(Context, StartTime);
             }
         }
 
         // TypeDataModule의 Spawn 호출 (Ribbon/Beam 등에서 SpawnTime 설정)
-        // Index * Increment로 시간 분산하여 각 파티클이 고유한 SpawnTime을 가짐
+        // TypeData는 항상 실행 (LOD 체크 없음 - 렌더링 타입은 고정)
         if (TypeDataModule)
         {
             TypeDataModule->Spawn(Context, StartTime + (float)Index * Increment);
