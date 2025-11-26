@@ -15,6 +15,7 @@
 #include "../Particle/ParticleData.h"
 #include "../Particle/ParticleModuleTypeDataBeam.h"
 #include "../Particle/ParticleModuleTypeDataRibbon.h"
+#include "../Particle/ParticleModuleTypeDataMesh.h"
 #include "Material.h"
 #include "ResourceManager.h"
 #include "StaticMesh.h"
@@ -30,6 +31,7 @@ AParticleSystemActor::AParticleSystemActor()
 	// ============================================================
 	// TEST CODE - MESH EMITTER
 	// 메시 에미터 기능 테스트
+	// TypeDataMesh를 추가하면 자동으로 Mesh 타입으로 변경됨
 	// ============================================================
 	/*
 	{
@@ -46,18 +48,16 @@ AParticleSystemActor::AParticleSystemActor()
 		UParticleLODLevel* TestLODLevel = TestEmitter->GetParticleLODLevelWithIndex(0);
 		if (TestLODLevel)
 		{
-			// 4. Required Module 설정
-			UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
-			if (RequiredModule)
+			// 4. TypeDataMesh 생성 및 설정 (자동으로 Mesh 타입으로 변경됨!)
+			UParticleModuleTypeDataMesh* MeshTypeData = NewObject<UParticleModuleTypeDataMesh>();
+			if (MeshTypeData)
 			{
 				// 렌더링할 메시 로드 및 설정 (apple_mid 사용)
 				UStaticMesh* MeshToUse = UResourceManager::GetInstance().Load<UStaticMesh>(GResourceDir + "/bitten_apple_mid.umesh");
 				if (MeshToUse)
 				{
-					RequiredModule->SetMesh(MeshToUse);
-					UE_LOG("[ParticleSystemActor] Mesh loaded and set to RequiredModule: %s", MeshToUse->GetAssetPathFileName().c_str());
-					UE_LOG("[ParticleSystemActor] Mesh buffers - VB: %p, IB: %p, IndexCount: %d",
-						MeshToUse->GetVertexBuffer(), MeshToUse->GetIndexBuffer(), MeshToUse->GetIndexCount());
+					MeshTypeData->SetMesh(MeshToUse);
+					UE_LOG("[ParticleSystemActor] Mesh loaded: %s", MeshToUse->GetAssetPathFileName().c_str());
 
 					// 메시의 GroupInfo에서 Material 정보 가져오기
 					if (MeshToUse->HasMaterial())
@@ -65,11 +65,16 @@ AParticleSystemActor::AParticleSystemActor()
 						const TArray<FGroupInfo>& GroupInfos = MeshToUse->GetMeshGroupInfo();
 						if (!GroupInfos.empty() && !GroupInfos[0].InitialMaterialName.empty())
 						{
-							UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>(GroupInfos[0].InitialMaterialName);
-							if (ParticleMaterial)
+							// Required Module에 머티리얼 설정
+							UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
+							if (RequiredModule)
 							{
-								RequiredModule->SetMaterial(ParticleMaterial);
-								UE_LOG("[ParticleSystemActor] Material loaded from mesh GroupInfo: %s", GroupInfos[0].InitialMaterialName.c_str());
+								UMaterial* ParticleMaterial = UResourceManager::GetInstance().Load<UMaterial>(GroupInfos[0].InitialMaterialName);
+								if (ParticleMaterial)
+								{
+									RequiredModule->SetMaterial(ParticleMaterial);
+									UE_LOG("[ParticleSystemActor] Material loaded from mesh: %s", GroupInfos[0].InitialMaterialName.c_str());
+								}
 							}
 						}
 					}
@@ -79,6 +84,14 @@ AParticleSystemActor::AParticleSystemActor()
 					UE_LOG("[ParticleSystemActor] ERROR: Failed to load apple_mid for mesh emitter!");
 				}
 
+				// === 핵심: TypeDataMesh를 LODLevel에 설정하면 자동으로 Mesh & Material이 설정됨 ===
+				TestLODLevel->SetTypeDataModule(MeshTypeData);
+			}
+
+			// 5. Required Module 기본 설정
+			UParticleModuleRequired* RequiredModule = TestLODLevel->GetRequiredModule();
+			if (RequiredModule)
+			{
 				RequiredModule->SetSpawnRate(5.0f);   // 초당 5개 (메시는 무거우니 적게)
 				RequiredModule->SetLifeTime(5.0f);    // 5초 수명
 				RequiredModule->SetEmitterDuration(0.0f);
@@ -86,7 +99,7 @@ AParticleSystemActor::AParticleSystemActor()
 				RequiredModule->SetEnableCameraFacing(false);  // 메시는 빌보드 비활성화
 			}
 
-			// 5. Location Module
+			// 6. Location Module
 			UParticleModuleLocation* LocationModule = NewObject<UParticleModuleLocation>();
 			if (LocationModule)
 			{
@@ -94,7 +107,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(LocationModule);
 			}
 
-			// 6. Velocity Module
+			// 7. Velocity Module
 			UParticleModuleVelocity* VelocityModule = NewObject<UParticleModuleVelocity>();
 			if (VelocityModule)
 			{
@@ -104,7 +117,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(VelocityModule);
 			}
 
-			// 7. Spawn Module
+			// 8. Spawn Module
 			UParticleModuleSpawn* SpawnModule = NewObject<UParticleModuleSpawn>();
 			if (SpawnModule)
 			{
@@ -114,7 +127,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(SpawnModule);
 			}
 
-			// 8. Lifetime Module
+			// 9. Lifetime Module
 			UParticleModuleLifetime* LifetimeModule = NewObject<UParticleModuleLifetime>();
 			if (LifetimeModule)
 			{
@@ -122,7 +135,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(LifetimeModule);
 			}
 
-			// 9. Color Module (랜덤 투명도 적용)
+			// 10. Color Module (랜덤 투명도 적용)
 			UParticleModuleColor* ColorModule = NewObject<UParticleModuleColor>();
 			if (ColorModule)
 			{
@@ -131,7 +144,7 @@ AParticleSystemActor::AParticleSystemActor()
 				TestLODLevel->AddSpawnModule(ColorModule);
 			}
 
-			// 10. Size Module
+			// 11. Size Module
 			UParticleModuleSize* SizeModule = NewObject<UParticleModuleSize>();
 			if (SizeModule)
 			{
@@ -147,17 +160,8 @@ AParticleSystemActor::AParticleSystemActor()
 		ParticleSystemComponent->SetTemplate(TestTemplate);
 
 		// 파티클 시스템 활성화
+		// === TypeDataMesh가 설정되어 있으면 자동으로 Mesh 타입으로 렌더링됨! ===
 		ParticleSystemComponent->Activate(false);
-
-		// Activate 직후 EmitterInstance를 Mesh Emitter로 설정
-		TArray<FParticleEmitterInstance*>& Instances = ParticleSystemComponent->GetSystemInstance();
-		if (!Instances.empty() && Instances[0])
-		{
-			FParticleEmitterInstance* Instance = Instances[0];
-
-			// 에미터 타입을 Mesh로 변경
-			Instance->EmitterType = EDET_Mesh;
-		}
 	}
 	*/
 	// ============================================================
@@ -166,8 +170,11 @@ AParticleSystemActor::AParticleSystemActor()
 
 	// ============================================================
 	// SPRITE EMITTER TEST CODE
-	// 스프라이트 에미터를 테스트하려면 위의 메시 에미터 코드를 주석 처리하고
-	// 아래 코드의 주석을 해제하세요.
+	// 스프라이트 에미터를 테스트하려면:
+	// 1. 위의 메시 에미터 코드를 주석 처리 (/* */)
+	// 2. 아래 코드의 주석을 해제
+	//
+	// TypeDataModule이 없으면 기본적으로 Sprite로 렌더링됩니다.
 	// ============================================================
 	/*
 	{
