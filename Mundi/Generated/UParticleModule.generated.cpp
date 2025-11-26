@@ -35,8 +35,8 @@ const bool UParticleModule::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleModule)
     MARK_AS_COMPONENT("파티클 모듈", "파티클을 조작하는 기능을 맡습니다.")
+    ADD_PROPERTY(bool, bActive, "Active", true)
 END_PROPERTIES()
-
 
 // ===== Lua Binding =====
 
