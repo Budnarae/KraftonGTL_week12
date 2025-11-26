@@ -11,6 +11,7 @@
 #include "AmbientLightComponent.h"
 #include "World.h"
 #include "JsonSerializer.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 
 static inline FString RemoveObjExtension(const FString& FileName)
 {
@@ -131,6 +132,18 @@ void ULevel::Serialize(const bool bInIsLoading, JSON& InOutHandle)
                 if (NewActor)
                 {
                     NewActor->Serialize(bInIsLoading, ActorDataJson);
+                }
+            }
+
+            // 씬 로드 후 ParticleSystemComponent들 활성화
+            for (AActor* Actor : Actors)
+            {
+                if (UParticleSystemComponent* PSC = Cast<UParticleSystemComponent>(Actor->GetComponent(UParticleSystemComponent::StaticClass())))
+                {
+                    if (PSC->GetTemplate())
+                    {
+                        PSC->Activate(true);
+                    }
                 }
             }
         }
