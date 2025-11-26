@@ -4,7 +4,7 @@
 #include "Source/Runtime/AssetManagement/ResourceManager.h"
 #include <filesystem>
 
-const std::filesystem::path UParticleAsset::FolderPath = GContentDir + "/Resources/Particle";
+const std::filesystem::path UParticleAsset::FolderPath = GDataDir + "/Particle";
 const FWideString UParticleAsset::Extension = L".uasset";
 const FWideString UParticleAsset::Desc = L"Particle Files";
 IMPLEMENT_ASSET_CLASS(UParticleAsset)
