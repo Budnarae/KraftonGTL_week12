@@ -38,6 +38,33 @@ public:
     UParticleModuleTypeDataBase* GetTypeDataModule() const { return TypeDataModule; }
     void SetTypeDataModule(UParticleModuleTypeDataBase* InTypeDataModule) { TypeDataModule = InTypeDataModule; }
 
+    // Find module by type in all module arrays (Spawn, Update)
+    template<typename T>
+    T* FindModule() const
+    {
+        static_assert(std::is_base_of_v<UParticleModule, T>, "T must be derived from UParticleModule");
+
+        // Search in SpawnModules
+        for (UParticleModule* Module : SpawnModules)
+        {
+            if (T* Found = Cast<T>(Module))
+            {
+                return Found;
+            }
+        }
+
+        // Search in UpdateModules
+        for (UParticleModule* Module : UpdateModules)
+        {
+            if (T* Found = Cast<T>(Module))
+            {
+                return Found;
+            }
+        }
+
+        return nullptr;
+    }
+
     void Serialize(const bool bInIsLoading, JSON& InOutHandle);
 
 private:

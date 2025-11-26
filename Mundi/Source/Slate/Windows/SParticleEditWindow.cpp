@@ -19,6 +19,13 @@
 #include "Source/Runtime/Engine/Particle/ParticleModuleCollision.h"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSizeOverLife.h"
 #include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamTarget.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamNoise.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamWidth.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleBeamColorOverLength.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBase.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataBeam.h"
+#include "Source/Runtime/Engine/Particle/ParticleModuleTypeDataRibbon.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -60,6 +67,9 @@ void FMenuAction::Action(SParticleEditWindow* ParticleEditWindow) const
         break;
     case EMenuActionType::AddUpdateModule:
         ParticleEditWindow->AddUpdateModule(ClassName);
+        break;
+    case EMenuActionType::SetTypeData:
+        ParticleEditWindow->SetTypeDataModule(ClassName);
         break;
     }
 }
@@ -109,6 +119,21 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
         {"콜리전", FMenuAction::CreateSpawnModule(UParticleModuleCollision::StaticClass()->Name)},
     }
     },
+    {"빔",
+    {
+        {"빔 타겟", FMenuAction::CreateSpawnModule(UParticleModuleBeamTarget::StaticClass()->Name)},
+        {"빔 노이즈", FMenuAction::CreateSpawnModule(UParticleModuleBeamNoise::StaticClass()->Name)},
+        {"빔 너비", FMenuAction::CreateSpawnModule(UParticleModuleBeamWidth::StaticClass()->Name)},
+        {"빔 길이별 색상", FMenuAction::CreateSpawnModule(UParticleModuleBeamColorOverLength::StaticClass()->Name)},
+    }
+    },
+    {"타입 데이터",
+    {
+        {"스프라이트 (기본)", FMenuAction::CreateSetTypeData("")},  // nullptr = Sprite (default)
+        {"빔", FMenuAction::CreateSetTypeData(UParticleModuleTypeDataBeam::StaticClass()->Name)},
+        {"리본", FMenuAction::CreateSetTypeData(UParticleModuleTypeDataRibbon::StaticClass()->Name)},
+    }
+    },
 };
 
 
@@ -117,19 +142,50 @@ void SParticleEditWindow::AddEmitter(const int EmitterOffset)
     if (State->GetCachedParticle())
     {
         State->GetCachedParticle()->AddEmitter(NewObject<UParticleEmitter>());
+        ReStart();  // 새 이미터에 대한 EmitterInstance 생성을 위해 재활성화
     }
 }
 void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
 {
-    if (State->SelectedEmitter)
+    UE_LOG("[AddSpawnModule] ClassName: %s", ClassName.c_str());
+
+    if (!State->SelectedEmitter)
     {
-        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
-        UObject* obj = NewObject(UClass::FindClass(ClassName));
-        if (UParticleModule* Module = Cast<UParticleModule>(obj))
-        {
-            LOD->AddSpawnModule(Module);
-        }
+        UE_LOG("[AddSpawnModule] ERROR: No emitter selected!");
+        return;
     }
+
+    UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+    if (!LOD)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: LOD is null!");
+        return;
+    }
+
+    UClass* FoundClass = UClass::FindClass(ClassName);
+    if (!FoundClass)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: Class not found: %s", ClassName.c_str());
+        return;
+    }
+
+    UObject* obj = NewObject(FoundClass);
+    if (!obj)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: Failed to create object!");
+        return;
+    }
+
+    UParticleModule* Module = Cast<UParticleModule>(obj);
+    if (!Module)
+    {
+        UE_LOG("[AddSpawnModule] ERROR: Cast to UParticleModule failed!");
+        return;
+    }
+
+    LOD->AddSpawnModule(Module);
+    UE_LOG("[AddSpawnModule] SUCCESS: Added module %s, SpawnModules count: %d",
+           ClassName.c_str(), LOD->GetSpawnModule().Num());
 }
 void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
 {
@@ -144,6 +200,32 @@ void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
     }
 }
 
+void SParticleEditWindow::SetTypeDataModule(const FString& ClassName)
+{
+    if (State->SelectedEmitter)
+    {
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+
+        // 빈 문자열이면 스프라이트 (기본값) - TypeData를 nullptr로 설정
+        if (ClassName.empty())
+        {
+            LOD->SetTypeDataModule(nullptr);
+        }
+        else
+        {
+            // 새 TypeData 모듈 생성
+            UObject* obj = NewObject(UClass::FindClass(ClassName));
+            if (UParticleModuleTypeDataBase* TypeData = Cast<UParticleModuleTypeDataBase>(obj))
+            {
+                LOD->SetTypeDataModule(TypeData);
+            }
+        }
+
+        // TypeData 변경 후 파티클 시스템 재활성화
+        ReStart();
+    }
+}
+
 void SParticleEditWindow::RemoveEmitter()
 {
     if (State->SelectedEmitter)
@@ -151,6 +233,7 @@ void SParticleEditWindow::RemoveEmitter()
         State->GetCachedParticle()->RemoveEmitter(State->SelectedEmitter);
         State->SelectedEmitter = nullptr;
         State->SelectedModule = nullptr;
+        ReStart();  // 삭제된 이미터의 EmitterInstance 정리를 위해 재활성화
     }
 }
 void SParticleEditWindow::RemoveModule()
@@ -173,6 +256,24 @@ void SParticleEditWindow::RemoveModule()
 void SParticleEditWindow::ResetModule()
 {
 
+}
+
+void SParticleEditWindow::ReStart()
+{
+    // 파티클 시스템 재활성화 (TypeData 변경 등 적용)
+    if (State && State->ParticleActor)
+    {
+        UParticleSystemComponent* PSC = State->ParticleActor->GetParticleSystemComponent();
+        if (PSC)
+        {
+            PSC->Activate(true);  // bReset = true로 완전 재시작
+        }
+    }
+}
+
+void SParticleEditWindow::Save()
+{
+    // TODO: 저장 로직 구현
 }
 
 
@@ -521,6 +622,14 @@ void SParticleEditWindow::DrawEmitterView()
         
 
         DrawModuleInEmitterView(Emitter, RequireModule, RequireModuleSize);
+
+        // TypeDataModule 표시 (RequiredModule 바로 아래)
+        UParticleModuleTypeDataBase* TypeDataModule = ParticleLOD->GetTypeDataModule();
+        if (TypeDataModule)
+        {
+            DrawModuleInEmitterView(Emitter, TypeDataModule, ModuleSize);
+        }
+
         for (UParticleModule* Module : SpawnModules)
         {
             DrawModuleInEmitterView(Emitter, Module, ModuleSize);

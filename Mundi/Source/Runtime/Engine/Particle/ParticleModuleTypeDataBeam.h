@@ -34,6 +34,10 @@ enum class EBeamNoiseAlgorithm : uint8
     PerlinNoise             // Perlin 노이즈 (부드러운 출렁임)
 };
 
+// Forward declarations
+struct FBeamNoiseParams;
+struct FBeamWidthParams;
+
 /**
  * TypeData module for Beam emitters
  * Defines how beams are generated and rendered
@@ -96,11 +100,15 @@ public:
     void SetNoiseAlgorithm(EBeamNoiseAlgorithm Value) { NoiseAlgorithm = Value; }
 
     // Calculate beam points for rendering
+    // NoiseParams: if not null, apply noise with these parameters; if null, no noise
+    // WidthParams: if not null, apply width with these parameters; if null, use internal BeamWidth
     void CalculateBeamPoints(
         const FVector& EmitterLocation,
         TArray<FVector>& OutPoints,
         TArray<float>& OutWidths,
-        float Time = 0.0f
+        float Time = 0.0f,
+        const FBeamNoiseParams* NoiseParams = nullptr,
+        const FBeamWidthParams* WidthParams = nullptr
     ) const;
 
 private:

@@ -57,9 +57,9 @@ private:
     FString EmitterName;
 
     inline static constexpr int32 INVALID = -1;
-    
-    // 처음에는 에미터가 비어있으므로 유효하지 않은 값을 가리킨다.
-    int32 CurrentLODLevel = INVALID;
+
+    // LODLevels가 생성자에서 MAX_PARTICLE_LODLEVEL까지 초기화되므로 기본 LODLevel을 0으로 설정
+    int32 CurrentLODLevel = 0;
 
     // 이 에미터가 지원하는 모든 LOD 레벨 리스트 (필수)
     UPROPERTY(EditAnywhere, Category = "Array")

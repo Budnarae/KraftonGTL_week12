@@ -10,6 +10,11 @@
 #include "ParticleModuleTypeDataBase.h"
 #include "ParticleModuleTypeDataBeam.h"
 #include "ParticleModuleTypeDataRibbon.h"
+#include "ParticleModuleBeamTarget.h"
+#include "ParticleModuleBeamNoise.h"
+#include "ParticleModuleBeamWidth.h"
+#include "ParticleModuleBeamColorOverLength.h"
+#include "ParticleModuleColor.h"
 #include "MeshBatchElement.h"
 #include "SceneView.h"
 #include "ResourceManager.h"
@@ -538,7 +543,20 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             continue;
         }
 
-        UShader* ShaderToUse = ParticleMaterial->GetShader();
+        // Beam/Ribbon은 전용 셰이더(Beam.hlsl)를 사용해야 함
+        // RequiredModule의 머티리얼 셰이더(UberLit 등)는 InputLayout이 다르므로 사용 불가
+        // 머티리얼은 텍스처 정보만 사용
+        UShader* ShaderToUse = nullptr;
+        if (EmitterType == EDynamicEmitterType::EDET_Beam || EmitterType == EDynamicEmitterType::EDET_Ribbon)
+        {
+            // Beam/Ribbon 전용 셰이더 사용 (FBillboardVertex InputLayout과 호환)
+            ShaderToUse = UResourceManager::GetInstance().Load<UShader>("Shaders/Effects/Beam.hlsl");
+        }
+        else
+        {
+            ShaderToUse = ParticleMaterial->GetShader();
+        }
+
         if (!ShaderToUse)
         {
             continue;
@@ -555,20 +573,104 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         {
             UParticleModuleTypeDataBeam* BeamModule = static_cast<UParticleModuleTypeDataBeam*>(TypeDataModule);
 
-            // 빔 타겟/소스 위치 동적 업데이트
-            if (BeamTargetActor && BeamModule->GetBeamMethod() == EBeamMethod::Target)
+            // 빔 타겟 위치 결정 (우선순위: BeamTarget 모듈 > BeamTargetActor > TypeData 기본값)
+            // BeamTarget 모듈이 있으면 자동으로 Target 방식 사용
+            UParticleModuleBeamTarget* TargetModule = LODLevel->FindModule<UParticleModuleBeamTarget>();
+            bool bUseTargetMethod = (BeamModule->GetBeamMethod() == EBeamMethod::Target) || (TargetModule != nullptr);
+
+            if (bUseTargetMethod)
             {
-                BeamModule->SetTargetPoint(BeamTargetActor->GetActorLocation());
+                FVector ResolvedTarget;
+                bool bTargetResolved = false;
+
+                // 1순위: BeamTarget 모듈 확인
+                if (TargetModule)
+                {
+                    bTargetResolved = TargetModule->ResolveTargetPoint(this, ResolvedTarget);
+                }
+
+                // 2순위: Component의 BeamTargetActor
+                if (!bTargetResolved && BeamTargetActor)
+                {
+                    ResolvedTarget = BeamTargetActor->GetActorLocation();
+                    bTargetResolved = true;
+                }
+
+                // 타겟이 결정되었으면 적용
+                if (bTargetResolved)
+                {
+                    // BeamMethod를 Target으로 설정하고 타겟 포인트 적용
+                    BeamModule->SetBeamMethod(EBeamMethod::Target);
+                    BeamModule->SetTargetPoint(ResolvedTarget);
+                }
             }
+
+            // 빔 소스 위치 (기존 로직 유지 - 추후 BeamSource 모듈로 분리 가능)
             if (BeamSourceActor)
             {
                 BeamModule->SetSourcePoint(BeamSourceActor->GetActorLocation() - GetWorldLocation());
             }
 
-            // 빔 포인트 계산
+            // 빔 노이즈 파라미터 준비 (모듈이 있으면 가져옴)
+            const FBeamNoiseParams* NoiseParams = nullptr;
+            FBeamNoiseParams NoiseParamsStorage;
+
+            if (UParticleModuleBeamNoise* NoiseModule = LODLevel->FindModule<UParticleModuleBeamNoise>())
+            {
+                if (NoiseModule->IsEnabled())
+                {
+                    NoiseParamsStorage = NoiseModule->GetParams();
+                    NoiseParams = &NoiseParamsStorage;
+                }
+            }
+
+            // 빔 너비 파라미터 준비 (모듈이 있으면 가져옴)
+            const FBeamWidthParams* WidthParams = nullptr;
+            FBeamWidthParams WidthParamsStorage;
+
+            if (UParticleModuleBeamWidth* WidthModule = LODLevel->FindModule<UParticleModuleBeamWidth>())
+            {
+                if (WidthModule->IsEnabled())
+                {
+                    WidthParamsStorage = WidthModule->GetParams();
+                    WidthParams = &WidthParamsStorage;
+                }
+            }
+
+            // 빔 컬러 파라미터 준비 (Color 모듈 우선, 없으면 TypeDataBeam의 BeamColor)
+            UParticleModuleColor* ColorModule = LODLevel->FindModule<UParticleModuleColor>();
+
+            // 기본 색상: TypeDataBeam의 BeamColor (흰색 기본)
+            FLinearColor BaseBeamColor(1.0f, 1.0f, 1.0f, 1.0f);
+            if (ColorModule)
+            {
+                // Color 모듈이 있으면 초기 색상 사용
+                FVector ColorVec = ColorModule->GetStartColor().GetValue(ElapsedTime);
+                float Alpha = ColorModule->GetStartAlpha().GetValue(ElapsedTime);
+                if (ColorModule->GetClampAlpha())
+                    Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
+                BaseBeamColor = FLinearColor(ColorVec.X, ColorVec.Y, ColorVec.Z, Alpha);
+            }
+            else
+            {
+                // Color 모듈이 없으면 TypeDataBeam의 BeamColor 사용
+                FVector4 TypeDataColor = BeamModule->GetBeamColor();
+                BaseBeamColor = FLinearColor(TypeDataColor.X, TypeDataColor.Y, TypeDataColor.Z, TypeDataColor.W);
+            }
+
+            // 빔 길이별 색상 모듈 (공간 기반 그라데이션)
+            UParticleModuleBeamColorOverLength* ColorOverLengthModule = LODLevel->FindModule<UParticleModuleBeamColorOverLength>();
+            FBeamColorParams ColorOverLengthParams;
+            bool bHasColorOverLength = (ColorOverLengthModule && ColorOverLengthModule->IsEnabled());
+            if (bHasColorOverLength)
+            {
+                ColorOverLengthParams = ColorOverLengthModule->GetParams();
+            }
+
+            // 빔 포인트 계산 (nullptr이면 해당 기능 비활성화)
             TArray<FVector> BeamPoints;
             TArray<float> BeamWidths;
-            BeamModule->CalculateBeamPoints(GetWorldLocation(), BeamPoints, BeamWidths, ElapsedTime);
+            BeamModule->CalculateBeamPoints(GetWorldLocation(), BeamPoints, BeamWidths, ElapsedTime, NoiseParams, WidthParams);
 
             if (BeamPoints.Num() < 2)
                 continue;
@@ -620,13 +722,28 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 FVector Point = BeamPoints[i];
                 FVector Right = PointRightVectors[i];
                 float Width = BeamWidths[i];
-                float U = static_cast<float>(i) / static_cast<float>(NumPoints - 1);
+                float T = static_cast<float>(i) / static_cast<float>(NumPoints - 1);  // 0=시작, 1=끝
+
+                // 정점 색상 = BaseBeamColor (Color 모듈 또는 TypeDataBeam의 BeamColor)
+                FLinearColor VertexColor = BaseBeamColor;
+
+                // ColorOverLength 모듈이 있으면 위치에 따른 그라데이션 적용 (곱연산)
+                if (bHasColorOverLength)
+                {
+                    FLinearColor LengthColor = ColorOverLengthParams.EvaluateAtT(T);
+                    VertexColor.R *= LengthColor.R;
+                    VertexColor.G *= LengthColor.G;
+                    VertexColor.B *= LengthColor.B;
+                    VertexColor.A *= LengthColor.A;
+                }
 
                 Vertices[i * 2].WorldPosition = Point - Right * Width * 0.5f;
-                Vertices[i * 2].UV = FVector2D(U, 0.0f);
+                Vertices[i * 2].UV = FVector2D(T, 0.0f);
+                Vertices[i * 2].Color = VertexColor;
 
                 Vertices[i * 2 + 1].WorldPosition = Point + Right * Width * 0.5f;
-                Vertices[i * 2 + 1].UV = FVector2D(U, 1.0f);
+                Vertices[i * 2 + 1].UV = FVector2D(T, 1.0f);
+                Vertices[i * 2 + 1].Color = VertexColor;
             }
 
             for (uint32 i = 0; i < NumSegments; ++i)
@@ -674,13 +791,14 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             BatchElement.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
             BatchElement.WorldMatrix = FMatrix::Identity();
 
-            FVector4 BeamColor = BeamModule->GetBeamColor();
+            // 정점 색상을 사용하므로 InstanceColor는 GlowIntensity만 적용
+            // (정점 색상이 이미 Color/ColorOverLife 모듈 값을 반영함)
             float GlowIntensity = BeamModule->GetGlowIntensity();
             BatchElement.InstanceColor = FLinearColor(
-                BeamColor.X * GlowIntensity,
-                BeamColor.Y * GlowIntensity,
-                BeamColor.Z * GlowIntensity,
-                BeamColor.W
+                GlowIntensity,
+                GlowIntensity,
+                GlowIntensity,
+                1.0f
             );
 
             BatchElement.UVStart = 0.0f;

@@ -144,9 +144,17 @@ float UParticleEmitter::GetCalculatedDuration()
 
 bool UParticleEmitter::IsValid() const
 {
+    // CurrentLODLevel bounds check
+    if (CurrentLODLevel < 0 || CurrentLODLevel >= (int32)LODLevels.Num())
+        return false;
+
+    // nullptr check
+    if (!LODLevels[CurrentLODLevel])
+        return false;
+
     if (!LODLevels[CurrentLODLevel]->IsValid())
         return false;
-    
+
     return true;
 }
 void UParticleEmitter::Serialize(const bool bInIsLoading, JSON& InOutHandle)

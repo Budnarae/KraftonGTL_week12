@@ -14,6 +14,7 @@ enum class EMenuActionType
     AddEmitter,
     AddSpawnModule,
     AddUpdateModule,
+    SetTypeData,
 };
 enum class EHoveredWindowType
 {
@@ -48,6 +49,13 @@ struct FMenuAction
         FMenuAction Action;
         Action.MenuActionType = EMenuActionType::AddEmitter;
         Action.EmitterOffset = InEmitterOffset;
+        return Action;
+    }
+    static FMenuAction CreateSetTypeData(const FString& InClassName)
+    {
+        FMenuAction Action;
+        Action.MenuActionType = EMenuActionType::SetTypeData;
+        Action.ClassName = InClassName;
         return Action;
     }
     void Action(SParticleEditWindow* ParticleEditWindow) const;
@@ -86,6 +94,7 @@ public:
     void AddEmitter(const int EmitterOffset);
     void AddSpawnModule(const FString& ClassName);
     void AddUpdateModule(const FString& ClassName);
+    void SetTypeDataModule(const FString& ClassName);
 
 
 private:

@@ -57,8 +57,13 @@ void UParticleModuleCollision::Update(FParticleContext& Context, float DeltaTime
         HitLocation,
         HitNormal,
         HitActor,
-        HitComponent))
+        HitComponent,
+        OwnerActor))  // Pass owner actor to avoid self-collision
     {
+        // Debug log for collision detection
+        UE_LOG("[ParticleCollision] Particle %d collided with Actor at (%.2f, %.2f, %.2f)",
+            Context.ParticleIndex, HitLocation.X, HitLocation.Y, HitLocation.Z);
+
         // Generate collision event
         FParticleEventCollideData CollideEvent;
         CollideEvent.ParticleSystemComponent = Component;
@@ -96,7 +101,8 @@ bool UParticleModuleCollision::CheckCollisionWithWorld(
     FVector& OutHitLocation,
     FVector& OutHitNormal,
     AActor*& OutHitActor,
-    UPrimitiveComponent*& OutHitComponent)
+    UPrimitiveComponent*& OutHitComponent,
+    AActor* OwnerActor)
 {
     if (!World)
         return false;
@@ -114,6 +120,10 @@ bool UParticleModuleCollision::CheckCollisionWithWorld(
     for (AActor* Actor : AllActors)
     {
         if (!Actor)
+            continue;
+
+        // Skip self-collision with owner actor
+        if (Actor == OwnerActor)
             continue;
 
         // Get shape components from actor

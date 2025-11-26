@@ -1,11 +1,15 @@
 ﻿#include "pch.h"
 #include "ParticleModuleRequired.h"
 #include "ParticleData.h"
+#include "ResourceManager.h"
 
 // payload size를 고정된 값으로 지정
 UParticleModuleRequired::UParticleModuleRequired() :
     UParticleModule(REQUIRED_MODULE_PAYLOAD_SIZE)
-{}
+{
+    // 기본 Material 설정 (없으면 렌더링 안됨)
+    Material = UResourceManager::GetInstance().GetDefaultMaterial();
+}
 
 UParticleModuleRequired::~UParticleModuleRequired()
 {
