@@ -115,7 +115,8 @@
       <Message>[CodeGen] Generating Lua binding code...</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"</Command>
+      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"
+"C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\symstore.exe" add /r /f "$(TargetDir)*.pdb" /s "\\172.21.11.107\SymbolServer" /t "$(ProjectName)" /v "$(Configuration)”</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_StandAlone|x64'">
@@ -174,7 +175,8 @@
       <Message>[CodeGen] Generating Lua binding code...</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"</Command>
+      <Command>xcopy /y /d "$(ProjectDir)ThirdParty\FBXSDK\lib\$(Configuration)\libfbxsdk.dll" "$(OutDir)"
+"C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\symstore.exe" add /r /f "$(TargetDir)*.pdb" /s "\\172.21.11.107\SymbolServer" /t "$(ProjectName)" /v "$(Configuration)”</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_StandAlone|x64'">
