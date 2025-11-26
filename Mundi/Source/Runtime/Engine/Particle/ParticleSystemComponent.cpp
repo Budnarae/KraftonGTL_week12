@@ -118,6 +118,13 @@ void UParticleSystemComponent::DuplicateSubObjects()
     // (delete 하지 않음 - 원본의 버퍼이므로)
     BeamBuffers.clear();
     RibbonBuffers.clear();
+
+    // ------------------------------------------------------------------------
+    // DynamicEmitterData도 원본 공유 방지
+    // ------------------------------------------------------------------------
+    // 얕은 복사로 원본의 포인터가 복사되었으므로, 클리어하여 원본과 분리
+    // (delete 하지 않음 - 원본의 데이터이므로)
+    DynamicEmitterData.clear();
 }
 
 // ----------------------------------------------------------------------------
@@ -141,6 +148,9 @@ void UParticleSystemComponent::PostDuplicate()
     // 거리 기반 스폰 상태 초기화
     AccumulatedDistance = 0.0f;
     bHasPreviousLocation = false;
+
+    // 복제된 컴포넌트를 활성화 (PIE 등에서 원본이 Deactivate 상태여도 복제본은 활성화)
+    Activate(true);
 }
 
 // Getters
@@ -660,6 +670,7 @@ void UParticleSystemComponent::ReleaseDynamicData()
 // [Tick Phase] 매 프레임 호출되어 DeltaTime만큼 시뮬레이션을 전진시킵니다. (가장 중요)
 void UParticleSystemComponent::TickComponent(float DeltaTime)
 {
+
     // 임시 상수
     const static FVector Velocity = FVector(0, 0, 0.1f);
 
