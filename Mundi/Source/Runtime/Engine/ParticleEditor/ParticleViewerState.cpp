@@ -52,6 +52,13 @@ void ParticleViewerState::ReStartParticle()
 		ParticleActor->GetParticleSystemComponent()->Activate(true);
 	}
 }
+void ParticleViewerState::SetLOD(int MoveOffset)
+{
+	if (ParticleActor)
+	{
+		ParticleActor->GetParticleSystemComponent()->SetCurrentLODLevel(ParticleActor->GetParticleSystemComponent()->GetCurrentLODLevel() + MoveOffset);
+	}
+}
 
 void ParticleViewerState::SetSelectedLODLevel(int32 InLODLevel)
 {

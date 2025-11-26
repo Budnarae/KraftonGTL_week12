@@ -29,6 +29,7 @@ public:
 	void LoadCachedParticle(const FString& Path);
 	void SaveCachedParticle();
 	void ReStartParticle();
+	void SetLOD(int MoveOffset);
 
 	const UParticleSystem* GetCachedParticle()const { return CachedParticle; }
 	UParticleSystem* GetCachedParticle() { return CachedParticle; }

@@ -310,7 +310,24 @@ void SParticleEditWindow::RemoveModule()
 {
     if (State->SelectedEmitter && State->SelectedModule)
     {
-        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(State->GetSelectedLODLevel());
+        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
+
+        UParticleModuleRequired* Required = Cast<UParticleModuleRequired>(State->SelectedModule);
+        UParticleModuleSpawn* Spawn = Cast<UParticleModuleSpawn>(State->SelectedModule);
+
+        int32 SpawnModuleCount = 0;
+        for (UParticleModule* Module : LOD->GetSpawnModule())
+        {
+            UParticleModuleSpawn* SpawnModules = Cast<UParticleModuleSpawn>(Module);
+            if (SpawnModules) SpawnModuleCount++;
+        }
+            
+        if (Required || (Spawn && SpawnModuleCount == 1))
+        {
+            UE_LOG("[SParticleEditWindow] You can't remove that module because that module is necessary.");
+            return;
+        }
+
         if (LOD->RemoveSpawnModule(State->SelectedModule) == false)
         {
             State->SelectedModule = nullptr;
@@ -321,6 +338,7 @@ void SParticleEditWindow::RemoveModule()
             State->SelectedModule = nullptr;
             return;
         }
+        
         State->ReStartParticle();
     }
 }
@@ -479,7 +497,22 @@ void SParticleEditWindow::OnRender()
             State->ReStartParticle();
         }
 
-
+        ImGui::SameLine();
+        if (ImGui::Button("LOD Down"))
+        {
+            State->SetLOD(-1);
+        }
+        if (State->ParticleActor)
+        {
+            ImGui::SameLine();
+            int CurLOD = State->ParticleActor->GetParticleSystemComponent()->GetCurrentLODLevel();
+            ImGui::Text("CurLOD : %d", CurLOD);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("LOD UP"))
+        {
+            State->SetLOD(1);
+        }
         //뷰포트
         ImVec2 ChildSize = Size * 0.5f;
         ImGui::BeginChild("Viewport", ChildSize);

@@ -34,5 +34,5 @@ private:
 
     ID3D11Buffer* InstanceBuffer = nullptr;
     ID3D11ShaderResourceView* InstanceSRV = nullptr;
-    int32 MaxParticleCount = 0;
+    int32 MaxParticleCount = 10;
 };
