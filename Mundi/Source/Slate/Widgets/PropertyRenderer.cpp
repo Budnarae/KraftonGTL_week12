@@ -62,6 +62,21 @@ static bool ItemsGetter(void* Data, int Index, const char** CItem)
 static const char* EParticleCollisionResponseNames[] = { "Bounce", "Stop", "Kill" };
 static const int EParticleCollisionResponseCount = 3;
 
+static const char* EBeamTaperMethodNames[] = { "None", "Source", "Target", "Both" };
+static const int EBeamTaperMethodCount = 4;
+
+static const char* ETaperMethodNames[] = { "None", "Linear", "Sine", "EaseOut" };
+static const int ETaperMethodCount = 4;
+
+static const char* EBeamNoiseAlgorithmNames[] = { "MidpointDisplacement", "PerlinNoise" };
+static const int EBeamNoiseAlgorithmCount = 2;
+
+static const char* ERibbonTaperMethodNames[] = { "None", "Linear", "Sine", "EaseIn", "EaseOut" };
+static const int ERibbonTaperMethodCount = 5;
+
+static const char* EBeamMethodNames[] = { "Distance", "Target", "Source" };
+static const int EBeamMethodCount = 3;
+
 // Enum 타입별 정보를 담는 구조체
 struct FEnumInfo
 {
@@ -73,6 +88,11 @@ struct FEnumInfo
 // 등록된 Enum 목록
 static FEnumInfo RegisteredEnums[] = {
 	{ "EParticleCollisionResponse", EParticleCollisionResponseNames, EParticleCollisionResponseCount },
+	{ "EBeamTaperMethod", EBeamTaperMethodNames, EBeamTaperMethodCount },
+	{ "ETaperMethod", ETaperMethodNames, ETaperMethodCount },
+	{ "EBeamNoiseAlgorithm", EBeamNoiseAlgorithmNames, EBeamNoiseAlgorithmCount },
+	{ "ERibbonTaperMethod", ERibbonTaperMethodNames, ERibbonTaperMethodCount },
+	{ "EBeamMethod", EBeamMethodNames, EBeamMethodCount },
 	// 여기에 새 Enum 추가 가능
 };
 static const int RegisteredEnumCount = sizeof(RegisteredEnums) / sizeof(RegisteredEnums[0]);

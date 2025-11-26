@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"C:\\Users\\Jungle\\Documents\\GitHub\\KraftonGTL_week12\\KraftonGTL_week12\\Mundi.sln\" /p:Configuration=Debug /p:Platform=x64 /m /nologo /v:minimal)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\" Mundi.sln -p:Configuration=Debug -p:Platform=x64 -m -nologo -v:minimal)",
+      "Bash(dir \"C:\\Users\\Jungle\\Documents\\GitHub\\KraftonGTL_week12\\KraftonGTL_week12\\Mundi\\Generated\" /b)",
+      "WebSearch",
+      "WebFetch(domain:dev.epicgames.com)",
+      "Bash(taskkill:*)",
+      "Bash('/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe' Mundi.sln -p:Configuration=Debug -p:Platform=x64 -m -nologo -v:minimal)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" Mundi.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"C:\\Users\\Jungle\\Documents\\GitHub\\KraftonGTL_week12\\KraftonGTL_week12\\Mundi\\Mundi.sln\" /p:Configuration=Debug /p:Platform=x64 /m /nologo /v:minimal)",
+      "Bash(dir /b \"C:\\Users\\Jungle\\Documents\\GitHub\\KraftonGTL_week12\\KraftonGTL_week12\")",
+      "Bash('/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe' '/c/Users/Jungle/Documents/GitHub/KraftonGTL_week12/KraftonGTL_week12/Mundi.sln' -p:Configuration=Debug -p:Platform=x64 -m -v:minimal)",
+      "Bash(cat:*)",
+      "Bash('/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe' '/c/Users/Jungle/Documents/GitHub/KraftonGTL_week12/KraftonGTL_week12/Mundi.sln' -p:Configuration=Debug -p:Platform=x64 -m -nologo -v:minimal)",
+      "Bash('/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe' '/c/Users/Jungle/Documents/GitHub/KraftonGTL_week12/KraftonGTL_week12/Mundi.sln' -p:Configuration=Debug -p:Platform=x64 -m -nologo -v:minimal -t:Mundi)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\" Mundi.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

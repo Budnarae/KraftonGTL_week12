@@ -1008,6 +1008,8 @@ void FSceneRenderer::RenderTransparentPass(EViewMode InRenderViewMode)
 	MeshBatchElements.Empty();
 	for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
 	{
+		// LOD 거리 체크를 위한 카메라 위치 설정
+		ParticleSystemComponent->SetCachedCameraLocation(View->ViewLocation);
 		ParticleSystemComponent->CollectMeshBatches(MeshBatchElements, View);
 	}
 

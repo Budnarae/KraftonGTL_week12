@@ -44,6 +44,8 @@ public:
     bool GetHiddenInGame() const { return bHiddenInGame; }
 
     bool CanEverTick() const { return bCanEverTick; }
+    bool CanTickInEditor() const { return bTickInEditor; }
+    void SetTickInEditor(bool b) { bTickInEditor = b; }
 
     bool IsComponentTickEnabled() const
     {
@@ -77,9 +79,10 @@ protected:
     AActor* Owner = nullptr;     // 소유 액터
 
     // 생성 시 고정 데이터
-    bool bIsNative = false;      // 액터의 기본 구성 컴포넌트인지 여부. 활성화되면 보호되어 UI에서 삭제 불가 상태가 됨 
+    bool bIsNative = false;      // 액터의 기본 구성 컴포넌트인지 여부. 활성화되면 보호되어 UI에서 삭제 불가 상태가 됨
     bool bIsEditable = true;    //UI에서 Edit이 가능한가
     bool bCanEverTick = false;   // 컴포넌트 설계상 틱 지원 여부
+    bool bTickInEditor = false;  // 에디터에서도 틱할지 여부 (PIE가 아닌 에디터 모드)
 
     // 설정 가능한 데이터
     UPROPERTY(EditAnywhere, Category = "렌더링")

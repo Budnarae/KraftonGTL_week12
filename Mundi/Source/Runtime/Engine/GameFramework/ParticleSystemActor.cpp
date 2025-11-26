@@ -28,6 +28,10 @@ AParticleSystemActor::AParticleSystemActor()
 	// 루트 교체
 	RootComponent = ParticleSystemComponent;
 
+	// 에디터에서도 파티클 시뮬레이션이 실행되도록 설정
+	// (언리얼 엔진처럼 에디터 뷰포트에서 실시간 미리보기 제공)
+	bTickInEditor = true;
+
 	// ============================================================
 	// TEST CODE - MESH EMITTER
 	// 메시 에미터 기능 테스트

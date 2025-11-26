@@ -71,6 +71,24 @@ void UObject::Serialize(const bool bInIsLoading, JSON& InOutHandle)
 			}
 			break;
 		}
+		case EPropertyType::Enum:
+		{
+			// Enum은 정수로 직렬화 (uint8 기반이므로 int32로 처리)
+			uint8* Value = Prop.GetValuePtr<uint8>(this);
+			if (bInIsLoading)
+			{
+				int32 ReadValue;
+				if (FJsonSerializer::ReadInt32(InOutHandle, Prop.Name, ReadValue))
+				{
+					*Value = static_cast<uint8>(ReadValue);
+				}
+			}
+			else
+			{
+				InOutHandle[Prop.Name] = static_cast<int32>(*Value);
+			}
+			break;
+		}
 		case EPropertyType::FVector:
 		{
 			FVector* Value = Prop.GetValuePtr<FVector>(this);

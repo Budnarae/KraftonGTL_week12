@@ -80,7 +80,7 @@ ABeamParticleActor::ABeamParticleActor()
 				BeamModule->SetNoiseFrequency(2.0f);
 
 				// 테이퍼링
-				BeamModule->SetTaperBeam(true);
+				BeamModule->SetTaperMethod(EBeamTaperMethod::Both);
 				BeamModule->SetTaperFactor(0.1f);
 
 				// 번개 색상 및 애니메이션

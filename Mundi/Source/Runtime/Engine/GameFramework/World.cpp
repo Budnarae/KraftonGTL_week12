@@ -259,7 +259,9 @@ void UWorld::Tick(float DeltaSeconds)
 			{
 				if (Actor->CanEverTick())
 				{
-					if (Actor->CanTickInEditor() || bPie)
+					// PIE: 항상 틱
+					// 에디터: 액터의 bTickInEditor가 true일 때만 틱
+					if (bPie || Actor->CanTickInEditor())
 					{
 						Actor->Tick(GetDeltaTime(EDeltaTime::Game) * Actor->GetCustomTimeDillation());
 					}

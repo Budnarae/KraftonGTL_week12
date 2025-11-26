@@ -974,7 +974,7 @@
     <ClCompile Include="Source\Runtime\Engine\PCG\ProceduralPlacementVolume.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\BeamParticleActor.cpp" />
     <ClCompile Include="Source\Runtime\Engine\GameFramework\RibbonParticleActor.cpp" />
-  <ClCompile Include="Generated\UParticleModuleBeamTarget.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleBeamNoise.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleBeamWidth.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleBeamColorOverLength.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
+  <ClCompile Include="Generated\UParticleModuleBeamTarget.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleBeamNoise.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleBeamWidth.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleBeamColorOverLength.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleRibbonColorOverLength.generated.cpp"><Filter>Generated</Filter></ClCompile><ClCompile Include="Generated\UParticleModuleRibbonWidth.generated.cpp"><Filter>Generated</Filter></ClCompile></ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generated\USoundAnimNotify.generated.h">
       <Filter>Generated</Filter>
@@ -2057,7 +2057,7 @@
     <ClInclude Include="Source\Runtime\Renderer\ShadowStats.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\BeamParticleActor.h" />
     <ClInclude Include="Source\Runtime\Engine\GameFramework\RibbonParticleActor.h" />
-  <ClInclude Include="Generated\UParticleModuleBeamTarget.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleBeamNoise.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleBeamWidth.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleBeamColorOverLength.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
+  <ClInclude Include="Generated\UParticleModuleBeamTarget.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleBeamNoise.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleBeamWidth.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleBeamColorOverLength.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleRibbonColorOverLength.generated.h"><Filter>Generated</Filter></ClInclude><ClInclude Include="Generated\UParticleModuleRibbonWidth.generated.h"><Filter>Generated</Filter></ClInclude></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py">
       <Filter>Tools\CodeGenerator</Filter>

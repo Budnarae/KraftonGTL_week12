@@ -420,6 +420,8 @@
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleBeamNoise.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleBeamWidth.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleBeamColorOverLength.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleRibbonWidth.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleRibbonColorOverLength.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Source\Runtime\Engine\Particle\ParticleSystemComponent.cpp" />
@@ -646,7 +648,7 @@
     <ClCompile Include="Generated\UParticleModuleBeamNoise.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleBeamWidth.generated.cpp" />
     <ClCompile Include="Generated\UParticleModuleBeamColorOverLength.generated.cpp" />
-  </ItemGroup>
+  <ClCompile Include="Generated\UParticleModuleRibbonColorOverLength.generated.cpp" /><ClCompile Include="Generated\UParticleModuleRibbonWidth.generated.cpp" /></ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\LightingBuffers.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -908,6 +910,8 @@
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleBeamNoise.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleBeamWidth.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleBeamColorOverLength.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleRibbonWidth.h" />
+    <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleRibbonColorOverLength.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleModuleVelocity.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystem.h" />
     <ClInclude Include="Source\Runtime\Engine\Particle\ParticleSystemComponent.h" />
@@ -1155,7 +1159,7 @@
     <ClInclude Include="Generated\UParticleModuleTypeDataMesh.generated.h" />
     <ClInclude Include="Generated\UParticleModuleTypeDataRibbon.generated.h" />
     <ClInclude Include="Generated\UPlacementMeshEntry.generated.h" />
-  <ClInclude Include="Generated\UParticleModuleBeamTarget.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamNoise.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamWidth.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamColorOverLength.generated.h" /></ItemGroup>
+  <ClInclude Include="Generated\UParticleModuleBeamTarget.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamNoise.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamWidth.generated.h" /><ClInclude Include="Generated\UParticleModuleBeamColorOverLength.generated.h" /><ClInclude Include="Generated\UParticleModuleRibbonColorOverLength.generated.h" /><ClInclude Include="Generated\UParticleModuleRibbonWidth.generated.h" /></ItemGroup>
   <ItemGroup>
     <None Include="Tools\CodeGenerator\generate.py" />
     <None Include="Tools\CodeGenerator\lua_generator.py" />
