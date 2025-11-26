@@ -78,7 +78,7 @@ cbuffer FLightShadowmBufferType : register(b5)
 };
 
 // --- 파티클 인스턴스 데이터 (GPU 인스턴싱용) ---
-#ifdef PARTICLE_SPRITE
+#if defined(PARTICLE_SPRITE) || defined(PARTICLE_MESH)
 struct FParticleInstanceData
 {
     float3 Position;    // 월드 위치
@@ -128,6 +128,15 @@ struct VS_INPUT
 {
     float3 Position : POSITION;
     float2 TexCoord : TEXCOORD0;
+};
+#elif defined(PARTICLE_MESH)
+// 파티클 메시용 입력 (일반 메시와 동일하지만 Color 없음 - 인스턴스 데이터에서 가져옴)
+struct VS_INPUT
+{
+    float3 Position : POSITION;
+    float3 Normal : NORMAL0;
+    float2 TexCoord : TEXCOORD0;
+    float4 Tangent : TANGENT0;
 };
 #else
 struct VS_INPUT
@@ -223,8 +232,100 @@ PS_INPUT mainVS(VS_INPUT Input, uint InstanceID : SV_InstanceID)
     Out.Color = particle.Color;
 
     return Out;
+#elif defined(PARTICLE_MESH)
+    // ========================================================================
+    // 파티클 메시 처리 (GPU 인스턴싱)
+    // ========================================================================
+    FParticleInstanceData particle = g_ParticleInstances[InstanceID];
+
+    // 로컬 스케일 행렬
+    float4x4 scaleMatrix = float4x4(
+        particle.Size.x, 0, 0, 0,
+        0, particle.Size.y, 0, 0,
+        0, 0, particle.Size.x, 0,  // Z축도 X 크기 사용
+        0, 0, 0, 1
+    );
+
+    // 로컬 회전 행렬 (Z축 기준)
+    float cosR = cos(particle.Rotation);
+    float sinR = sin(particle.Rotation);
+    float4x4 rotationMatrix = float4x4(
+        cosR, -sinR, 0, 0,
+        sinR, cosR, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    );
+
+    // 로컬 변환 적용
+    float4 localPos = mul(float4(Input.Position, 1.0f), scaleMatrix);
+    localPos = mul(localPos, rotationMatrix);
+
+    // CameraFacing 지원
+    float3 finalLocalPos;
+    if (particle.CameraFacing > 0.5f)
+    {
+        // 빌보드: 카메라를 향하도록 InverseViewMatrix 적용
+        finalLocalPos = mul(float4(localPos.xyz, 0.0f), InverseViewMatrix).xyz;
+    }
+    else
+    {
+        // 회전만 적용 (빌보드 없음)
+        finalLocalPos = localPos.xyz;
+    }
+
+    // 월드 위치 = 파티클 위치 + 로컬 변환
+    float4 worldPos = float4(particle.Position + finalLocalPos, 1.0f);
+    Out.WorldPos = worldPos.xyz;
+
+    // 뷰/프로젝션 변환
+    float4 viewPos = mul(worldPos, ViewMatrix);
+    Out.Position = mul(viewPos, ProjectionMatrix);
+
+    // 노멀 변환 (회전 적용)
+    float3 rotatedNormal;
+    rotatedNormal.x = Input.Normal.x * cosR - Input.Normal.y * sinR;
+    rotatedNormal.y = Input.Normal.x * sinR + Input.Normal.y * cosR;
+    rotatedNormal.z = Input.Normal.z;
+
+    if (particle.CameraFacing > 0.5f)
+    {
+        // 빌보드: 노멀도 InverseViewMatrix로 변환
+        Out.Normal = normalize(mul(float4(rotatedNormal, 0.0f), InverseViewMatrix).xyz);
+    }
+    else
+    {
+        Out.Normal = normalize(rotatedNormal);
+    }
+
+    // TBN 매트릭스 (Tangent 변환)
+    float3 rotatedTangent;
+    rotatedTangent.x = Input.Tangent.x * cosR - Input.Tangent.y * sinR;
+    rotatedTangent.y = Input.Tangent.x * sinR + Input.Tangent.y * cosR;
+    rotatedTangent.z = Input.Tangent.z;
+
+    float3 Tangent;
+    if (particle.CameraFacing > 0.5f)
+    {
+        Tangent = normalize(mul(float4(rotatedTangent, 0.0f), InverseViewMatrix).xyz);
+    }
+    else
+    {
+        Tangent = normalize(rotatedTangent);
+    }
+
+    float3 BiTangent = normalize(cross(Tangent, Out.Normal) * Input.Tangent.w);
+    row_major float3x3 TBN;
+    TBN._m00_m01_m02 = Tangent;
+    TBN._m10_m11_m12 = BiTangent;
+    TBN._m20_m21_m22 = Out.Normal;
+    Out.TBN = TBN;
+
+    Out.TexCoord = Input.TexCoord;
+    Out.Color = particle.Color;
+
+    return Out;
 #else
-    // 일반 메시 처리 (PARTICLE_SPRITE가 아닌 경우)
+    // 일반 메시 처리 (PARTICLE_SPRITE, PARTICLE_MESH가 아닌 경우)
 
 #ifdef ENABLE_GPU_SKINNING
     float3 LocalPos = SkinPosition(Input.Position, Input.BoneIndices, Input.BoneWeights);

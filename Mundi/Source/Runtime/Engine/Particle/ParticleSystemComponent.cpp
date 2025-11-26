@@ -1094,14 +1094,23 @@ void UParticleSystemComponent::RenderSpriteParticles(
     FParticleStatManager::GetInstance().IncrementSpriteDrawCallCount();
 }
 
-// 메시 파티클 렌더링 (개별 드로우)
+// 메시 파티클 렌더링 (GPU 인스턴싱)
 void UParticleSystemComponent::RenderMeshParticles(
     const TArray<FParticleInstanceData>& InstanceData,
     UMaterialInterface* Material,
     UStaticMesh* Mesh,
     TArray<FMeshBatchElement>& OutMeshBatchElements)
 {
-    // 1. 셰이더 로드 (Material 무시, 항상 UberLit.hlsl 사용)
+    // 1. 공유 버퍼 매니저에 데이터 업로드
+    FParticleInstanceBufferManager& BufferManager = FParticleInstanceBufferManager::Get();
+    ID3D11ShaderResourceView* InstanceSRV = BufferManager.UpdateAndGetSRV(InstanceData);
+    if (!InstanceSRV)
+    {
+        UE_LOG("[RenderMeshParticles][Warning] Failed to update instance buffer.");
+        return;
+    }
+
+    // 2. 셰이더 로드 (Material 무시, 항상 UberLit.hlsl 사용)
     UShader* MeshShader = UResourceManager::GetInstance().Load<UShader>("Shaders/Materials/UberLit.hlsl");
     if (!MeshShader)
     {
@@ -1109,7 +1118,7 @@ void UParticleSystemComponent::RenderMeshParticles(
         return;
     }
 
-    // 2. 셰이더 매크로 (Particle Mesh + Phong Shading)
+    // 3. 셰이더 매크로 (Particle Mesh + Phong Shading)
     TArray<FShaderMacro> MeshMacros;
     MeshMacros.push_back({"PARTICLE_MESH", "1"});
     MeshMacros.push_back({"LIGHTING_MODEL_PHONG", "1"});
@@ -1120,44 +1129,37 @@ void UParticleSystemComponent::RenderMeshParticles(
         return;
     }
 
-    // 3. 각 파티클을 개별 드로우콜로 렌더링
-    for (const FParticleInstanceData& Data : InstanceData)
-    {
-        FMeshBatchElement MeshBatch;
+    // 4. 단일 FMeshBatchElement 생성 (인스턴싱)
+    FMeshBatchElement MeshBatch;
 
-        MeshBatch.VertexShader = MeshVariant->VertexShader;
-        MeshBatch.PixelShader = MeshVariant->PixelShader;
-        MeshBatch.InputLayout = MeshVariant->InputLayout;
-        MeshBatch.Material = Material;
-        MeshBatch.VertexBuffer = Mesh->GetVertexBuffer();
-        MeshBatch.IndexBuffer = Mesh->GetIndexBuffer();
-        MeshBatch.VertexStride = Mesh->GetVertexStride();
+    MeshBatch.VertexShader = MeshVariant->VertexShader;
+    MeshBatch.PixelShader = MeshVariant->PixelShader;
+    MeshBatch.InputLayout = MeshVariant->InputLayout;
+    MeshBatch.Material = Material;
+    MeshBatch.VertexBuffer = Mesh->GetVertexBuffer();
+    MeshBatch.IndexBuffer = Mesh->GetIndexBuffer();
+    MeshBatch.VertexStride = Mesh->GetVertexStride();
 
-        MeshBatch.IndexCount = Mesh->GetIndexCount();
-        MeshBatch.StartIndex = 0;
-        MeshBatch.BaseVertexIndex = 0;
-        MeshBatch.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    MeshBatch.IndexCount = Mesh->GetIndexCount();
+    MeshBatch.StartIndex = 0;
+    MeshBatch.BaseVertexIndex = 0;
+    MeshBatch.PrimitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-        // 파티클 Transform을 WorldMatrix로 변환
-        FMatrix ScaleMatrix = FMatrix::MakeScale(FVector(Data.Size.X, Data.Size.Y, Data.Size.X));
-        FMatrix RotationMatrix = FQuat::FromAxisAngle(FVector(0.0f, 0.0f, 1.0f), Data.Rotation).ToMatrix();
-        FMatrix TranslationMatrix = FMatrix::MakeTranslation(Data.Position);
-        MeshBatch.WorldMatrix = ScaleMatrix * RotationMatrix * TranslationMatrix;
+    MeshBatch.InstanceCount = static_cast<uint32>(InstanceData.size());
+    MeshBatch.ParticleInstanceSRV = InstanceSRV;
 
-        MeshBatch.InstanceColor = Data.Color;
-        MeshBatch.InstanceCount = 1;
-        MeshBatch.ParticleInstanceSRV = nullptr;
+    MeshBatch.WorldMatrix = FMatrix::Identity();
+    MeshBatch.InstanceColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-        // Material의 텍스처 시스템을 사용 (InstanceShaderResourceView 설정하지 않음)
-        // 렌더러가 Material에서 자동으로 텍스처를 조회합니다
+    // Material의 텍스처 시스템을 사용 (InstanceShaderResourceView 설정하지 않음)
+    // 렌더러가 Material에서 자동으로 텍스처를 조회합니다
 
-        MeshBatch.ObjectID = InternalIndex;
+    MeshBatch.ObjectID = InternalIndex;
 
-        OutMeshBatchElements.Add(MeshBatch);
+    OutMeshBatchElements.Add(MeshBatch);
 
-        // 메시 드로우 콜 통계 수집 (각 파티클마다 개별 드로우콜)
-        FParticleStatManager::GetInstance().IncrementMeshDrawCallCount();
-    }
+    // 메시 드로우 콜 통계 수집 (GPU 인스턴싱으로 1번의 드로우콜)
+    FParticleStatManager::GetInstance().IncrementMeshDrawCallCount();
 }
 
 
