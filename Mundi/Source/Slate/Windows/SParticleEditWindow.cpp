@@ -780,6 +780,17 @@ void SParticleEditWindow::DrawLODSelector()
                 ImGui::SetTooltip("이 LOD가 활성화되는 최소 거리\nLOD 0은 항상 0.0");
             }
         }
+        ImGui::SameLine();
+        if (ImGui::Button("이미터 삭제"))
+        {
+            if (State->GetCachedParticle()->RemoveEmitter(State->SelectedEmitter))
+            {
+                State->SelectedEmitter = nullptr;
+                State->SelectedLODLevel = 0;
+                State->SelectedModule = nullptr;
+                State->ReStartParticle();
+            }
+        }
     }
 
     ImGui::Separator();

@@ -16,7 +16,7 @@ void UParticleAsset::LoadAllDatas()
     // ========== Phase 1: 캐시 생성 ==========
     UE_LOG("UFbxLoader::Preload - Phase 1: Baking FBX caches...");
 
-    for (const auto& Entry : fs::recursive_directory_iterator(GContentDir))
+    for (const auto& Entry : fs::recursive_directory_iterator(GDataDir))
     {
         if (!Entry.is_regular_file())
             continue;

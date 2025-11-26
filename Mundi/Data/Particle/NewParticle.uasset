@@ -5,6 +5,7 @@
       "EmitterName" : "NewEmitter",
       "LODLevels" : [{
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -12,43 +13,12 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
           "SpawnModules" : [{
-              "ClassName" : "UParticleModuleVelocity",
-              "StartVelocity" : {
-                "Max" : [0.000000, 0.000000, 0.000000],
-                "Min" : [0.000000, 0.000000, 0.000000],
-                "Mode" : 0
-              },
-              "StartVelocityRadial" : {
-                "Max" : 0.000000,
-                "Min" : 0.000000,
-                "Mode" : 0
-              },
-              "bApplyOwnerScale" : true,
-              "bInWorldSpace" : false
-            }, {
-              "ClassName" : "UParticleModuleSize",
-              "StartSize" : {
-                "Max" : [1.000000, 1.000000, 1.000000],
-                "Min" : [1.000000, 1.000000, 1.000000],
-                "Mode" : 0
-              }
-            }, {
-              "ClassName" : "UParticleModuleCollision",
-              "CollisionRadius" : 1.000000,
-              "DampingFactor" : 0.000000,
-              "DampingFactorRotation" : 1.000000,
-              "Friction" : 0.200000,
-              "MaxCollisions" : 0,
-              "Restitution" : 0.500000,
-              "bApplyPhysics" : true,
-              "bKillOnCollision" : false
-            }, {
               "BurstList" : [],
               "ClassName" : "UParticleModuleSpawn",
               "Rate" : {
@@ -60,7 +30,85 @@
                 "Max" : 1.000000,
                 "Min" : 1.000000,
                 "Mode" : 0
-              }
+              },
+              "bActive" : true
+            }, {
+              "ClassName" : "UParticleModuleBeamNoise",
+              "DisplacementDecay" : 0.500000,
+              "JitterFrequency" : 25.000000,
+              "NoiseAlgorithm" : 0,
+              "NoiseAmplitude" : 2.000000,
+              "NoiseFrequency" : 1.000000,
+              "bActive" : true
+            }, {
+              "ClassName" : "UParticleModuleColor",
+              "StartAlpha" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "StartColor" : {
+                "Max" : [1.000000, 1.000000, 0.400000],
+                "Min" : [0.700000, 0.700000, 0.200000],
+                "Mode" : 0
+              },
+              "bActive" : true,
+              "bClampAlpha" : true
+            }],
+          "TypeDataModule" : {
+            "BeamDirection" : [-1.000000, 0.000000, 0.000000],
+            "BeamLength" : 17.000000,
+            "BeamMethod" : 0,
+            "BeamTexture" : "Data/Textures/lightning_beam_02.png",
+            "BeamWidth" : 0.800000,
+            "ClassName" : "UParticleModuleTypeDataBeam",
+            "DisplacementDecay" : 0.500000,
+            "GlowIntensity" : 0.700000,
+            "JitterFrequency" : 20.000000,
+            "NoiseAlgorithm" : 0,
+            "NoiseAmplitude" : 0.000000,
+            "NoiseFrequency" : 1.000000,
+            "NoiseType" : 0,
+            "SegmentCount" : 18,
+            "SourcePoint" : [0.000000, 0.000000, 0.000000],
+            "TaperFactor" : 0.500000,
+            "TaperMethod" : 0,
+            "TargetPoint" : [100.000000, 0.000000, 0.000000],
+            "TextureRepeat" : 1.000000,
+            "bActive" : true,
+            "bUseTexture" : true
+          },
+          "UpdateModules" : [],
+          "bEnabled" : false
+        }, {
+          "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
+          "Level" : 0,
+          "RequiredModule" : {
+            "ClassName" : "UParticleModuleRequired",
+            "EmitterDelay" : 0.000000,
+            "EmitterDuration" : 0.000000,
+            "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+            "LifeTime" : 3.000000,
+            "Material" : "Shaders/Materials/UberLit.hlsl",
+            "SpawnRate" : 0.000000,
+            "bActive" : true,
+            "bEnableCameraFacing" : true
+          },
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
             }],
           "TypeDataModule" : {
 
@@ -69,6 +117,7 @@
           "bEnabled" : false
         }, {
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -76,12 +125,26 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
-          "SpawnModules" : [],
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
+            }],
           "TypeDataModule" : {
 
           },
@@ -89,6 +152,7 @@
           "bEnabled" : false
         }, {
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -96,12 +160,26 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
-          "SpawnModules" : [],
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
+            }],
           "TypeDataModule" : {
 
           },
@@ -109,6 +187,7 @@
           "bEnabled" : false
         }, {
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -116,12 +195,26 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
-          "SpawnModules" : [],
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
+            }],
           "TypeDataModule" : {
 
           },
@@ -129,6 +222,7 @@
           "bEnabled" : false
         }, {
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -136,12 +230,26 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
-          "SpawnModules" : [],
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
+            }],
           "TypeDataModule" : {
 
           },
@@ -149,6 +257,7 @@
           "bEnabled" : false
         }, {
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -156,12 +265,26 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
-          "SpawnModules" : [],
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
+            }],
           "TypeDataModule" : {
 
           },
@@ -169,6 +292,7 @@
           "bEnabled" : false
         }, {
           "ClassName" : "UParticleLODLevel",
+          "LODDistance" : 0.000000,
           "Level" : 0,
           "RequiredModule" : {
             "ClassName" : "UParticleModuleRequired",
@@ -176,38 +300,35 @@
             "EmitterDuration" : 0.000000,
             "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
             "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
+            "Material" : "Shaders/Materials/UberLit.hlsl",
             "SpawnRate" : 0.000000,
+            "bActive" : true,
             "bEnableCameraFacing" : true
           },
-          "SpawnModules" : [],
-          "TypeDataModule" : {
-
-          },
-          "UpdateModules" : [],
-          "bEnabled" : false
-        }, {
-          "ClassName" : "UParticleLODLevel",
-          "Level" : 0,
-          "RequiredModule" : {
-            "ClassName" : "UParticleModuleRequired",
-            "EmitterDelay" : 0.000000,
-            "EmitterDuration" : 0.000000,
-            "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
-            "LifeTime" : 3.000000,
-            "Material" : "",
-            "Mesh" : "",
-            "SpawnRate" : 0.000000,
-            "bEnableCameraFacing" : true
-          },
-          "SpawnModules" : [],
+          "SpawnModules" : [{
+              "BurstList" : [],
+              "ClassName" : "UParticleModuleSpawn",
+              "Rate" : {
+                "Max" : 20.000000,
+                "Min" : 20.000000,
+                "Mode" : 0
+              },
+              "RateScale" : {
+                "Max" : 1.000000,
+                "Min" : 1.000000,
+                "Mode" : 0
+              },
+              "bActive" : true
+            }],
           "TypeDataModule" : {
 
           },
           "UpdateModules" : [],
           "bEnabled" : false
         }],
-      "MaxParticleCount" : 0
-    }]
+      "MaxParticleCount" : 30,
+      "bActive" : true
+    }],
+  "LODDistanceCheckTime" : 0.250000,
+  "LODMethod" : 0
 }
