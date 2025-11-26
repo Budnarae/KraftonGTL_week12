@@ -445,23 +445,29 @@ void UStatsOverlayD2D::Draw()
 		uint32_t TotalEmitters = FParticleStatManager::GetInstance().GetTotalEmitterCount();
 		uint32_t SpriteEmitters = FParticleStatManager::GetInstance().GetSpriteEmitterCount();
 		uint32_t MeshEmitters = FParticleStatManager::GetInstance().GetMeshEmitterCount();
+		uint32_t RibbonEmitters = FParticleStatManager::GetInstance().GetRibbonEmitterCount();
+		uint32_t BeamEmitters = FParticleStatManager::GetInstance().GetBeamEmitterCount();
 		uint32_t TotalParticles = FParticleStatManager::GetInstance().GetTotalParticleCount();
 		uint32_t SpriteParticles = FParticleStatManager::GetInstance().GetSpriteParticleCount();
 		uint32_t MeshParticles = FParticleStatManager::GetInstance().GetMeshParticleCount();
+		uint32_t RibbonParticles = FParticleStatManager::GetInstance().GetRibbonParticleCount();
+		uint32_t BeamParticles = FParticleStatManager::GetInstance().GetBeamParticleCount();
 		uint32_t SpriteDrawCalls = FParticleStatManager::GetInstance().GetSpriteDrawCallCount();
 		uint32_t MeshDrawCalls = FParticleStatManager::GetInstance().GetMeshDrawCallCount();
+		uint32_t RibbonDrawCalls = FParticleStatManager::GetInstance().GetRibbonDrawCallCount();
+		uint32_t BeamDrawCalls = FParticleStatManager::GetInstance().GetBeamDrawCallCount();
 		double ParticleTime = FParticleStatManager::GetInstance().GetParticlePassTimeMS();
 		double AvgTimePerParticle = FParticleStatManager::GetInstance().GetAverageTimePerParticleMS();
 		double AvgTimePerDraw = FParticleStatManager::GetInstance().GetAverageTimePerDrawCallMS();
 
 		// 2. 출력할 문자열 버퍼를 만듭니다.
-		wchar_t Buf[512];
+		wchar_t Buf[768];
 		swprintf_s(Buf,
 			L"[Particle Stats]\n"
 			L"Systems: %u / %u (Active)\n"
-			L"Emitters: %u (S:%u M:%u)\n"
-			L"Particles: %u (S:%u M:%u)\n"
-			L"DrawCalls: %u (S:%u M:%u)\n"
+			L"Emitters: %u (S:%u M:%u R:%u B:%u)\n"
+			L"Particles: %u (S:%u M:%u R:%u B:%u)\n"
+			L"DrawCalls: %u (S:%u M:%u R:%u B:%u)\n"
 			L"Time: %.3f ms\n"
 			L"Avg/Particle: %.4f ms\n"
 			L"Avg/Draw: %.4f ms",
@@ -470,12 +476,18 @@ void UStatsOverlayD2D::Draw()
 			TotalEmitters,
 			SpriteEmitters,
 			MeshEmitters,
+			RibbonEmitters,
+			BeamEmitters,
 			TotalParticles,
 			SpriteParticles,
 			MeshParticles,
-			SpriteDrawCalls + MeshDrawCalls,
+			RibbonParticles,
+			BeamParticles,
+			SpriteDrawCalls + MeshDrawCalls + RibbonDrawCalls + BeamDrawCalls,
 			SpriteDrawCalls,
 			MeshDrawCalls,
+			RibbonDrawCalls,
+			BeamDrawCalls,
 			ParticleTime,
 			AvgTimePerParticle,
 			AvgTimePerDraw

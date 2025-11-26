@@ -982,6 +982,36 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             // 통계 수집: 메시 파티클 카운트
             FParticleStatManager::GetInstance().AddMeshParticleCount(Source.ActiveParticleCount);
         }
+        else if (Source.eEmitterType == EDET_Beam)
+        {
+            // 통계 수집: 빔 에미터 카운트
+            FParticleStatManager::GetInstance().IncrementBeamEmitterCount();
+            FParticleStatManager::GetInstance().AddTotalEmitterCount(1);
+
+            // 통계 수집: 빔 파티클 카운트
+            FParticleStatManager::GetInstance().AddBeamParticleCount(Source.ActiveParticleCount);
+
+            // 빔 드로우 콜 통계 (빔은 보통 1개의 드로우콜)
+            if (Source.ActiveParticleCount > 0)
+            {
+                FParticleStatManager::GetInstance().IncrementBeamDrawCallCount();
+            }
+        }
+        else if (Source.eEmitterType == EDET_Ribbon)
+        {
+            // 통계 수집: 리본 에미터 카운트
+            FParticleStatManager::GetInstance().IncrementRibbonEmitterCount();
+            FParticleStatManager::GetInstance().AddTotalEmitterCount(1);
+
+            // 통계 수집: 리본 파티클 카운트
+            FParticleStatManager::GetInstance().AddRibbonParticleCount(Source.ActiveParticleCount);
+
+            // 리본 드로우 콜 통계 (리본은 보통 1개의 드로우콜)
+            if (Source.ActiveParticleCount > 0)
+            {
+                FParticleStatManager::GetInstance().IncrementRibbonDrawCallCount();
+            }
+        }
     }
 
     // 3. 스프라이트 에미터 렌더링
