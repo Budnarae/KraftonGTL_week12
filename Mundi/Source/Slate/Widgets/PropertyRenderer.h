@@ -85,6 +85,9 @@ public:
 	// Simplified sound combo without thumbnails
 	static bool RenderSoundSelectionComboSimple(const char* Label, USound* CurrentSound, USound*& OutNewSound);
 
+	// 리소스 캐시 클리어 (새 에셋 생성/저장 후 드롭다운 갱신용)
+	static void ClearResourcesCache();
+
 private:
 
 
@@ -92,7 +95,6 @@ private:
 	static bool RenderTransformProperty(const FProperty& Prop, void* Instance);
 
 	static void CacheResources();	// 필요할 때 리소스 목록을 멤버 변수에 캐시합니다.
-	static void ClearResourcesCache();	// 렌더링 패스가 끝날 때 캐시를 비웁니다.
 
 private:
 	// 렌더링 중 캐시되는 리소스 목록

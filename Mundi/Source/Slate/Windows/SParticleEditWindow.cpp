@@ -268,6 +268,9 @@ void SParticleEditWindow::SetTypeDataModule(int32 TypeDataType)
     {
         LOD->SetTypeDataModule(NewTypeData);
     }
+
+    // TypeData 변경 후 EmitterInstances를 재초기화해야 새 EmitterType이 적용됨
+    State->ReStartParticle();
 }
 
 void SParticleEditWindow::RemoveTypeDataModule()
@@ -294,6 +297,9 @@ void SParticleEditWindow::RemoveTypeDataModule()
     }
 
     UE_LOG("[SParticleEditWindow] TypeData removed (reverted to Sprite)");
+
+    // TypeData 제거 후 EmitterInstances를 재초기화해야 Sprite로 복귀됨
+    State->ReStartParticle();
 }
 
 void SParticleEditWindow::RemoveEmitter()
@@ -472,14 +478,18 @@ void SParticleEditWindow::OnRender()
         {
             UParticleAsset* Asset = UParticleAsset::CreateAutoName(UParticleAsset::FolderPath.string());
             State->LoadCachedParticle(Asset->GetFilePath());
+            // 새 에셋 생성 후 캐시 클리어 (Template 드롭다운에 반영)
+            UPropertyRenderer::ClearResourcesCache();
         }
         ImGui::SameLine();
         if (ImGui::Button("Save"))
         {
             //현재 캐쉬를 파일에 저장하고 파일을 다시 읽어옴
-            if (State->GetCachedParticle()) 
+            if (State->GetCachedParticle())
             {
                 UParticleAsset::Save(State->ParticlePath, State->GetCachedParticle());
+                // 저장 후 캐시 클리어 (Template 드롭다운에 반영)
+                UPropertyRenderer::ClearResourcesCache();
             }
         }
         ImGui::SameLine();

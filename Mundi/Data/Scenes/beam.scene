@@ -1,0 +1,115 @@
+{
+  "Actors" : {
+    "2313" : {
+      "ObjectName" : "APlayerCameraManager_2",
+      "OwnedComponents" : [{
+          "Id" : 2314,
+          "ObjectName" : "USceneComponent_3",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, 0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "USceneComponent",
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 2314,
+      "Tag" : "",
+      "Type" : "APlayerCameraManager",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "3816" : {
+      "ObjectName" : "파티클 시스템_0",
+      "OwnedComponents" : [{
+          "ElapsedTime" : 100.885216,
+          "Id" : 3817,
+          "ObjectName" : "UParticleSystemComponent_2",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Template" : {
+
+          },
+          "Type" : "UParticleSystemComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 3817,
+      "Tag" : "",
+      "Type" : "AParticleSystemActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "3818" : {
+      "ObjectName" : "파티클 시스템_1",
+      "OwnedComponents" : [{
+          "ElapsedTime" : 96.846222,
+          "Id" : 3819,
+          "ObjectName" : "UParticleSystemComponent_3",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, 5.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Template" : {
+
+          },
+          "Type" : "UParticleSystemComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 3819,
+      "Tag" : "",
+      "Type" : "AParticleSystemActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "3820" : {
+      "ObjectName" : "파티클 시스템_2",
+      "OwnedComponents" : [{
+          "ElapsedTime" : 95.684448,
+          "Id" : 3821,
+          "ObjectName" : "UParticleSystemComponent_4",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, 10.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Template" : {
+
+          },
+          "Type" : "UParticleSystemComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 3821,
+      "Tag" : "",
+      "Type" : "AParticleSystemActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    }
+  },
+  "NextUUID" : 4259,
+  "PerspectiveCamera" : {
+    "FOV" : [60.000000],
+    "FarClip" : [2000.000000],
+    "Location" : [4.168867, 22.159006, 10.645094],
+    "NearClip" : [0.100000],
+    "Rotation" : [0.000000, 34.200001, -89.299400]
+  },
+  "Version" : 1
+}

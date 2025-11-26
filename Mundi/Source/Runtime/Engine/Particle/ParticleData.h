@@ -269,9 +269,10 @@ struct FParticleInstanceData
     // Total: 48 bytes
 
     // FBaseParticle로부터 데이터 채우기
+    // 주의: Particle->Location은 이미 월드 좌표이므로 ComponentLocation을 더하지 않음
     void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation, bool bEnableCameraFacing = true)
     {
-        Position = Particle->Location + ComponentLocation;
+        Position = Particle->Location;  // 이미 월드 좌표
         Rotation = Particle->Rotation;
         Size = FVector2D(Particle->Size.X, Particle->Size.Y);
         CameraFacing = bEnableCameraFacing ? 1.0f : 0.0f;
