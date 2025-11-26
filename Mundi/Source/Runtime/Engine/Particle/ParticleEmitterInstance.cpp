@@ -97,7 +97,10 @@ void FParticleEmitterInstance::Update(float DeltaTime)
 
         for (UParticleModule* UpdateModule : UpdateModules)
         {
-            UpdateModule->Update(Context, DeltaTime);
+            if (UpdateModule->GetActive()) 
+            {
+                UpdateModule->Update(Context, DeltaTime);
+            }
         }
 
         if (ParticleBase->RelativeTime >= ParticleBase->LifeTime)
@@ -162,7 +165,10 @@ void FParticleEmitterInstance::SpawnParticles
         // 추가 SpawnModules 호출
         for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
         {
-            Module->Spawn(Context, StartTime);
+            if (Module->GetActive()) 
+            {
+                Module->Spawn(Context, StartTime);
+            }
         }
 
         // TypeDataModule의 Spawn 호출 (Ribbon/Beam 등에서 SpawnTime 설정)

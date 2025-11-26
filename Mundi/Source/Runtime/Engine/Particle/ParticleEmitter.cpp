@@ -144,7 +144,7 @@ float UParticleEmitter::GetCalculatedDuration()
 
 bool UParticleEmitter::IsValid() const
 {
-    if (!LODLevels[CurrentLODLevel]->IsValid())
+    if (CurrentLODLevel == INVALID || !LODLevels[CurrentLODLevel]->IsValid())
         return false;
     
     return true;

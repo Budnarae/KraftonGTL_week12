@@ -135,6 +135,7 @@ void SParticleEditWindow::AddEmitter(const int EmitterOffset)
     if (State->GetCachedParticle())
     {
         State->GetCachedParticle()->AddEmitter(NewObject<UParticleEmitter>());
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
@@ -147,6 +148,7 @@ void SParticleEditWindow::AddSpawnModule(const FString& ClassName)
         {
             LOD->AddSpawnModule(Module);
         }
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
@@ -159,6 +161,7 @@ void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
         {
             LOD->AddUpdateModule(Module);
         }
+        State->ReStartParticle();
     }
 }
 
@@ -241,6 +244,7 @@ void SParticleEditWindow::RemoveEmitter()
         State->GetCachedParticle()->RemoveEmitter(State->SelectedEmitter);
         State->SelectedEmitter = nullptr;
         State->SelectedModule = nullptr;
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::RemoveModule()
@@ -258,6 +262,7 @@ void SParticleEditWindow::RemoveModule()
             State->SelectedModule = nullptr;
             return;
         }
+        State->ReStartParticle();
     }
 }
 void SParticleEditWindow::ResetModule()
@@ -465,7 +470,10 @@ void SParticleEditWindow::OnRender()
         ImGui::End();
 
 
-        State->ReStartParticle();
+        if (bChanged) 
+        {
+            State->ReStartParticle();
+        }
     }
 
 
@@ -544,8 +552,6 @@ void SParticleEditWindow::OnMouseUp(FVector2D MousePos, uint32 Button)
         bTypeDataDropdown = false;
         break;
     }
-
-   
 }
 
 void SParticleEditWindow::OnRenderViewport()
@@ -565,15 +571,26 @@ void SParticleEditWindow::OnRenderViewport()
 
 //window우클릭
 //module 우클릭
+//void SParticleEditWindow::DrawModule(UParticleEmitter* ParentEmitter, UParticleModule* Module)
+//{
+//    if (Module == nullptr)
+//    {
+//        return;
+//    }
+//    FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+//    bool bSelected = Module == State->SelectedModule;
+//    if(ImGui::T)
+//}
 void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitter, UParticleModule* Module, const ImVec2& Size)
 {
     if (Module == nullptr)
     {
         return;
     }
-    FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+    //FString RequireModuleGUIID = GetUniqueGUIIDWithPointer(Module->GetClass()->DisplayName, Module);
+    ImGui::PushID(reinterpret_cast<uintptr_t>(Module));
     bool bSelected = Module == State->SelectedModule;
-    if (ImGui::Selectable(RequireModuleGUIID.c_str(), bSelected, 0, Size))
+    if (ImGui::Selectable(Module->GetClass()->DisplayName, bSelected, 0, Size))
     {
         State->SelectedModule = Module;
         State->SelectedEmitter = ParentEmitter;
@@ -595,6 +612,15 @@ void SParticleEditWindow::DrawModuleInEmitterView(UParticleEmitter* ParentEmitte
             ModuleDropdownPos = ImGui::GetMousePos();
         }
     }
+    ImGui::SameLine();
+    bool bActvie = Module->GetActive();
+    if (ImGui::Checkbox("##", &bActvie))
+    {
+        Module->SetActive(bActvie);
+        State->ReStartParticle();
+    }
+    ImGui::PopID();
+
 }
 
 void SParticleEditWindow::DrawEmitterView()
@@ -616,6 +642,7 @@ void SParticleEditWindow::DrawEmitterView()
         TArray<UParticleModule*>& UpdateModules = ParticleLOD->GetUpdateModule();
 
         ImGui::BeginGroup();
+        ImGui::PushID(reinterpret_cast<uintptr_t>(Emitter));
         FString GUIID = GetUniqueGUIIDWithPointer(Emitter->GetEmitterName(), Emitter);
         bool bSelected = Emitter == State->SelectedEmitter;
         ImGui::PushStyleColor(ImGuiCol_Header, EmitterColor);
@@ -625,6 +652,13 @@ void SParticleEditWindow::DrawEmitterView()
             //선택된 이미터 이걸로 변경
             State->SelectedEmitter = Emitter;
             State->SelectedModule = nullptr;
+        }
+        ImGui::SameLine();
+        bool bActvie = Emitter->GetActive();
+        if (ImGui::Checkbox("##", &bActvie))
+        {
+            Emitter->SetActive(bActvie);
+            State->ReStartParticle();
         }
         ImGui::PopStyleColor();
 
@@ -659,6 +693,7 @@ void SParticleEditWindow::DrawEmitterView()
         ImGui::EndGroup();
         ImGui::SameLine();
         ImGui::PopStyleColor();
+        ImGui::PopID();
     }
     ImGui::PopStyleColor(2);
 
