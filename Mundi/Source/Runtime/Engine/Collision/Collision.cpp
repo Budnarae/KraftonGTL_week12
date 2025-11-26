@@ -7,6 +7,10 @@
 
 namespace Collision
 {
+    // Forward declarations for helper functions
+    FVector AbsVec(const FVector& v);
+    float UniformScaleMax(const FVector& S);
+
     bool Intersects(const FAABB& Aabb, const FOBB& Obb)
     {
         const FOBB ConvertedOBB(Aabb, FMatrix::Identity());
@@ -77,7 +81,11 @@ namespace Collision
     bool OverlapSphereAndSphere(const FShape& ShapeA, const FTransform& TransformA, const FShape& ShapeB, const FTransform& TransformB)
     {
         FVector Dist = TransformA.Translation - TransformB.Translation;
-        float SumRadius = ShapeA.Sphere.SphereRadius + ShapeB.Sphere.SphereRadius;
+
+        // Scale 적용 (다른 Overlap 함수들과 일관성 유지)
+        float RadiusA = ShapeA.Sphere.SphereRadius * UniformScaleMax(AbsVec(TransformA.Scale3D));
+        float RadiusB = ShapeB.Sphere.SphereRadius * UniformScaleMax(AbsVec(TransformB.Scale3D));
+        float SumRadius = RadiusA + RadiusB;
 
         return Dist.SizeSquared() <= SumRadius * SumRadius;
     }

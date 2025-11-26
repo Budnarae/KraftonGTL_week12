@@ -56,6 +56,91 @@ static bool ItemsGetter(void* Data, int Index, const char** CItem)
 	return true;
 }
 
+// ============================================================================
+// Enum 이름 배열 정의
+// ============================================================================
+static const char* EParticleCollisionResponseNames[] = { "Bounce", "Stop", "Kill" };
+static const int EParticleCollisionResponseCount = 3;
+
+// Enum 타입별 정보를 담는 구조체
+struct FEnumInfo
+{
+	const char* TypeName;
+	const char** Names;
+	int Count;
+};
+
+// 등록된 Enum 목록
+static FEnumInfo RegisteredEnums[] = {
+	{ "EParticleCollisionResponse", EParticleCollisionResponseNames, EParticleCollisionResponseCount },
+	// 여기에 새 Enum 추가 가능
+};
+static const int RegisteredEnumCount = sizeof(RegisteredEnums) / sizeof(RegisteredEnums[0]);
+
+// Enum 타입 이름으로 정보 찾기
+static const FEnumInfo* FindEnumInfo(const char* TypeName)
+{
+	if (!TypeName) return nullptr;
+	for (int i = 0; i < RegisteredEnumCount; ++i)
+	{
+		if (strcmp(RegisteredEnums[i].TypeName, TypeName) == 0)
+		{
+			return &RegisteredEnums[i];
+		}
+	}
+	return nullptr;
+}
+
+bool UPropertyRenderer::RenderEnumPropertyGeneric(const FProperty& Prop, void* Instance)
+{
+	const FEnumInfo* EnumInfo = FindEnumInfo(Prop.EnumTypeName);
+	if (!EnumInfo)
+	{
+		// 등록되지 않은 Enum은 정수로 표시
+		ImGui::Text("%s: [Unknown Enum: %s]", Prop.Name, Prop.EnumTypeName ? Prop.EnumTypeName : "null");
+		return false;
+	}
+
+	// Enum 크기에 따라 처리 (uint8, int32 등)
+	int CurrentValue = 0;
+	void* ValuePtr = reinterpret_cast<char*>(Instance) + Prop.Offset;
+
+	if (Prop.EnumSize == 1)
+	{
+		CurrentValue = static_cast<int>(*reinterpret_cast<uint8*>(ValuePtr));
+	}
+	else if (Prop.EnumSize == 4)
+	{
+		CurrentValue = *reinterpret_cast<int32*>(ValuePtr);
+	}
+	else
+	{
+		// 기본적으로 uint8로 처리
+		CurrentValue = static_cast<int>(*reinterpret_cast<uint8*>(ValuePtr));
+	}
+
+	bool bChanged = false;
+	if (ImGui::Combo(Prop.Name, &CurrentValue, EnumInfo->Names, EnumInfo->Count))
+	{
+		// 값 저장
+		if (Prop.EnumSize == 1)
+		{
+			*reinterpret_cast<uint8*>(ValuePtr) = static_cast<uint8>(CurrentValue);
+		}
+		else if (Prop.EnumSize == 4)
+		{
+			*reinterpret_cast<int32*>(ValuePtr) = CurrentValue;
+		}
+		else
+		{
+			*reinterpret_cast<uint8*>(ValuePtr) = static_cast<uint8>(CurrentValue);
+		}
+		bChanged = true;
+	}
+
+	return bChanged;
+}
+
 bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectInstance)
 {
 	// 렌더링에 필요한 리소스가 캐시되었는지 확인하고, 없으면 로드합니다.
@@ -137,6 +222,9 @@ bool UPropertyRenderer::RenderProperty(const FProperty& Property, void* ObjectIn
 		break;
 	case EPropertyType::RawDistribution_FVector:
 		bChanged = RenderRawDistributionFVectorProperty(Property, ObjectInstance);
+		break;
+	case EPropertyType::Enum:
+		bChanged = RenderEnumPropertyGeneric(Property, ObjectInstance);
 		break;
 	case EPropertyType::Array:
 		switch (Property.InnerType)

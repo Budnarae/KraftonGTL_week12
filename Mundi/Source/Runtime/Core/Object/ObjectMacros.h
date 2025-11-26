@@ -42,6 +42,8 @@ struct TPropertyTypeTraits
 			return EPropertyType::StaticMesh;
 		//else if constexpr (std::is_same_v<T, USound>)
 		//	return EPropertyType::Sound;
+		else if constexpr (std::is_enum_v<T>)
+			return EPropertyType::Enum;  // Enum 타입 자동 감지
 		else
 			return EPropertyType::Struct;
 	}
@@ -126,12 +128,36 @@ struct TPropertyTypeTraits
 		Prop.bIsEditAnywhere = bEditAnywhere; \
 		Prop.Tooltip = "" __VA_ARGS__; \
 		Prop.ClassName = NormalizeClassName(#VarType);	\
+		/* Enum 타입의 경우 EnumTypeName과 EnumSize 자동 설정 */ \
+		if constexpr (std::is_enum_v<VarType>) { \
+			Prop.EnumTypeName = #VarType; \
+			Prop.EnumSize = sizeof(VarType); \
+		} \
 		Class->AddProperty(Prop); \
 	}
 
 // 범위 제한이 없는 프로퍼티 추가
 #define ADD_PROPERTY(VarType, VarName, CategoryName, bEditAnywhere, ...) \
 	ADD_PROPERTY_RANGE(VarType, VarName, CategoryName, 0.0f, 0.0f, bEditAnywhere, __VA_ARGS__)
+
+// Enum 타입 프로퍼티 추가
+#define ADD_PROPERTY_ENUM(EnumType, VarName, CategoryName, bEditAnywhere, ...) \
+	{ \
+		static_assert(std::is_array_v<std::remove_reference_t<decltype(CategoryName)>>, \
+		              "CategoryName must be a string literal!"); \
+		static_assert(std::is_enum_v<EnumType>, \
+		              "EnumType must be an enum type!"); \
+		FProperty Prop; \
+		Prop.Name = #VarName; \
+		Prop.Type = EPropertyType::Enum; \
+		Prop.Offset = offsetof(ThisClass_t, VarName); \
+		Prop.Category = CategoryName; \
+		Prop.bIsEditAnywhere = bEditAnywhere; \
+		Prop.Tooltip = "" __VA_ARGS__; \
+		Prop.EnumTypeName = #EnumType; \
+		Prop.EnumSize = sizeof(EnumType); \
+		Class->AddProperty(Prop); \
+	}
 
 // 리소스 타입 전용 프로퍼티 매크로
 // Texture 프로퍼티 추가

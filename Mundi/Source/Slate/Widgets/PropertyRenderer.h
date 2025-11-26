@@ -53,6 +53,7 @@ private:
 		}
 		return bChanged;
 	}
+	static bool RenderEnumPropertyGeneric(const FProperty& Prop, void* Instance);
 	static bool RenderBoolProperty(const FProperty& Prop, void* Instance);
 	static bool RenderInt32Property(const FProperty& Prop, void* Instance);
 	static bool RenderFloatProperty(const FProperty& Prop, void* Instance);
