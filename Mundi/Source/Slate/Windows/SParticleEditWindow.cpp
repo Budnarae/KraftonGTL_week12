@@ -437,7 +437,7 @@ void SParticleEditWindow::OnRender()
             HoveredWindowType = EHoveredWindowType::Detail;
         }
         ImGui::Text("Detail");
-        if (State->SelectedEmitter) 
+        if (State->SelectedEmitter)
         {
             static char buf[128] = "";
             const FString& Name = State->SelectedEmitter->GetEmitterName();

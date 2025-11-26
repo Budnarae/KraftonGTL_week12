@@ -19,6 +19,9 @@
 #include "USlateManager.h"
 #include "ImGui/imgui_curve.hpp"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
+#include "Source/Runtime/Engine/Particle/ParticleAsset.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystem.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 #include "PathUtils.h"
 #include "ObjectFactory.h"
 
@@ -37,6 +40,8 @@ TArray<FString> UPropertyRenderer::CachedSoundPaths;
 TArray<const char*> UPropertyRenderer::CachedSoundItems;
 TArray<FString> UPropertyRenderer::CachedScriptPaths;
 TArray<const char*> UPropertyRenderer::CachedScriptItems;
+TArray<FString> UPropertyRenderer::CachedParticleSystemPaths;
+TArray<FString> UPropertyRenderer::CachedParticleSystemItems;
 
 static bool ItemsGetter(void* Data, int Index, const char** CItem)
 {
@@ -460,6 +465,35 @@ void UPropertyRenderer::CacheResources()
             CachedSoundItems.push_back(path.c_str());
         }
     }
+
+	// 6. ParticleSystem (.uasset)
+	if (CachedParticleSystemPaths.IsEmpty() && CachedParticleSystemItems.IsEmpty())
+	{
+		// "None" 항목 추가
+		CachedParticleSystemPaths.Add("");
+		CachedParticleSystemItems.Add("None");
+
+		// Content/Resources/Particle 디렉토리 스캔
+		const FString ParticleDir = GContentDir + "/Resources/Particle";
+		if (fs::exists(ParticleDir) && fs::is_directory(ParticleDir))
+		{
+			for (const auto& Entry : fs::recursive_directory_iterator(ParticleDir))
+			{
+				if (Entry.is_regular_file() && Entry.path().extension() == ".uasset")
+				{
+					FString Path = WideToUTF8(Entry.path().generic_wstring());
+					CachedParticleSystemPaths.Add(NormalizePath(Path));
+				}
+			}
+		}
+
+		// 콤보박스 아이템 채우기 (파일명만 표시)
+		for (size_t i = 1; i < CachedParticleSystemPaths.size(); ++i)
+		{
+			std::filesystem::path fsPath(UTF8ToWide(CachedParticleSystemPaths[i]));
+			CachedParticleSystemItems.Add(WideToUTF8(fsPath.filename().wstring()));
+		}
+	}
 }
 
 void UPropertyRenderer::ClearResourcesCache()
@@ -478,6 +512,8 @@ void UPropertyRenderer::ClearResourcesCache()
 	CachedSoundItems.Empty();
 	CachedScriptPaths.Empty();
 	CachedScriptItems.Empty();
+	CachedParticleSystemPaths.Empty();
+	CachedParticleSystemItems.Empty();
 }
 
 // ===== 타입별 렌더링 구현 =====
@@ -689,6 +725,97 @@ bool UPropertyRenderer::RenderObjectPtrProperty(const FProperty& Prop, void* Ins
 {
 	UObject** ObjPtr = Prop.GetValuePtr<UObject*>(Instance);
 
+	// UParticleSystem* 타입인 경우 선택 콤보박스 표시
+	if (Prop.ClassName == "UParticleSystem")
+	{
+		UParticleSystem** ParticleSystemPtr = reinterpret_cast<UParticleSystem**>(ObjPtr);
+		UParticleSystem* CurrentPS = *ParticleSystemPtr;
+
+		// 리소스 캐시가 비어있으면 캐시 수행
+		if (CachedParticleSystemItems.IsEmpty())
+		{
+			CacheResources();
+		}
+
+		// 캐시가 여전히 비어있으면 기본 텍스트 표시
+		if (CachedParticleSystemItems.IsEmpty())
+		{
+			ImGui::Text("%s: <No Particle Systems Found>", Prop.Name);
+			return false;
+		}
+
+		// 현재 선택된 파티클 시스템의 인덱스 찾기
+		int CurrentIndex = 0;
+		if (CurrentPS)
+		{
+			// 현재 Template의 경로를 찾기 위해 캐시된 파티클 시스템들과 비교
+			for (int i = 1; i < CachedParticleSystemPaths.Num(); ++i) // 0은 "None"이므로 1부터
+			{
+				if (!CachedParticleSystemPaths[i].empty())
+				{
+					UParticleAsset* Asset = UResourceManager::GetInstance().Load<UParticleAsset>(CachedParticleSystemPaths[i]);
+					if (Asset && &Asset->ParticleSystem == CurrentPS)
+					{
+						CurrentIndex = i;
+						break;
+					}
+				}
+			}
+		}
+
+		// CurrentIndex가 유효한 범위인지 확인
+		if (CurrentIndex < 0 || CurrentIndex >= CachedParticleSystemItems.Num())
+		{
+			CurrentIndex = 0; // "None"으로 기본 설정
+		}
+
+		// 콤보박스 표시
+		bool bChanged = false;
+		if (ImGui::BeginCombo(Prop.Name, CachedParticleSystemItems[CurrentIndex].c_str()))
+		{
+			for (int i = 0; i < CachedParticleSystemItems.Num(); ++i)
+			{
+				bool bIsSelected = (i == CurrentIndex);
+				if (ImGui::Selectable(CachedParticleSystemItems[i].c_str(), bIsSelected))
+				{
+					if (i == 0) // "None" 선택
+					{
+						*ParticleSystemPtr = nullptr;
+					}
+					else
+					{
+						// 선택된 파티클 시스템 로드
+						UParticleAsset* Asset = UResourceManager::GetInstance().Load<UParticleAsset>(CachedParticleSystemPaths[i]);
+						if (Asset)
+						{
+							*ParticleSystemPtr = &Asset->ParticleSystem;
+						}
+					}
+					bChanged = true;
+				}
+				if (bIsSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		// Template이 변경되었으면 ParticleSystemComponent의 Activate 호출
+		if (bChanged)
+		{
+			UObject* Obj = static_cast<UObject*>(Instance);
+			if (UParticleSystemComponent* PSC = Cast<UParticleSystemComponent>(Obj))
+			{
+				PSC->SetTemplate(*ParticleSystemPtr);
+				PSC->Activate(true);
+			}
+		}
+
+		return bChanged;
+	}
+
+	// 일반 ObjectPtr 처리 (읽기 전용)
 	if (*ObjPtr)
 	{
 		// 객체가 있으면 클래스 이름과 객체 이름 표시
