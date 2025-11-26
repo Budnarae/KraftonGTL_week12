@@ -204,7 +204,11 @@ SParticleEditWindow::SParticleEditWindow()
 
 SParticleEditWindow::~SParticleEditWindow()
 {
-
+    if (State)
+    {
+        ParticleViewerBootstrap::DestroyViewerState(State);
+        State = nullptr;
+    }
 }
 // 베이스 클래스 Initialize 오버라이드 (기본 크기/위치 사용)
 bool SParticleEditWindow::Initialize(ID3D11Device* InDevice, UWorld* InWorld)

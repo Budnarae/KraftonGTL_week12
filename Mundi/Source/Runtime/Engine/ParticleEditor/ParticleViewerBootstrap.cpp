@@ -42,6 +42,8 @@ ParticleViewerState* ParticleViewerBootstrap::CreateViewerState(const char* Name
 void ParticleViewerBootstrap::DestroyViewerState(ParticleViewerState*& State)
 {
     if (!State) return;
-  
+    if (State->Viewport) { delete State->Viewport; State->Viewport = nullptr; }
+    if (State->Client) { delete State->Client; State->Client = nullptr; }
+    if (State->World) { ObjectFactory::DeleteObject(State->World); State->World = nullptr; }
     delete State; State = nullptr;
 }
