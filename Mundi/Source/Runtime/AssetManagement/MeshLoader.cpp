@@ -56,7 +56,9 @@ FMeshData* UMeshLoader::LoadMesh(const std::filesystem::path& FilePath)
     if (!std::filesystem::exists(FilePath))
         return nullptr;
 
-    std::ifstream File(FilePath);
+    // 한글 경로 지원: fs::path → UTF-16 변환 후 파일 열기
+    FWideString WPath = FilePath.wstring();
+    std::ifstream File(WPath);
     if (!File)
         return nullptr;
 

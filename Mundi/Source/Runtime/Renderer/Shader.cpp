@@ -563,8 +563,9 @@ void UShader::ParseIncludeFiles(const FString& ShaderPath)
 			continue;
 		}
 
-		// 파일 열기
-		std::ifstream File(CurrentFile);
+		// 한글 경로 지원: fs::path → UTF-16 변환 후 파일 열기
+		FWideString WPath = std::filesystem::path(CurrentFile).wstring();
+		std::ifstream File(WPath);
 		if (!File.is_open())
 		{
 			continue;
