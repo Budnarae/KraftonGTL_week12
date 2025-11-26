@@ -99,12 +99,17 @@ struct FRawDistribution
     EDistributionMode Mode = EDistributionMode::Uniform;
     FInterpCurve<T> Curve;
 
+    // 커브 시간 범위 (커브가 이 범위를 벗어나면 순환)
+    float MinTime = 0.0f;
+    float MaxTime = 1.0f;
+
     // 모드에 따른 값 반환
     T GetValue(float Time)
     {
         if (Mode == EDistributionMode::Curve && Curve.HasKeys())
         {
-            return Curve.Eval(Time);
+            float NormalizedTime = NormalizeTime(Time);
+            return Curve.Eval(NormalizedTime);
         }
         // 기본: Uniform 모드 (랜덤)
         return GetRandomValue();
@@ -121,6 +126,23 @@ struct FRawDistribution
     {
         return FMath::Lerp(Min, Max, FMath::GetRandZeroOneRange());
     }
+
+private:
+    // 시간을 [MinTime, MaxTime] 범위로 정규화 (순환)
+    float NormalizeTime(float Time) const
+    {
+        if (MaxTime <= MinTime)
+            return MinTime;
+
+        float Range = MaxTime - MinTime;
+        float Offset = Time - MinTime;
+
+        if (Offset < 0.0f)
+            return MinTime;
+
+        // MinTime~MaxTime 범위 내에서 시간을 순환
+        return MinTime + fmodf(Offset, Range);
+    }
 };
 
 // FVector 특수화: 각 축에 독립적인 랜덤 값 사용
@@ -132,12 +154,17 @@ struct FRawDistribution<FVector>
     EDistributionMode Mode = EDistributionMode::Uniform;
     FInterpCurve<FVector> Curve;
 
+    // 커브 시간 범위 (커브가 이 범위를 벗어나면 순환)
+    float MinTime = 0.0f;
+    float MaxTime = 1.0f;
+
     // 모드에 따른 값 반환
     FVector GetValue(float Time)
     {
         if (Mode == EDistributionMode::Curve && Curve.HasKeys())
         {
-            return Curve.Eval(Time);
+            float NormalizedTime = NormalizeTime(Time);
+            return Curve.Eval(NormalizedTime);
         }
         // 기본: Uniform 모드 (랜덤)
         return GetRandomValue();
@@ -157,6 +184,23 @@ struct FRawDistribution<FVector>
             FMath::Lerp(Min.Y, Max.Y, FMath::GetRandZeroOneRange()),
             FMath::Lerp(Min.Z, Max.Z, FMath::GetRandZeroOneRange())
         );
+    }
+
+private:
+    // 시간을 [MinTime, MaxTime] 범위로 정규화 (순환)
+    float NormalizeTime(float Time) const
+    {
+        if (MaxTime <= MinTime)
+            return MinTime;
+
+        float Range = MaxTime - MinTime;
+        float Offset = Time - MinTime;
+
+        if (Offset < 0.0f)
+            return MinTime;
+
+        // MinTime~MaxTime 범위 내에서 시간을 순환
+        return MinTime + fmodf(Offset, Range);
     }
 };
 

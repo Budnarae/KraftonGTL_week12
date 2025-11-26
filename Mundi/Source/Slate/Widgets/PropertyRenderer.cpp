@@ -642,6 +642,22 @@ bool UPropertyRenderer::RenderRawDistributionFloatProperty(const FProperty& Prop
 	{
 		// Curve 모드: 그래픽 에디터로 편집
 		ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Edit in Curve Editor (right panel)");
+
+		// 시간 범위 컨트롤
+		ImGui::Spacing();
+		ImGui::Text("Curve Time Range (cycles after Max):");
+
+		if (ImGui::DragFloat("Min Time", &Value->MinTime, 0.01f, 0.0f, Value->MaxTime))
+		{
+			bChanged = true;
+		}
+
+		if (ImGui::DragFloat("Max Time", &Value->MaxTime, 0.01f, Value->MinTime, 100.0f))
+		{
+			bChanged = true;
+		}
+
+		ImGui::TextDisabled("Curve will repeat every %.2f seconds", Value->MaxTime - Value->MinTime);
 	}
 
 	return bChanged;
@@ -672,6 +688,22 @@ bool UPropertyRenderer::RenderRawDistributionFVectorProperty(const FProperty& Pr
 	{
 		// Curve 모드: 그래픽 에디터로 편집
 		ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Edit in Curve Editor (right panel)");
+
+		// 시간 범위 컨트롤
+		ImGui::Spacing();
+		ImGui::Text("Curve Time Range (cycles after Max):");
+
+		if (ImGui::DragFloat("Min Time", &Value->MinTime, 0.01f, 0.0f, Value->MaxTime))
+		{
+			bChanged = true;
+		}
+
+		if (ImGui::DragFloat("Max Time", &Value->MaxTime, 0.01f, Value->MinTime, 100.0f))
+		{
+			bChanged = true;
+		}
+
+		ImGui::TextDisabled("Curve will repeat every %.2f seconds", Value->MaxTime - Value->MinTime);
 	}
 
 	return bChanged;

@@ -574,9 +574,9 @@ void SParticleEditWindow::OnRender()
                             int selected_point = storage->GetInt(state_key_selected, -1);
                             bool dragging = storage->GetBool(state_key_dragging, false);
 
-                            // 줌/팬 상태 (기본값: 0~1 전체 범위)
-                            float view_min_time = storage->GetFloat(state_key_view_min_time, 0.0f);
-                            float view_max_time = storage->GetFloat(state_key_view_max_time, 1.0f);
+                            // 줌/팬 상태 (기본값: MinTime~MaxTime 전체 범위)
+                            float view_min_time = storage->GetFloat(state_key_view_min_time, Value->MinTime);
+                            float view_max_time = storage->GetFloat(state_key_view_max_time, Value->MaxTime);
                             bool panning = storage->GetBool(state_key_panning, false);
                             float view_time_range = view_max_time - view_min_time;
 
@@ -654,13 +654,14 @@ void SParticleEditWindow::OnRender()
                                 view_min_time = zoom_t - (zoom_t - view_min_time) * zoom_factor;
                                 view_max_time = view_min_time + new_range;
 
-                                // 범위 제한 (최소 0.01, 0~10 범위)
-                                if (new_range < 0.01f) {
-                                    view_min_time = zoom_t - 0.005f;
-                                    view_max_time = zoom_t + 0.005f;
+                                // 범위 제한 (최소 0.01, MinTime~MaxTime 범위)
+                                float min_range = 0.01f;
+                                if (new_range < min_range) {
+                                    view_min_time = zoom_t - min_range * 0.5f;
+                                    view_max_time = zoom_t + min_range * 0.5f;
                                 }
-                                if (view_min_time < 0.0f) view_min_time = 0.0f;
-                                if (view_max_time > 10.0f) view_max_time = 10.0f;
+                                if (view_min_time < Value->MinTime) view_min_time = Value->MinTime;
+                                if (view_max_time > Value->MaxTime) view_max_time = Value->MaxTime;
 
                                 storage->SetFloat(state_key_view_min_time, view_min_time);
                                 storage->SetFloat(state_key_view_max_time, view_max_time);
@@ -741,6 +742,9 @@ void SParticleEditWindow::OnRender()
                                     float time_delta = (delta_x / canvas_size.x) * view_time_range * sensitivity;
                                     Point.InVal += time_delta;
 
+                                    // 시간 값을 MinTime~MaxTime 범위로 제한
+                                    Point.InVal = FMath::Clamp(Point.InVal, Value->MinTime, Value->MaxTime);
+
                                     // Y축: Value
                                     float value_delta = -(delta_y / canvas_size.y) * displayRange * sensitivity;
                                     Point.OutVal += value_delta;
@@ -799,6 +803,10 @@ void SParticleEditWindow::OnRender()
                                 ImVec2 mouse_pos = ImGui::GetMousePos();
                                 float normalized_t = (mouse_pos.x - canvas_pos.x) / canvas_size.x;
                                 float t = view_min_time + normalized_t * view_time_range;
+
+                                // 시간 값을 MinTime~MaxTime 범위로 제한
+                                t = FMath::Clamp(t, Value->MinTime, Value->MaxTime);
+
                                 float normalized_y = 1.0f - (mouse_pos.y - canvas_pos.y) / canvas_size.y;
                                 // normalized_y를 합리적인 범위로 제한
                                 normalized_y = FMath::Clamp(normalized_y, -1.0f, 2.0f);
@@ -917,9 +925,9 @@ void SParticleEditWindow::OnRender()
                                     int selected_point_vec = storage->GetInt(state_key_selected, -1);
                                     bool dragging_vec = storage->GetBool(state_key_dragging, false);
 
-                                    // 줌/팬 상태 (기본값: 0~1 전체 범위)
-                                    float view_min_time_vec = storage->GetFloat(state_key_view_min_time, 0.0f);
-                                    float view_max_time_vec = storage->GetFloat(state_key_view_max_time, 1.0f);
+                                    // 줌/팬 상태 (기본값: MinTime~MaxTime 전체 범위)
+                                    float view_min_time_vec = storage->GetFloat(state_key_view_min_time, Value->MinTime);
+                                    float view_max_time_vec = storage->GetFloat(state_key_view_max_time, Value->MaxTime);
                                     bool panning_vec = storage->GetBool(state_key_panning, false);
 
                                     // Ctrl + 마우스 휠로 줌
@@ -932,12 +940,16 @@ void SParticleEditWindow::OnRender()
                                         float new_range = (view_max_time_vec - view_min_time_vec) * zoom_factor;
                                         view_min_time_vec = zoom_t - (zoom_t - view_min_time_vec) * zoom_factor;
                                         view_max_time_vec = view_min_time_vec + new_range;
-                                        if (new_range < 0.01f) {
-                                            view_min_time_vec = zoom_t - 0.005f;
-                                            view_max_time_vec = zoom_t + 0.005f;
+
+                                        // 범위 제한 (최소 0.01, MinTime~MaxTime 범위)
+                                        float min_range = 0.01f;
+                                        if (new_range < min_range) {
+                                            view_min_time_vec = zoom_t - min_range * 0.5f;
+                                            view_max_time_vec = zoom_t + min_range * 0.5f;
                                         }
-                                        if (view_min_time_vec < 0.0f) view_min_time_vec = 0.0f;
-                                        if (view_max_time_vec > 10.0f) view_max_time_vec = 10.0f;
+                                        if (view_min_time_vec < Value->MinTime) view_min_time_vec = Value->MinTime;
+                                        if (view_max_time_vec > Value->MaxTime) view_max_time_vec = Value->MaxTime;
+
                                         storage->SetFloat(state_key_view_min_time, view_min_time_vec);
                                         storage->SetFloat(state_key_view_max_time, view_max_time_vec);
                                     }
@@ -1069,6 +1081,9 @@ void SParticleEditWindow::OnRender()
                                             float time_delta = (delta_x / canvas_size.x) * view_time_range_vec * sensitivity;
                                             Point.InVal += time_delta;
 
+                                            // 시간 값을 MinTime~MaxTime 범위로 제한
+                                            Point.InVal = FMath::Clamp(Point.InVal, Value->MinTime, Value->MaxTime);
+
                                             // Y축: Value
                                             float value_delta = -(delta_y / canvas_size.y) * displayRange * sensitivity;
                                             float newVal = val + value_delta;
@@ -1128,6 +1143,10 @@ void SParticleEditWindow::OnRender()
                                         ImVec2 mouse_pos = ImGui::GetMousePos();
                                         float norm_x = (mouse_pos.x - canvas_pos.x) / canvas_size.x;
                                         float t = view_min_time_vec + norm_x * view_time_range_vec;
+
+                                        // 시간 값을 MinTime~MaxTime 범위로 제한
+                                        t = FMath::Clamp(t, Value->MinTime, Value->MaxTime);
+
                                         float normalized_y = 1.0f - (mouse_pos.y - canvas_pos.y) / canvas_size.y;
                                         // normalized_y를 합리적인 범위로 제한
                                         normalized_y = FMath::Clamp(normalized_y, -1.0f, 2.0f);
