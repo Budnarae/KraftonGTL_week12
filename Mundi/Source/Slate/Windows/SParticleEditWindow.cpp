@@ -560,6 +560,26 @@ void SParticleEditWindow::OnRender()
                                 displayRange = 1.0f;
                             }
 
+                            // 상태 변수 먼저 로드 (배경/커브 그리기 전에 필요)
+                            ImGuiStorage* storage = ImGui::GetStateStorage();
+                            int state_key_selected = ImGui::GetID("selected");
+                            int state_key_dragging = ImGui::GetID("dragging");
+                            int state_key_prev_mouse_x = ImGui::GetID("prev_mouse_x");
+                            int state_key_prev_mouse_y = ImGui::GetID("prev_mouse_y");
+                            int state_key_view_min_time = ImGui::GetID("view_min_time");
+                            int state_key_view_max_time = ImGui::GetID("view_max_time");
+                            int state_key_panning = ImGui::GetID("panning");
+                            int state_key_pan_start_x = ImGui::GetID("pan_start_x");
+
+                            int selected_point = storage->GetInt(state_key_selected, -1);
+                            bool dragging = storage->GetBool(state_key_dragging, false);
+
+                            // 줌/팬 상태 (기본값: 0~1 전체 범위)
+                            float view_min_time = storage->GetFloat(state_key_view_min_time, 0.0f);
+                            float view_max_time = storage->GetFloat(state_key_view_max_time, 1.0f);
+                            bool panning = storage->GetBool(state_key_panning, false);
+                            float view_time_range = view_max_time - view_min_time;
+
                             // 배경
                             draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(30, 30, 35, 255));
                             draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(120, 120, 140, 255), 0.0f, 0, 1.5f);
@@ -575,8 +595,10 @@ void SParticleEditWindow::OnRender()
                                 draw_list->AddLine(ImVec2(canvas_pos.x, y), ImVec2(canvas_pos.x + canvas_size.x, y), IM_COL32(70, 70, 80, (int)alpha));
                             }
 
-                            // 축 라벨
-                            draw_list->AddText(ImVec2(canvas_pos.x + canvas_size.x * 0.5f - 20.0f, canvas_pos.y + canvas_size.y + 5.0f), IM_COL32(200, 200, 200, 255), "Time");
+                            // 축 라벨 (줌/팬 반영)
+                            char time_label[64];
+                            sprintf_s(time_label, "Time (%.2f ~ %.2f)", view_min_time, view_max_time);
+                            draw_list->AddText(ImVec2(canvas_pos.x + 10.0f, canvas_pos.y + canvas_size.y + 5.0f), IM_COL32(200, 200, 200, 255), time_label);
 
                             ImVec2 value_label_pos = ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y * 0.5f);
                             draw_list->AddText(value_label_pos, IM_COL32(200, 200, 200, 255), "Value");
@@ -588,7 +610,7 @@ void SParticleEditWindow::OnRender()
                             sprintf_s(buf, "%.2f", displayMinVal);
                             draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y - 10.0f), IM_COL32(150, 150, 150, 255), buf);
 
-                            // 커브 선 그리기
+                            // 커브 선 그리기 (줌/팬 적용)
                             if (Value->Curve.Points.Num() > 1)
                             {
                                 for (int i = 0; i < Value->Curve.Points.Num() - 1; ++i)
@@ -598,9 +620,15 @@ void SParticleEditWindow::OnRender()
 
                                     if (std::isfinite(p1.OutVal) && std::isfinite(p2.OutVal))
                                     {
-                                        float x1 = canvas_pos.x + FMath::Clamp(p1.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                        float t1 = (p1.InVal - view_min_time) / view_time_range;
+                                        float t2 = (p2.InVal - view_min_time) / view_time_range;
+
+                                        // 화면 범위 밖이면 클리핑
+                                        if (t2 < 0.0f || t1 > 1.0f) continue;
+
+                                        float x1 = canvas_pos.x + FMath::Clamp(t1, 0.0f, 1.0f) * canvas_size.x;
                                         float y1 = canvas_pos.y + canvas_size.y - FMath::Clamp((p1.OutVal - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
-                                        float x2 = canvas_pos.x + FMath::Clamp(p2.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                        float x2 = canvas_pos.x + FMath::Clamp(t2, 0.0f, 1.0f) * canvas_size.x;
                                         float y2 = canvas_pos.y + canvas_size.y - FMath::Clamp((p2.OutVal - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
 
                                         draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), IM_COL32(100, 200, 255, 255), 2.5f);
@@ -613,24 +641,72 @@ void SParticleEditWindow::OnRender()
                             ImGui::InvisibleButton("canvas", canvas_size);
                             bool is_hovered = ImGui::IsItemHovered();
 
-                            // Static 변수 대신 ImGui ID 사용
-                            int selected_point = -1;
-                            bool dragging = false;
-                            ImGuiStorage* storage = ImGui::GetStateStorage();
-                            int state_key_selected = ImGui::GetID("selected");
-                            int state_key_dragging = ImGui::GetID("dragging");
-                            int state_key_prev_mouse_x = ImGui::GetID("prev_mouse_x");
-                            int state_key_prev_mouse_y = ImGui::GetID("prev_mouse_y");
-                            selected_point = storage->GetInt(state_key_selected, -1);
-                            dragging = storage->GetBool(state_key_dragging, false);
+                            // Ctrl + 마우스 휠로 줌 (마우스 위치 중심)
+                            if (is_hovered && ImGui::GetIO().MouseWheel != 0.0f && ImGui::GetIO().KeyCtrl)
+                            {
+                                float wheel = ImGui::GetIO().MouseWheel;
+                                float mouse_t = (ImGui::GetMousePos().x - canvas_pos.x) / canvas_size.x;
+                                float zoom_t = view_min_time + mouse_t * (view_max_time - view_min_time);
+
+                                float zoom_factor = wheel > 0 ? 0.9f : 1.1f;
+                                float new_range = (view_max_time - view_min_time) * zoom_factor;
+
+                                view_min_time = zoom_t - (zoom_t - view_min_time) * zoom_factor;
+                                view_max_time = view_min_time + new_range;
+
+                                // 범위 제한 (최소 0.01, 0~10 범위)
+                                if (new_range < 0.01f) {
+                                    view_min_time = zoom_t - 0.005f;
+                                    view_max_time = zoom_t + 0.005f;
+                                }
+                                if (view_min_time < 0.0f) view_min_time = 0.0f;
+                                if (view_max_time > 10.0f) view_max_time = 10.0f;
+
+                                storage->SetFloat(state_key_view_min_time, view_min_time);
+                                storage->SetFloat(state_key_view_max_time, view_max_time);
+                            }
+
+                            // 중간 버튼으로 팬
+                            if (is_hovered && ImGui::IsMouseClicked(2))
+                            {
+                                panning = true;
+                                storage->SetBool(state_key_panning, true);
+                                storage->SetFloat(state_key_pan_start_x, ImGui::GetMousePos().x);
+                            }
+                            if (panning && ImGui::IsMouseDown(2))
+                            {
+                                float pan_start_x = storage->GetFloat(state_key_pan_start_x, ImGui::GetMousePos().x);
+                                float delta_x = ImGui::GetMousePos().x - pan_start_x;
+                                float delta_t = -(delta_x / canvas_size.x) * (view_max_time - view_min_time);
+
+                                view_min_time += delta_t;
+                                view_max_time += delta_t;
+
+                                storage->SetFloat(state_key_view_min_time, view_min_time);
+                                storage->SetFloat(state_key_view_max_time, view_max_time);
+                                storage->SetFloat(state_key_pan_start_x, ImGui::GetMousePos().x);
+                            }
+                            if (ImGui::IsMouseReleased(2))
+                            {
+                                panning = false;
+                                storage->SetBool(state_key_panning, false);
+                            }
+
+                            // 줌/팬 후 범위 재계산
+                            view_time_range = view_max_time - view_min_time;
 
                             for (int i = 0; i < Value->Curve.Points.Num(); ++i)
                             {
                                 auto& Point = Value->Curve.Points[i];
                                 if (!std::isfinite(Point.OutVal)) continue;
 
-                                float x = canvas_pos.x + FMath::Clamp(Point.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                // 시간축 좌표 변환 (줌/팬 적용)
+                                float normalized_t = (Point.InVal - view_min_time) / view_time_range;
+                                float x = canvas_pos.x + FMath::Clamp(normalized_t, 0.0f, 1.0f) * canvas_size.x;
                                 float y = canvas_pos.y + canvas_size.y - FMath::Clamp((Point.OutVal - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
+
+                                // 화면 밖이면 스킵
+                                if (normalized_t < 0.0f || normalized_t > 1.0f) continue;
 
                                 bool is_point_hovered = ImGui::IsMouseHoveringRect(ImVec2(x - 6, y - 6), ImVec2(x + 6, y + 6));
 
@@ -661,9 +737,9 @@ void SParticleEditWindow::OnRender()
                                     // 감도 설정 (1.0 = 정상 속도)
                                     const float sensitivity = 1.0f;
 
-                                    // X축: Time (0~1)
-                                    float time_delta = (delta_x / canvas_size.x) * sensitivity;
-                                    Point.InVal = FMath::Clamp(Point.InVal + time_delta, 0.0f, 1.0f);
+                                    // X축: Time (줌/팬 범위 고려)
+                                    float time_delta = (delta_x / canvas_size.x) * view_time_range * sensitivity;
+                                    Point.InVal += time_delta;
 
                                     // Y축: Value
                                     float value_delta = -(delta_y / canvas_size.y) * displayRange * sensitivity;
@@ -718,10 +794,11 @@ void SParticleEditWindow::OnRender()
                             }
 
                             // 더블클릭으로 키프레임 추가
-                            if (is_hovered && ImGui::IsMouseDoubleClicked(0))
+                            if (is_hovered && ImGui::IsMouseDoubleClicked(0) && !panning)
                             {
                                 ImVec2 mouse_pos = ImGui::GetMousePos();
-                                float t = FMath::Clamp((mouse_pos.x - canvas_pos.x) / canvas_size.x, 0.0f, 1.0f);
+                                float normalized_t = (mouse_pos.x - canvas_pos.x) / canvas_size.x;
+                                float t = view_min_time + normalized_t * view_time_range;
                                 float normalized_y = 1.0f - (mouse_pos.y - canvas_pos.y) / canvas_size.y;
                                 // normalized_y를 합리적인 범위로 제한
                                 normalized_y = FMath::Clamp(normalized_y, -1.0f, 2.0f);
@@ -740,7 +817,8 @@ void SParticleEditWindow::OnRender()
                             ImGui::Dummy(ImVec2(0, 5));
 
                             // 인터랙션 가이드
-                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "LClick: Select | Drag: Move | RClick: Delete | DblClick: Add");
+                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "LClick: Select | Drag: Move | RClick: Delete | DblClick: Add | Ctrl+MWheel: Zoom | MButton: Pan");
+                            ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "MWheel: Zoom | MButton: Pan");
                         }
                         ImGui::PopID();
                     }
@@ -809,6 +887,87 @@ void SParticleEditWindow::OnRender()
                                         displayRange = 1.0f;
                                     }
 
+                                    // 키프레임 점 그리기 및 인터랙션
+                                    ImGui::SetCursorScreenPos(canvas_pos);
+                                    char canvas_id[32];
+                                    sprintf_s(canvas_id, "canvas_vec_%d", axis);
+                                    ImGui::InvisibleButton(canvas_id, canvas_size);
+                                    bool is_hovered = ImGui::IsItemHovered();
+
+                                    // Static 변수 대신 ImGui ID 사용 (축별로 독립)
+                                    ImGuiStorage* storage = ImGui::GetStateStorage();
+                                    char id_buf[64];
+                                    sprintf_s(id_buf, "selected_vec_%d", axis);
+                                    int state_key_selected = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "dragging_vec_%d", axis);
+                                    int state_key_dragging = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "prev_mouse_x_vec_%d", axis);
+                                    int state_key_prev_mouse_x_vec = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "prev_mouse_y_vec_%d", axis);
+                                    int state_key_prev_mouse_y_vec = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "view_min_time_vec_%d", axis);
+                                    int state_key_view_min_time = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "view_max_time_vec_%d", axis);
+                                    int state_key_view_max_time = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "panning_vec_%d", axis);
+                                    int state_key_panning = ImGui::GetID(id_buf);
+                                    sprintf_s(id_buf, "pan_start_x_vec_%d", axis);
+                                    int state_key_pan_start_x = ImGui::GetID(id_buf);
+
+                                    int selected_point_vec = storage->GetInt(state_key_selected, -1);
+                                    bool dragging_vec = storage->GetBool(state_key_dragging, false);
+
+                                    // 줌/팬 상태 (기본값: 0~1 전체 범위)
+                                    float view_min_time_vec = storage->GetFloat(state_key_view_min_time, 0.0f);
+                                    float view_max_time_vec = storage->GetFloat(state_key_view_max_time, 1.0f);
+                                    bool panning_vec = storage->GetBool(state_key_panning, false);
+
+                                    // Ctrl + 마우스 휠로 줌
+                                    if (is_hovered && ImGui::GetIO().MouseWheel != 0.0f && ImGui::GetIO().KeyCtrl)
+                                    {
+                                        float wheel = ImGui::GetIO().MouseWheel;
+                                        float mouse_t = (ImGui::GetMousePos().x - canvas_pos.x) / canvas_size.x;
+                                        float zoom_t = view_min_time_vec + mouse_t * (view_max_time_vec - view_min_time_vec);
+                                        float zoom_factor = wheel > 0 ? 0.9f : 1.1f;
+                                        float new_range = (view_max_time_vec - view_min_time_vec) * zoom_factor;
+                                        view_min_time_vec = zoom_t - (zoom_t - view_min_time_vec) * zoom_factor;
+                                        view_max_time_vec = view_min_time_vec + new_range;
+                                        if (new_range < 0.01f) {
+                                            view_min_time_vec = zoom_t - 0.005f;
+                                            view_max_time_vec = zoom_t + 0.005f;
+                                        }
+                                        if (view_min_time_vec < 0.0f) view_min_time_vec = 0.0f;
+                                        if (view_max_time_vec > 10.0f) view_max_time_vec = 10.0f;
+                                        storage->SetFloat(state_key_view_min_time, view_min_time_vec);
+                                        storage->SetFloat(state_key_view_max_time, view_max_time_vec);
+                                    }
+
+                                    // 중간 버튼으로 팬
+                                    if (is_hovered && ImGui::IsMouseClicked(2))
+                                    {
+                                        panning_vec = true;
+                                        storage->SetBool(state_key_panning, true);
+                                        storage->SetFloat(state_key_pan_start_x, ImGui::GetMousePos().x);
+                                    }
+                                    if (panning_vec && ImGui::IsMouseDown(2))
+                                    {
+                                        float pan_start_x = storage->GetFloat(state_key_pan_start_x, ImGui::GetMousePos().x);
+                                        float delta_x = ImGui::GetMousePos().x - pan_start_x;
+                                        float delta_t = -(delta_x / canvas_size.x) * (view_max_time_vec - view_min_time_vec);
+                                        view_min_time_vec += delta_t;
+                                        view_max_time_vec += delta_t;
+                                        storage->SetFloat(state_key_view_min_time, view_min_time_vec);
+                                        storage->SetFloat(state_key_view_max_time, view_max_time_vec);
+                                        storage->SetFloat(state_key_pan_start_x, ImGui::GetMousePos().x);
+                                    }
+                                    if (ImGui::IsMouseReleased(2))
+                                    {
+                                        panning_vec = false;
+                                        storage->SetBool(state_key_panning, false);
+                                    }
+
+                                    float view_time_range_vec = view_max_time_vec - view_min_time_vec;
+
                                     // 배경
                                     draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(30, 30, 35, 255));
                                     draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(120, 120, 140, 255), 0.0f, 0, 1.5f);
@@ -824,18 +983,20 @@ void SParticleEditWindow::OnRender()
                                         draw_list->AddLine(ImVec2(canvas_pos.x, y), ImVec2(canvas_pos.x + canvas_size.x, y), IM_COL32(70, 70, 80, (int)alpha));
                                     }
 
-                                    // 축 라벨
-                                    draw_list->AddText(ImVec2(canvas_pos.x + canvas_size.x * 0.5f - 20.0f, canvas_pos.y + canvas_size.y + 5.0f), IM_COL32(200, 200, 200, 255), "Time");
+                                    // 축 라벨 (시간 범위 표시)
+                                    char time_label_vec[64];
+                                    sprintf_s(time_label_vec, "Time (%.2f ~ %.2f)", view_min_time_vec, view_max_time_vec);
+                                    draw_list->AddText(ImVec2(canvas_pos.x + canvas_size.x * 0.5f - 60.0f, canvas_pos.y + canvas_size.y + 5.0f), IM_COL32(200, 200, 200, 255), time_label_vec);
                                     draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y * 0.5f), IM_COL32(200, 200, 200, 255), "Value");
 
                                     // 축 값 표시
-                                    char buf[32];
-                                    sprintf_s(buf, "%.2f", displayMaxVal);
-                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y - 5.0f), IM_COL32(150, 150, 150, 255), buf);
-                                    sprintf_s(buf, "%.2f", displayMinVal);
-                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y - 10.0f), IM_COL32(150, 150, 150, 255), buf);
+                                    char buf_vec[32];
+                                    sprintf_s(buf_vec, "%.2f", displayMaxVal);
+                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y - 5.0f), IM_COL32(150, 150, 150, 255), buf_vec);
+                                    sprintf_s(buf_vec, "%.2f", displayMinVal);
+                                    draw_list->AddText(ImVec2(canvas_pos.x - AxisLabelWidth + 5.0f, canvas_pos.y + canvas_size.y - 10.0f), IM_COL32(150, 150, 150, 255), buf_vec);
 
-                                    // 커브 선 그리기
+                                    // 커브 선 그리기 (줌/팬 적용)
                                     if (Value->Curve.Points.Num() > 1)
                                     {
                                         for (int i = 0; i < Value->Curve.Points.Num() - 1; ++i)
@@ -848,9 +1009,17 @@ void SParticleEditWindow::OnRender()
 
                                             if (std::isfinite(v1) && std::isfinite(v2))
                                             {
-                                                float x1 = canvas_pos.x + FMath::Clamp(p1.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                                // 뷰 범위에 맞게 좌표 변환
+                                                float norm_t1 = (p1.InVal - view_min_time_vec) / view_time_range_vec;
+                                                float norm_t2 = (p2.InVal - view_min_time_vec) / view_time_range_vec;
+
+                                                // 화면 밖 선분은 건너뛰기
+                                                if ((norm_t1 < 0.0f && norm_t2 < 0.0f) || (norm_t1 > 1.0f && norm_t2 > 1.0f))
+                                                    continue;
+
+                                                float x1 = canvas_pos.x + FMath::Clamp(norm_t1, 0.0f, 1.0f) * canvas_size.x;
                                                 float y1 = canvas_pos.y + canvas_size.y - FMath::Clamp((v1 - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
-                                                float x2 = canvas_pos.x + FMath::Clamp(p2.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                                float x2 = canvas_pos.x + FMath::Clamp(norm_t2, 0.0f, 1.0f) * canvas_size.x;
                                                 float y2 = canvas_pos.y + canvas_size.y - FMath::Clamp((v2 - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
 
                                                 draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), AxisColors[axis], 2.5f);
@@ -858,27 +1027,15 @@ void SParticleEditWindow::OnRender()
                                         }
                                     }
 
-                                    // 키프레임 점 그리기 및 인터랙션
-                                    ImGui::SetCursorScreenPos(canvas_pos);
-                                    ImGui::InvisibleButton("canvas", canvas_size);
-                                    bool is_hovered = ImGui::IsItemHovered();
-
-                                    // Static 변수 대신 ImGui ID 사용
-                                    ImGuiStorage* storage = ImGui::GetStateStorage();
-                                    int state_key_selected = ImGui::GetID("selected_vec");
-                                    int state_key_dragging = ImGui::GetID("dragging_vec");
-                                    int state_key_prev_mouse_x_vec = ImGui::GetID("prev_mouse_x_vec");
-                                    int state_key_prev_mouse_y_vec = ImGui::GetID("prev_mouse_y_vec");
-                                    int selected_point_vec = storage->GetInt(state_key_selected, -1);
-                                    bool dragging_vec = storage->GetBool(state_key_dragging, false);
-
                                     for (int i = 0; i < Value->Curve.Points.Num(); ++i)
                                     {
                                         auto& Point = Value->Curve.Points[i];
                                         float val = (axis == 0) ? Point.OutVal.X : (axis == 1) ? Point.OutVal.Y : Point.OutVal.Z;
                                         if (!std::isfinite(val)) continue;
 
-                                        float x = canvas_pos.x + FMath::Clamp(Point.InVal, 0.0f, 1.0f) * canvas_size.x;
+                                        // 뷰 범위에 맞게 좌표 변환
+                                        float norm_t = (Point.InVal - view_min_time_vec) / view_time_range_vec;
+                                        float x = canvas_pos.x + FMath::Clamp(norm_t, 0.0f, 1.0f) * canvas_size.x;
                                         float y = canvas_pos.y + canvas_size.y - FMath::Clamp((val - displayMinVal) / displayRange, 0.0f, 1.0f) * canvas_size.y;
 
                                         bool is_point_hovered = ImGui::IsMouseHoveringRect(ImVec2(x - 6, y - 6), ImVec2(x + 6, y + 6));
@@ -908,9 +1065,9 @@ void SParticleEditWindow::OnRender()
                                             // 감도 설정 (1.0 = 정상 속도)
                                             const float sensitivity = 1.0f;
 
-                                            // X축: Time (0~1)
-                                            float time_delta = (delta_x / canvas_size.x) * sensitivity;
-                                            Point.InVal = FMath::Clamp(Point.InVal + time_delta, 0.0f, 1.0f);
+                                            // X축: Time (뷰 범위 적용)
+                                            float time_delta = (delta_x / canvas_size.x) * view_time_range_vec * sensitivity;
+                                            Point.InVal += time_delta;
 
                                             // Y축: Value
                                             float value_delta = -(delta_y / canvas_size.y) * displayRange * sensitivity;
@@ -969,7 +1126,8 @@ void SParticleEditWindow::OnRender()
                                     if (is_hovered && ImGui::IsMouseDoubleClicked(0))
                                     {
                                         ImVec2 mouse_pos = ImGui::GetMousePos();
-                                        float t = FMath::Clamp((mouse_pos.x - canvas_pos.x) / canvas_size.x, 0.0f, 1.0f);
+                                        float norm_x = (mouse_pos.x - canvas_pos.x) / canvas_size.x;
+                                        float t = view_min_time_vec + norm_x * view_time_range_vec;
                                         float normalized_y = 1.0f - (mouse_pos.y - canvas_pos.y) / canvas_size.y;
                                         // normalized_y를 합리적인 범위로 제한
                                         normalized_y = FMath::Clamp(normalized_y, -1.0f, 2.0f);
@@ -1000,7 +1158,7 @@ void SParticleEditWindow::OnRender()
                                 ImGui::PopID();
                             }
 
-                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "LClick: Select | Drag: Move | RClick: Delete | DblClick: Add");
+                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "LClick: Select | Drag: Move | RClick: Delete | DblClick: Add | Ctrl+MWheel: Zoom | MButton: Pan");
                         }
                         ImGui::PopID();
                     }
