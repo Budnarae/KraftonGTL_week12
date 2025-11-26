@@ -3,14 +3,14 @@
 #include "Source/Editor/PlatformProcess.h"
 
 IMPLEMENT_CLASS(UResourceBase)
-fs::path GetPathFromContent(const fs::path& fullPath)
+fs::path GetPathFromStr(const char* Str, const fs::path& fullPath)
 {
     fs::path result;
     bool found = false;
 
     for (const auto& part : fullPath)
     {
-        if (!found && part == "Content")
+        if (!found && part == Str)
             found = true;
         if (found)
             result /= part;
@@ -48,7 +48,7 @@ FWideString UResourceBase::OpenFileDialogGetPath(const std::filesystem::path& Fo
 {
     // Windows 파일 다이얼로그 열기
     std::filesystem::path SelectedPath = FPlatformProcess::OpenLoadFileDialog(FolderPath.wstring(), Extension, Desc);
-    SelectedPath = GetPathFromContent(SelectedPath);
+    SelectedPath = GetPathFromStr("Data",SelectedPath);
     if (SelectedPath.empty())
     {
         return L"";
