@@ -95,6 +95,7 @@ private:
     UTexture* IconDecal = nullptr;
     UTexture* IconStaticMesh = nullptr;
     UTexture* IconSkeletalMesh = nullptr;
+    UTexture* IconParticle = nullptr;
     UTexture* IconBillboard = nullptr;
     UTexture* IconEditorIcon = nullptr;
     UTexture* IconFog = nullptr;

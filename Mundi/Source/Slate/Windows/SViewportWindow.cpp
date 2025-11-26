@@ -78,6 +78,8 @@ SViewportWindow::~SViewportWindow()
 	IconGrid = nullptr;
 	IconDecal = nullptr;
 	IconStaticMesh = nullptr;
+	IconSkeletalMesh = nullptr;
+	IconParticle = nullptr;
 	IconBillboard = nullptr;
 	IconEditorIcon = nullptr;
 	IconFog = nullptr;
@@ -418,6 +420,9 @@ void SViewportWindow::LoadToolbarIcons(ID3D11Device* Device)
 
 	IconSkeletalMesh = NewObject<UTexture>();
 	IconSkeletalMesh->Load(GDataDir + "/Icon/Viewport_SkeletalMesh.png", Device);
+
+	IconParticle = NewObject<UTexture>();
+	IconParticle->Load(GDataDir + "/Icon/Viewport_Particle.png", Device);
 
 	IconBillboard = NewObject<UTexture>();
 	IconBillboard->Load(GDataDir + "/Icon/Viewport_Billboard.png", Device);
@@ -1594,6 +1599,24 @@ void SViewportWindow::RenderShowFlagDropdownMenu()
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip("스텔레탈 메시 렌더링을 표시합니다.");
+		}
+
+		// Particle
+		bool bParticle = RenderSettings.IsShowFlagEnabled(EEngineShowFlags::SF_Particles);
+		if (ImGui::Checkbox("##Particle", &bParticle))
+		{
+			RenderSettings.ToggleShowFlag(EEngineShowFlags::SF_Particles);
+		}
+		ImGui::SameLine();
+		if (IconParticle && IconParticle->GetShaderResourceView())
+		{
+			ImGui::Image((void*)IconParticle->GetShaderResourceView(), IconSize);
+			ImGui::SameLine(0, 4);
+		}
+		ImGui::Text(" 파티클");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("파티클 시스템 렌더링을 표시합니다.");
 		}
 
 		// Billboard

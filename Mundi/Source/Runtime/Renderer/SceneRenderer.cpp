@@ -690,6 +690,7 @@ void FSceneRenderer::GatherVisibleProxies()
 
 	const bool bDrawStaticMeshes = World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_StaticMeshes);
 	const bool bDrawSkeletalMeshes = World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_SkeletalMeshes);
+	const bool bDrawParticles = World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_Particles);
 	const bool bDrawDecals = World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_Decals);
 	const bool bDrawFog = World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_Fog);
 	const bool bDrawLight = World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_Lighting);
@@ -763,7 +764,7 @@ void FSceneRenderer::GatherVisibleProxies()
 					{
 						Proxies.Billboards.Add(BillboardComponent);
 					}
-					else if (UParticleSystemComponent* ParticleSystemComponent = Cast<UParticleSystemComponent>(PrimitiveComponent))
+					else if (UParticleSystemComponent* ParticleSystemComponent = Cast<UParticleSystemComponent>(PrimitiveComponent); ParticleSystemComponent && bDrawParticles)
 					{
 						Proxies.Particles.Add(ParticleSystemComponent);
 					}
@@ -982,6 +983,12 @@ void FSceneRenderer::RenderOpaquePass(EViewMode InRenderViewMode)
 
 void FSceneRenderer::RenderTransparentPass(EViewMode InRenderViewMode)
 {
+	// ShowFlag 확인 - 파티클이 비활성화되어 있으면 렌더링하지 않음
+	if (!World->GetRenderSettings().IsShowFlagEnabled(EEngineShowFlags::SF_Particles))
+	{
+		return;
+	}
+
 	// --- 1. 수집 (Collect) - 파티클 등 투명 객체 ---
 	MeshBatchElements.Empty();
 	for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
