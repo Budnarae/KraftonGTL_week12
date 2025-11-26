@@ -35,7 +35,6 @@ const bool UParticleModuleBeamColorOverLength::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleModuleBeamColorOverLength)
     MARK_AS_COMPONENT("빔 길이별 색상", "빔의 시작점에서 끝점까지 색상 그라데이션을 적용합니다.")
-    ADD_PROPERTY(bool, bEnabled, "Color|General", true)
     ADD_PROPERTY(FLinearColor, StartColor, "Color|Gradient", true)
     ADD_PROPERTY(FLinearColor, EndColor, "Color|Gradient", true)
 END_PROPERTIES()

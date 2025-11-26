@@ -6,7 +6,6 @@ UParticleModuleBeamColorOverLength::UParticleModuleBeamColorOverLength()
     // Default: white to white (no gradient)
     StartColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
     EndColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    bEnabled = true;
 }
 
 void UParticleModuleBeamColorOverLength::Spawn(FParticleContext& Context, float EmitterTime)

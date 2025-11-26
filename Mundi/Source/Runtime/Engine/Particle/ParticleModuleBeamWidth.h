@@ -52,27 +52,21 @@ public:
         FBeamWidthParams Params;
         Params.StartWidthScale = StartWidthScale;
         Params.EndWidthScale = EndWidthScale;
-        Params.TaperMethodInt = TaperMethod;
+        Params.TaperMethodInt = static_cast<int32>(TaperMethod);
         return Params;
     }
 
     // Getters
     float GetStartWidthScale() const { return StartWidthScale; }
     float GetEndWidthScale() const { return EndWidthScale; }
-    int32 GetTaperMethod() const { return TaperMethod; }
-    bool IsEnabled() const { return bEnabled; }
+    ETaperMethod GetTaperMethod() const { return TaperMethod; }
 
     // Setters
     void SetStartWidthScale(float Value) { StartWidthScale = Value; }
     void SetEndWidthScale(float Value) { EndWidthScale = Value; }
-    void SetTaperMethod(int32 Value) { TaperMethod = Value; }
-    void SetEnabled(bool Value) { bEnabled = Value; }
+    void SetTaperMethod(ETaperMethod Value) { TaperMethod = Value; }
 
 private:
-    // Enable/disable width control
-    UPROPERTY(EditAnywhere, Category="Width|General")
-    bool bEnabled = true;
-
     // Width scale at the start (source) of the beam (multiplied with TypeDataBeam's BeamWidth)
     UPROPERTY(EditAnywhere, Category="Width|Size")
     float StartWidthScale = 1.0f;
@@ -81,8 +75,8 @@ private:
     UPROPERTY(EditAnywhere, Category="Width|Size")
     float EndWidthScale = 1.0f;
 
-    // How to interpolate width along the beam (0=None, 1=Linear, 2=Sine, 3=EaseOut)
-    // Sine(2)가 번개 효과에 적합 - 양쪽 끝이 가늘고 중간이 두꺼움
+    // How to interpolate width along the beam
+    // Sine가 번개 효과에 적합 - 양쪽 끝이 가늘고 중간이 두꺼움
     UPROPERTY(EditAnywhere, Category="Width|Taper")
-    int32 TaperMethod = 2;  // Default: Sine
+    ETaperMethod TaperMethod = ETaperMethod::Sine;
 };

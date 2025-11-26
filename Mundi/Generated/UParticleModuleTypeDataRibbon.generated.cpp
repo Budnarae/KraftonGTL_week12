@@ -42,6 +42,7 @@ BEGIN_PROPERTIES(UParticleModuleTypeDataRibbon)
     ADD_PROPERTY(FVector4, RibbonColor, "Ribbon|Appearance", true)
     ADD_PROPERTY(float, TextureRepeat, "Ribbon|Texture", true)
     ADD_PROPERTY(bool, bUseTexture, "Ribbon|Texture", true)
+    ADD_PROPERTY_TEXTURE(UTexture*, RibbonTexture, "Ribbon|Texture", true)
     ADD_PROPERTY(int32, MaxParticlesPerRibbon, "Ribbon|Performance", true)
 END_PROPERTIES()
 

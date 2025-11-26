@@ -44,7 +44,7 @@ public:
     void SetEmitterDelay(float InDelay) { EmitterDelay = InDelay; }
     void SetLifeTime(float InLifeTime) { LifeTime = InLifeTime; }
     void SetEnableCameraFacing(bool bInEnable) { bEnableCameraFacing = bInEnable; }
-    void SetActive(const bool InActive) override {}
+    void SetActive(const bool InActive) override { bActive = InActive; }
 
 private:
     UPROPERTY(EditAnywhere, Category="Assets")

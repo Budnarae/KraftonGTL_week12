@@ -35,7 +35,6 @@ const bool UParticleModuleBeamNoise::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleModuleBeamNoise)
     MARK_AS_COMPONENT("빔 노이즈", "빔에 번개/노이즈 효과를 추가합니다.")
-    ADD_PROPERTY(bool, bEnabled, "Noise|General", true)
     ADD_PROPERTY(EBeamNoiseAlgorithm, NoiseAlgorithm, "Noise|Algorithm", true)
     ADD_PROPERTY(float, NoiseAmplitude, "Noise|Amplitude", true)
     ADD_PROPERTY(float, NoiseFrequency, "Noise|Frequency", true)

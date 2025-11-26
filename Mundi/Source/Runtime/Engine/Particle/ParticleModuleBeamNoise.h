@@ -51,7 +51,6 @@ public:
     float GetNoiseFrequency() const { return NoiseFrequency; }
     float GetJitterFrequency() const { return JitterFrequency; }
     float GetDisplacementDecay() const { return DisplacementDecay; }
-    bool IsEnabled() const { return bEnabled; }
 
     // Setters
     void SetNoiseAlgorithm(EBeamNoiseAlgorithm Value) { NoiseAlgorithm = Value; }
@@ -59,13 +58,8 @@ public:
     void SetNoiseFrequency(float Value) { NoiseFrequency = Value; }
     void SetJitterFrequency(float Value) { JitterFrequency = Value; }
     void SetDisplacementDecay(float Value) { DisplacementDecay = Value; }
-    void SetEnabled(bool Value) { bEnabled = Value; }
 
 private:
-    // Enable/disable noise effect
-    UPROPERTY(EditAnywhere, Category="Noise|General")
-    bool bEnabled = true;
-
     // Noise algorithm (MidpointDisplacement = 번개, PerlinNoise = 부드러운 출렁임)
     UPROPERTY(EditAnywhere, Category="Noise|Algorithm")
     EBeamNoiseAlgorithm NoiseAlgorithm = EBeamNoiseAlgorithm::MidpointDisplacement;

@@ -55,7 +55,7 @@ public:
         FBeamColorParams Params;
         Params.StartColor = StartColor;
         Params.EndColor = EndColor;
-        Params.bEnabled = bEnabled;
+        Params.bEnabled = bActive;
         return Params;
     }
 
@@ -74,18 +74,12 @@ public:
     // Getters
     FLinearColor GetStartColor() const { return StartColor; }
     FLinearColor GetEndColor() const { return EndColor; }
-    bool IsEnabled() const { return bEnabled; }
 
     // Setters
     void SetStartColor(const FLinearColor& Value) { StartColor = Value; }
     void SetEndColor(const FLinearColor& Value) { EndColor = Value; }
-    void SetEnabled(bool Value) { bEnabled = Value; }
 
 private:
-    // Enable/disable color gradient
-    UPROPERTY(EditAnywhere, Category="Color|General")
-    bool bEnabled = true;
-
     // Color at the start (source, T=0) of the beam
     UPROPERTY(EditAnywhere, Category="Color|Gradient")
     FLinearColor StartColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);

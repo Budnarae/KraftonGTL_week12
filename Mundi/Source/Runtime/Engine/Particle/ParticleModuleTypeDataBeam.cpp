@@ -25,6 +25,7 @@ void UParticleModuleTypeDataBeam::Update(FParticleContext& Context, float DeltaT
 
 void UParticleModuleTypeDataBeam::CalculateBeamPoints(
     const FVector& EmitterLocation,
+    const FMatrix& EmitterRotation,
     TArray<FVector>& OutPoints,
     TArray<float>& OutWidths,
     float Time,
@@ -38,21 +39,29 @@ void UParticleModuleTypeDataBeam::CalculateBeamPoints(
     if (SegmentCount <= 0)
         return;
 
+    // 로컬 공간 값을 월드 공간으로 변환
+    FVector WorldSourcePoint = SourcePoint * EmitterRotation;
+    FVector WorldBeamDirection = BeamDirection * EmitterRotation;
+
     // Calculate start and end points based on beam method
-    FVector StartPoint = EmitterLocation + SourcePoint;
+    FVector StartPoint = EmitterLocation + WorldSourcePoint;
     FVector EndPoint;
 
     switch (BeamMethod)
     {
     case EBeamMethod::Distance:
-        EndPoint = StartPoint + BeamDirection.GetNormalized() * BeamLength;
+        EndPoint = StartPoint + WorldBeamDirection.GetNormalized() * BeamLength;
         break;
     case EBeamMethod::Target:
-        EndPoint = TargetPoint;
+        // TargetPoint도 로컬 공간으로 정의된 경우 변환 필요
+        EndPoint = EmitterLocation + (TargetPoint * EmitterRotation);
         break;
     case EBeamMethod::Source:
     default:
-        EndPoint = StartPoint + FVector(BeamLength, 0.0f, 0.0f);
+        {
+            FVector DefaultDir = FVector(BeamLength, 0.0f, 0.0f) * EmitterRotation;
+            EndPoint = StartPoint + DefaultDir;
+        }
         break;
     }
 
@@ -195,12 +204,31 @@ void UParticleModuleTypeDataBeam::CalculateBeamPoints(
 
             Width = BeamWidth * Scale;
         }
-        else if (bTaperBeam)
+        else if (TaperMethod != EBeamTaperMethod::None)
         {
             // 모듈 없으면 기존 TypeData의 테이퍼 설정 사용
-            // 양쪽 테이퍼링: 시작과 끝이 얇고 중간이 두꺼움
-            float SinValue = std::sin(T * 3.14159265f);
-            Width = BeamWidth * (TaperFactor + (1.0f - TaperFactor) * SinValue);
+            float Scale = 1.0f;
+            switch (TaperMethod)
+            {
+            case EBeamTaperMethod::Source:
+                // 소스에서 가늘어짐: T=0에서 TaperFactor, T=1에서 1.0
+                Scale = TaperFactor + (1.0f - TaperFactor) * T;
+                break;
+            case EBeamTaperMethod::Target:
+                // 타겟에서 가늘어짐: T=0에서 1.0, T=1에서 TaperFactor
+                Scale = 1.0f - (1.0f - TaperFactor) * T;
+                break;
+            case EBeamTaperMethod::Both:
+                // 양쪽 테이퍼링: 시작과 끝이 얇고 중간이 두꺼움
+                {
+                    float SinValue = std::sin(T * 3.14159265f);
+                    Scale = TaperFactor + (1.0f - TaperFactor) * SinValue;
+                }
+                break;
+            default:
+                break;
+            }
+            Width = BeamWidth * Scale;
         }
 
         // 최소 너비 클램핑 (0 너비 방지)

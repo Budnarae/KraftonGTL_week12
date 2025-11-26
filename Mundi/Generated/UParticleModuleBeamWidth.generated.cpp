@@ -35,10 +35,9 @@ const bool UParticleModuleBeamWidth::bPropertiesRegistered = []() {
 
 BEGIN_PROPERTIES(UParticleModuleBeamWidth)
     MARK_AS_COMPONENT("빔 너비", "빔의 너비와 테이퍼링을 제어합니다.")
-    ADD_PROPERTY(bool, bEnabled, "Width|General", true)
     ADD_PROPERTY(float, StartWidthScale, "Width|Size", true)
     ADD_PROPERTY(float, EndWidthScale, "Width|Size", true)
-    ADD_PROPERTY(int32, TaperMethod, "Width|Taper", true)
+    ADD_PROPERTY(ETaperMethod, TaperMethod, "Width|Taper", true)
 END_PROPERTIES()
 
 // ===== Lua Binding =====
