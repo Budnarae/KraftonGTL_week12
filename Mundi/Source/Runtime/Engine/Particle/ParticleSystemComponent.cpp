@@ -20,6 +20,7 @@
 #include "StaticMesh.h"
 #include "Actor.h"
 #include "D3D11RHI.h"
+#include "StatManagement/ParticleStatManager.h"
 
 UParticleSystemComponent::UParticleSystemComponent()
 {
@@ -896,6 +897,10 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
         // 타입별 분기
         if (Source.eEmitterType == EDET_Sprite)
         {
+            // 통계 수집: 스프라이트 에미터 카운트
+            FParticleStatManager::GetInstance().IncrementSpriteEmitterCount();
+            FParticleStatManager::GetInstance().AddTotalEmitterCount(1);
+
             // 스프라이트 머티리얼 저장 (캐스팅 필요)
             const FDynamicSpriteEmitterReplayDataBase& SpriteSource = static_cast<const FDynamicSpriteEmitterReplayDataBase&>(Source);
             if (!SpriteMaterial && SpriteSource.MaterialInterface)
@@ -925,9 +930,16 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 InstanceData.FillFromParticle(Particle, ComponentLocation, bEnableCameraFacing);
                 SpriteInstanceData.Add(InstanceData);
             }
+
+            // 통계 수집: 스프라이트 파티클 카운트
+            FParticleStatManager::GetInstance().AddSpriteParticleCount(Source.ActiveParticleCount);
         }
         else if (Source.eEmitterType == EDET_Mesh)
         {
+            // 통계 수집: 메시 에미터 카운트
+            FParticleStatManager::GetInstance().IncrementMeshEmitterCount();
+            FParticleStatManager::GetInstance().AddTotalEmitterCount(1);
+
             // 메시 에미터 데이터 캐스팅
             FDynamicMeshEmitterData* MeshEmitterData = static_cast<FDynamicMeshEmitterData*>(DynamicData);
             const FDynamicMeshEmitterReplayDataBase& MeshSource = static_cast<const FDynamicMeshEmitterReplayDataBase&>(Source);
@@ -966,6 +978,9 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
                 InstanceData.FillFromParticle(Particle, ComponentLocation, bEnableCameraFacing);
                 MeshInstanceData.Add(InstanceData);
             }
+
+            // 통계 수집: 메시 파티클 카운트
+            FParticleStatManager::GetInstance().AddMeshParticleCount(Source.ActiveParticleCount);
         }
     }
 
@@ -1044,6 +1059,9 @@ void UParticleSystemComponent::RenderSpriteParticles(
     BatchElement.ObjectID = InternalIndex;
 
     OutMeshBatchElements.Add(BatchElement);
+
+    // 스프라이트 드로우 콜 통계 수집 (GPU 인스턴싱으로 1번의 드로우콜)
+    FParticleStatManager::GetInstance().IncrementSpriteDrawCallCount();
 }
 
 // 메시 파티클 렌더링 (개별 드로우)
@@ -1106,6 +1124,9 @@ void UParticleSystemComponent::RenderMeshParticles(
         MeshBatch.ObjectID = InternalIndex;
 
         OutMeshBatchElements.Add(MeshBatch);
+
+        // 메시 드로우 콜 통계 수집 (각 파티클마다 개별 드로우콜)
+        FParticleStatManager::GetInstance().IncrementMeshDrawCallCount();
     }
 }
 

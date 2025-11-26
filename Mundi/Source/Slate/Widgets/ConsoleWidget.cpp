@@ -53,6 +53,7 @@ void UConsoleWidget::Initialize()
 	HelpCommandList.Add("STAT MEMORY");
 	HelpCommandList.Add("STAT PICKING");
 	HelpCommandList.Add("STAT DECAL");
+	HelpCommandList.Add("STAT PARTICLE");
 	HelpCommandList.Add("STAT ALL");
 	HelpCommandList.Add("STAT NONE");
 	HelpCommandList.Add("STAT LIGHT");
@@ -323,6 +324,7 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 		AddLog("- STAT MEMORY");
 		AddLog("- STAT PICKING");
 		AddLog("- STAT DECAL");
+		AddLog("- STAT PARTICLE");
 		AddLog("- STAT ALL");
 		AddLog("- STAT LIGHT");
 		AddLog("- STAT SKINNING");
@@ -347,6 +349,11 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 	{
 		UStatsOverlayD2D::Get().ToggleDecal();
 		AddLog("STAT DECAL TOGGLED");
+	}
+	else if (Stricmp(command_line, "STAT PARTICLE") == 0)
+	{
+		UStatsOverlayD2D::Get().ToggleParticle();
+		AddLog("STAT PARTICLE TOGGLED");
 	}
 	else if (Stricmp(command_line, "STAT LIGHT") == 0)
 	{
@@ -374,6 +381,7 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 		UStatsOverlayD2D::Get().SetShowMemory(true);
 		UStatsOverlayD2D::Get().SetShowPicking(true);
 		UStatsOverlayD2D::Get().SetShowDecal(true);
+		UStatsOverlayD2D::Get().SetShowParticle(true);
 		UStatsOverlayD2D::Get().SetShowTileCulling(true);
 		UStatsOverlayD2D::Get().SetShowSkinning(true);
 		AddLog("STAT: ON");
@@ -384,6 +392,7 @@ void UConsoleWidget::ExecCommand(const char* command_line)
 		UStatsOverlayD2D::Get().SetShowMemory(false);
 		UStatsOverlayD2D::Get().SetShowPicking(false);
 		UStatsOverlayD2D::Get().SetShowDecal(false);
+		UStatsOverlayD2D::Get().SetShowParticle(false);
 		UStatsOverlayD2D::Get().SetShowTileCulling(false);
 		UStatsOverlayD2D::Get().SetShowSkinning(false);
 		AddLog("STAT: OFF");

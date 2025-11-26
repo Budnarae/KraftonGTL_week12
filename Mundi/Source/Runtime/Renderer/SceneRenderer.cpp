@@ -50,6 +50,7 @@
 #include "FbxLoader.h"
 #include "SkinnedMeshComponent.h"
 #include "StatManagement/SkinningStatManager.h"
+#include "StatManagement/ParticleStatManager.h"
 
 FSceneRenderer::FSceneRenderer(UWorld* InWorld, FSceneView* InView, URenderer* InOwnerRenderer)
 	: World(InWorld)
@@ -87,6 +88,10 @@ void FSceneRenderer::Render()
 	}*/
     // 뷰(View) 준비: 행렬, 절두체 등 프레임에 필요한 기본 데이터 계산
     PrepareView();
+
+    // 파티클 통계 초기화 (매 프레임)
+    FParticleStatManager::GetInstance().ResetFrameStats();
+
     // (Background is cleared per-path when binding scene color)
     // 렌더링할 대상 수집 (Cull + Gather)
     GatherVisibleProxies();
@@ -767,6 +772,13 @@ void FSceneRenderer::GatherVisibleProxies()
 					else if (UParticleSystemComponent* ParticleSystemComponent = Cast<UParticleSystemComponent>(PrimitiveComponent); ParticleSystemComponent && bDrawParticles)
 					{
 						Proxies.Particles.Add(ParticleSystemComponent);
+
+						// 파티클 시스템 통계 수집
+						FParticleStatManager::GetInstance().AddTotalParticleSystemCount(1);
+						if (ParticleSystemComponent->IsActive())
+						{
+							FParticleStatManager::GetInstance().AddActiveParticleSystemCount(1);
+						}
 					}
 					else if (UDecalComponent* DecalComponent = Cast<UDecalComponent>(PrimitiveComponent); DecalComponent && bDrawDecals)
 					{
@@ -989,6 +1001,9 @@ void FSceneRenderer::RenderTransparentPass(EViewMode InRenderViewMode)
 		return;
 	}
 
+	// 파티클 패스 시작 시간 측정
+	uint64 StartCycles = FPlatformTime::Cycles64();
+
 	// --- 1. 수집 (Collect) - 파티클 등 투명 객체 ---
 	MeshBatchElements.Empty();
 	for (UParticleSystemComponent* ParticleSystemComponent : Proxies.Particles)
@@ -997,7 +1012,12 @@ void FSceneRenderer::RenderTransparentPass(EViewMode InRenderViewMode)
 	}
 
 	if (MeshBatchElements.empty())
+	{
+		// 파티클이 없어도 시간 측정 완료
+		uint64 EndCycles = FPlatformTime::Cycles64();
+		FParticleStatManager::GetInstance().GetParticlePassTimeSlot() = FPlatformTime::ToMilliseconds(EndCycles - StartCycles);
 		return;
+	}
 
 	// --- 2. 투명도 렌더링 상태 설정 ---
 	// 알파 블렌딩 활성화
@@ -1015,6 +1035,10 @@ void FSceneRenderer::RenderTransparentPass(EViewMode InRenderViewMode)
 	// --- 5. 상태 복구 ---
 	RHIDevice->OMSetBlendState(false);
 	RHIDevice->OMSetDepthStencilState(EComparisonFunc::LessEqual);
+
+	// 파티클 패스 종료 시간 측정 및 통계 저장
+	uint64 EndCycles = FPlatformTime::Cycles64();
+	FParticleStatManager::GetInstance().GetParticlePassTimeSlot() = FPlatformTime::ToMilliseconds(EndCycles - StartCycles);
 }
 
 void FSceneRenderer::RenderDecalPass()

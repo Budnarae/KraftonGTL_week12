@@ -9,6 +9,7 @@
 #include "PlatformTime.h"
 #include "StatManagement/DecalStatManager.h"
 #include "StatManagement/SkinningStatManager.h"
+#include "StatManagement/ParticleStatManager.h"
 #include "TileCullingStats.h"
 #include "LightStats.h"
 #include "ShadowStats.h"
@@ -107,7 +108,8 @@ void UStatsOverlayD2D::Draw()
 			!bShowTileCulling &&
 			!bShowLights &&
 			!bShowShadow &&
-			!bShowSkinning
+			!bShowSkinning &&
+			!bShowParticle
 		) || !SwapChain
 	)
 		return;
@@ -434,7 +436,74 @@ void UStatsOverlayD2D::Draw()
 
 		NextY += skinningPanelHeight + Space;
 	}
-	
+
+	if (bShowParticle)
+	{
+		// 1. FParticleStatManager로부터 통계 데이터를 가져옵니다.
+		uint32_t TotalSystems = FParticleStatManager::GetInstance().GetTotalParticleSystemCount();
+		uint32_t ActiveSystems = FParticleStatManager::GetInstance().GetActiveParticleSystemCount();
+		uint32_t TotalEmitters = FParticleStatManager::GetInstance().GetTotalEmitterCount();
+		uint32_t SpriteEmitters = FParticleStatManager::GetInstance().GetSpriteEmitterCount();
+		uint32_t MeshEmitters = FParticleStatManager::GetInstance().GetMeshEmitterCount();
+		uint32_t TotalParticles = FParticleStatManager::GetInstance().GetTotalParticleCount();
+		uint32_t SpriteParticles = FParticleStatManager::GetInstance().GetSpriteParticleCount();
+		uint32_t MeshParticles = FParticleStatManager::GetInstance().GetMeshParticleCount();
+		uint32_t SpriteDrawCalls = FParticleStatManager::GetInstance().GetSpriteDrawCallCount();
+		uint32_t MeshDrawCalls = FParticleStatManager::GetInstance().GetMeshDrawCallCount();
+		double ParticleTime = FParticleStatManager::GetInstance().GetParticlePassTimeMS();
+		double AvgTimePerParticle = FParticleStatManager::GetInstance().GetAverageTimePerParticleMS();
+		double AvgTimePerDraw = FParticleStatManager::GetInstance().GetAverageTimePerDrawCallMS();
+
+		// 2. 출력할 문자열 버퍼를 만듭니다.
+		wchar_t Buf[512];
+		swprintf_s(Buf,
+			L"[Particle Stats]\n"
+			L"Systems: %u / %u (Active)\n"
+			L"Emitters: %u (S:%u M:%u)\n"
+			L"Particles: %u (S:%u M:%u)\n"
+			L"DrawCalls: %u (S:%u M:%u)\n"
+			L"Time: %.3f ms\n"
+			L"Avg/Particle: %.4f ms\n"
+			L"Avg/Draw: %.4f ms",
+			TotalSystems,
+			ActiveSystems,
+			TotalEmitters,
+			SpriteEmitters,
+			MeshEmitters,
+			TotalParticles,
+			SpriteParticles,
+			MeshParticles,
+			SpriteDrawCalls + MeshDrawCalls,
+			SpriteDrawCalls,
+			MeshDrawCalls,
+			ParticleTime,
+			AvgTimePerParticle,
+			AvgTimePerDraw
+		);
+
+		// 3. 패널 크기 설정 (여러 줄이므로 높이를 늘림)
+		const float particlePanelHeight = 180.0f;
+		D2D1_RECT_F rc = D2D1::RectF(
+			Margin,
+			NextY,
+			Margin + PanelWidth,
+			NextY + particlePanelHeight
+		);
+
+		// 4. DrawTextBlock 함수를 호출하여 화면에 그립니다. 색상은 구분을 위해 HotPink로 설정합니다.
+		DrawTextBlock(
+			D2dCtx,
+			Dwrite,
+			Buf,
+			rc,
+			16.0f,
+			D2D1::ColorF(0, 0, 0, 0.6f),
+			D2D1::ColorF(D2D1::ColorF::HotPink)
+		);
+
+		NextY += particlePanelHeight + Space;
+	}
+
 	D2dCtx->EndDraw();
 	D2dCtx->SetTarget(nullptr);
 
@@ -520,6 +589,11 @@ void UStatsOverlayD2D::SetShowSkinning(bool b)
 	bShowSkinning = b;
 }
 
+void UStatsOverlayD2D::SetShowParticle(bool b)
+{
+	bShowParticle = b;
+}
+
 void UStatsOverlayD2D::ToggleShadow()
 {
 	bShowShadow = !bShowShadow;
@@ -528,4 +602,9 @@ void UStatsOverlayD2D::ToggleShadow()
 void UStatsOverlayD2D::ToggleSkinning()
 {
 	bShowSkinning = !bShowSkinning;
+}
+
+void UStatsOverlayD2D::ToggleParticle()
+{
+	bShowParticle = !bShowParticle;
 }
