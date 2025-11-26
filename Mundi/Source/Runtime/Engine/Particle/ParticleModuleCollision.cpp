@@ -316,18 +316,16 @@ bool UParticleModuleCollision::CheckCollisionWithWorld(
                         }
                         else
                         {
-                            // 파티클이 캡슐 축 위에 있는 경우: 이동 방향 또는 축 수직 방향 사용
-                            FVector MoveDir = (NewLocation - OldLocation).GetSafeNormal();
-                            FVector MovePerpendicular = MoveDir - CapsuleUp * FVector::Dot(MoveDir, CapsuleUp);
-                            if (MovePerpendicular.SizeSquared() > 0.001f)
+                            // 파티클이 캡슐 축 위에 있는 경우:
+                            // Sphere처럼 가장 가까운 끝(위/아래 반구) 방향으로 밀어냄
+                            // AxisProj > 0 이면 위쪽 반구에 가까움, < 0 이면 아래쪽 반구에 가까움
+                            if (AxisProj >= 0.0f)
                             {
-                                OutHitNormal = -MovePerpendicular.GetSafeNormal();
+                                OutHitNormal = CapsuleUp;  // 위쪽으로 밀어냄
                             }
                             else
                             {
-                                // 이동 방향도 축과 평행한 경우: 임의의 수직 방향 선택
-                                FVector Arbitrary = FMath::Abs(CapsuleUp.Z) < 0.9f ? FVector(0, 0, 1) : FVector(1, 0, 0);
-                                OutHitNormal = FVector::Cross(CapsuleUp, Arbitrary).GetSafeNormal();
+                                OutHitNormal = -CapsuleUp;  // 아래쪽으로 밀어냄
                             }
                         }
 
