@@ -582,10 +582,9 @@ void UPropertyRenderer::CacheResources()
 		CachedParticleSystemItems.Add("None");
 
 		// Content/Resources/Particle 디렉토리 스캔
-		const FString ParticleDir = GContentDir + "/Resources/Particle";
-		if (fs::exists(ParticleDir) && fs::is_directory(ParticleDir))
+		if (fs::exists(UParticleAsset::FolderPath) && fs::is_directory(UParticleAsset::FolderPath))
 		{
-			for (const auto& Entry : fs::recursive_directory_iterator(ParticleDir))
+			for (const auto& Entry : fs::recursive_directory_iterator(UParticleAsset::FolderPath))
 			{
 				if (Entry.is_regular_file() && Entry.path().extension() == ".uasset")
 				{
