@@ -6,6 +6,7 @@
 #include "FbxLoader.h"
 #include <ObjManager.h>
 #include "GameModeBase.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 
 
 float UEditorEngine::ClientWidth = 1024.0f;
@@ -219,8 +220,8 @@ void UEditorEngine::Tick(float DeltaSeconds)
 {
     //@TODO UV 스크롤 입력 처리 로직 이동
     HandleUVInput(DeltaSeconds);
-    
-    //@TODO: Delta Time 계산 + EditorActor Tick은 어떻게 할 것인가 
+
+    //@TODO: Delta Time 계산 + EditorActor Tick은 어떻게 할 것인가
     for (auto& WorldContext : WorldContexts)
     {
         WorldContext.World->Tick(DeltaSeconds);
@@ -234,7 +235,7 @@ void UEditorEngine::Tick(float DeltaSeconds)
         //    WorldContext.World->Tick(DeltaSeconds, WorldContext.WorldType);
         //}
     }
-    
+
     SLATE.Update(DeltaSeconds);
     UI.Update(DeltaSeconds);
     INPUT.Update();
@@ -309,13 +310,22 @@ void UEditorEngine::MainLoop()
             if (GWorld && bPIEActive)
             {
                 WorldContexts.pop_back();
-                ObjectFactory::DeleteObject(GWorld);
+                ObjectFactory::DeleteObject(GWorld);  // PIEWorld 삭제
             }
 
             GWorld = WorldContexts[0].World;
             GWorld->GetSelectionManager()->ClearSelection();
             GWorld->GetLightManager()->SetDirtyFlag();
             SLATE.SetPIEWorld(GWorld);
+
+            // PIE 종료 후 EditorWorld의 파티클 컴포넌트들을 다시 활성화
+            for (AActor* Actor : GWorld->GetLevel()->GetActors())
+            {
+                if (UParticleSystemComponent* PSC = Cast<UParticleSystemComponent>(Actor->GetComponent(UParticleSystemComponent::StaticClass())))
+                {
+                    PSC->Activate(true);
+                }
+            }
 
             bPIEActive = false;
             UE_LOG("[info] END PIE");
@@ -384,6 +394,17 @@ void UEditorEngine::StartPIE()
     UE_LOG("[info] START PIE");
 
     UWorld* EditorWorld = WorldContexts[0].World;
+
+    // PIE 시작 전에 EditorWorld의 파티클 컴포넌트들을 Deactivate
+    // (PIE 종료 시 PIEWorld 파티클은 컴포넌트 소멸로 자동 정리됨)
+    for (AActor* Actor : EditorWorld->GetLevel()->GetActors())
+    {
+        if (UParticleSystemComponent* PSC = Cast<UParticleSystemComponent>(Actor->GetComponent(UParticleSystemComponent::StaticClass())))
+        {
+            PSC->Deactivate();
+        }
+    }
+
     UWorld* PIEWorld = UWorld::DuplicateWorldForPIE(EditorWorld);
 
     GWorld = PIEWorld;

@@ -57,6 +57,12 @@ void AActor::BeginPlay()
 
 void AActor::Tick(float DeltaSeconds)
 {
+	// World null 체크 (종료 시 크래시 방지)
+	if (!World)
+	{
+		return;
+	}
+
 	// 에디터 모드인지 체크 (World에서 이미 Actor의 bTickInEditor 체크 후 호출됨)
 	const bool bIsEditorMode = !World->bPie;
 

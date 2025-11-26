@@ -497,22 +497,6 @@ void SParticleEditWindow::OnRender()
             State->ReStartParticle();
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button("LOD Down"))
-        {
-            State->SetLOD(-1);
-        }
-        if (State->ParticleActor)
-        {
-            ImGui::SameLine();
-            int CurLOD = State->ParticleActor->GetParticleSystemComponent()->GetCurrentLODLevel();
-            ImGui::Text("CurLOD : %d", CurLOD);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("LOD UP"))
-        {
-            State->SetLOD(1);
-        }
         //뷰포트
         ImVec2 ChildSize = Size * 0.5f;
         ImGui::BeginChild("Viewport", ChildSize);
