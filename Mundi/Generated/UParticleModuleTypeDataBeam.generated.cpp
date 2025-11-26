@@ -54,6 +54,7 @@ BEGIN_PROPERTIES(UParticleModuleTypeDataBeam)
     ADD_PROPERTY(float, DisplacementDecay, "Beam|Noise", true)
     ADD_PROPERTY(float, GlowIntensity, "Beam|Appearance", true)
     ADD_PROPERTY(bool, bUseTexture, "Beam|Texture", true)
+    ADD_PROPERTY_TEXTURE(UTexture*, BeamTexture, "Beam|Texture", true)
 END_PROPERTIES()
 
 // ===== Lua Binding =====

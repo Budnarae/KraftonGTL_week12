@@ -812,11 +812,24 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             bool bUseTexture = BeamModule->GetUseTexture();
             BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
 
-            if (bUseTexture && ParticleMaterial)
+            if (bUseTexture)
             {
-                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                // BeamModule에 직접 설정된 텍스처 우선 사용
+                if (UTexture* DirectTexture = BeamModule->GetBeamTexture())
                 {
-                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    BatchElement.InstanceShaderResourceView = DirectTexture->GetShaderResourceView();
+                }
+                // 없으면 머티리얼에서 가져옴
+                else if (ParticleMaterial)
+                {
+                    if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                    {
+                        BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    }
+                    else
+                    {
+                        BatchElement.InstanceShaderResourceView = nullptr;
+                    }
                 }
                 else
                 {
@@ -953,11 +966,24 @@ void UParticleSystemComponent::CollectMeshBatches(TArray<FMeshBatchElement>& Out
             bool bUseTexture = RibbonModule->GetUseTexture();
             BatchElement.UseTexture = bUseTexture ? 1.0f : 0.0f;
 
-            if (bUseTexture && ParticleMaterial)
+            if (bUseTexture)
             {
-                if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                // RibbonModule에 직접 설정된 텍스처 우선 사용
+                if (UTexture* DirectTexture = RibbonModule->GetRibbonTexture())
                 {
-                    BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    BatchElement.InstanceShaderResourceView = DirectTexture->GetShaderResourceView();
+                }
+                // 없으면 머티리얼에서 가져옴
+                else if (ParticleMaterial)
+                {
+                    if (UTexture* TextureData = ParticleMaterial->GetTexture(EMaterialTextureSlot::Diffuse))
+                    {
+                        BatchElement.InstanceShaderResourceView = TextureData->GetShaderResourceView();
+                    }
+                    else
+                    {
+                        BatchElement.InstanceShaderResourceView = nullptr;
+                    }
                 }
                 else
                 {

@@ -5,6 +5,9 @@
 #include "UEContainer.h"
 #include "UParticleModuleTypeDataBeam.generated.h"
 
+// Forward declaration
+class UTexture;
+
 /**
  * Beam method - how the beam endpoints are determined
  */
@@ -78,6 +81,7 @@ public:
     float GetGlowIntensity() const { return GlowIntensity; }
     bool GetUseTexture() const { return bUseTexture; }
     EBeamNoiseAlgorithm GetNoiseAlgorithm() const { return NoiseAlgorithm; }
+    UTexture* GetBeamTexture() const { return BeamTexture; }
 
     // Setters
     void SetBeamMethod(EBeamMethod Value) { BeamMethod = Value; }
@@ -98,6 +102,7 @@ public:
     void SetGlowIntensity(float Value) { GlowIntensity = Value; }
     void SetUseTexture(bool Value) { bUseTexture = Value; }
     void SetNoiseAlgorithm(EBeamNoiseAlgorithm Value) { NoiseAlgorithm = Value; }
+    void SetBeamTexture(UTexture* Value) { BeamTexture = Value; }
 
     // Calculate beam points for rendering
     // NoiseParams: if not null, apply noise with these parameters; if null, no noise
@@ -184,4 +189,8 @@ private:
     // Use texture instead of solid color
     UPROPERTY(EditAnywhere, Category="Beam|Texture")
     bool bUseTexture = false;
+
+    // Direct texture for beam (bypasses material system)
+    UPROPERTY(EditAnywhere, Category="Beam|Texture")
+    UTexture* BeamTexture = nullptr;
 };

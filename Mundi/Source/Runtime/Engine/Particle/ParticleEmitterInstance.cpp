@@ -142,16 +142,51 @@ void FParticleEmitterInstance::SpawnParticles
     TArray<UParticleModule*>& SpawnModules = LODLevel->GetSpawnModule();
     UParticleModuleTypeDataBase* TypeDataModule = LODLevel->GetTypeDataModule();
 
+    // Ribbon/Trail 에미터인지 확인 (파티클 재활용 필요)
+    bool bIsRibbonEmitter = TypeDataModule &&
+        (TypeDataModule->GetEmitterType() == EDynamicEmitterType::EDET_Ribbon);
+
     for (int32 Index = 0; Index < SpawnNum; Index++)
     {
+        int32 ParticleIndex = ActiveParticles;
+
         if (ActiveParticles >= MaxActiveParticles)
         {
-            // UE_LOG("[FParticleEmitterInstance::SpawnParticles][Warning] Reached max particle count.");
-            break;
+            if (bIsRibbonEmitter && ActiveParticles > 0)
+            {
+                // Ribbon: 가장 오래된 파티클을 찾아서 재활용
+                // SpawnTime이 가장 작은(오래된) 파티클 찾기
+                int32 OldestIndex = 0;
+                float OldestTime = FLT_MAX;
+
+                for (int32 i = 0; i < ActiveParticles; ++i)
+                {
+                    DECLARE_PARTICLE_PTR(CheckParticle, ParticleData + ParticleStride * i);
+                    FBaseParticle* BaseCheck = reinterpret_cast<FBaseParticle*>(CheckParticle);
+
+                    // RelativeTime이 가장 큰 파티클 = 가장 오래 살아있는 파티클
+                    if (BaseCheck->RelativeTime > OldestTime || OldestTime == FLT_MAX)
+                    {
+                        OldestTime = BaseCheck->RelativeTime;
+                        OldestIndex = i;
+                    }
+                }
+
+                // 가장 오래된 파티클 위치에 새 파티클 스폰
+                ParticleIndex = OldestIndex;
+            }
+            else
+            {
+                // 일반 에미터: 그냥 중지
+                break;
+            }
+        }
+        else
+        {
+            ActiveParticles++;
         }
 
-        DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ActiveParticles);
-        ActiveParticles++;
+        DECLARE_PARTICLE_PTR(ParticlePtr, ParticleData + ParticleStride * ParticleIndex);
 
         FBaseParticle& ParticleBase = *((FBaseParticle*)ParticlePtr);
 

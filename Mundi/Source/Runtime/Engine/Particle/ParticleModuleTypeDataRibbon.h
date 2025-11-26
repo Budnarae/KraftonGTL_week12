@@ -8,6 +8,7 @@
 
 // Forward declarations
 struct FParticleEmitterInstance;
+class UTexture;
 
 /**
  * Ribbon facing mode - how the ribbon faces the camera
@@ -84,6 +85,7 @@ public:
     float GetTextureRepeat() const { return TextureRepeat; }
     bool GetUseTexture() const { return bUseTexture; }
     int32 GetMaxParticlesPerRibbon() const { return MaxParticlesPerRibbon; }
+    UTexture* GetRibbonTexture() const { return RibbonTexture; }
 
     // Setters
     void SetFacingMode(ERibbonFacingMode Value) { FacingMode = Value; }
@@ -94,6 +96,7 @@ public:
     void SetTextureRepeat(float Value) { TextureRepeat = Value; }
     void SetUseTexture(bool Value) { bUseTexture = Value; }
     void SetMaxParticlesPerRibbon(int32 Value) { MaxParticlesPerRibbon = Value; }
+    void SetRibbonTexture(UTexture* Value) { RibbonTexture = Value; }
 
     /**
      * Build ribbon geometry from all active particles in the emitter
@@ -143,6 +146,10 @@ private:
     // Use texture instead of solid color
     UPROPERTY(EditAnywhere, Category="Ribbon|Texture")
     bool bUseTexture = false;
+
+    // Direct texture for ribbon (bypasses material system)
+    UPROPERTY(EditAnywhere, Category="Ribbon|Texture")
+    UTexture* RibbonTexture = nullptr;
 
     // Maximum particles per ribbon (for sorting performance)
     UPROPERTY(EditAnywhere, Category="Ribbon|Performance")

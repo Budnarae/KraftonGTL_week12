@@ -129,8 +129,9 @@ void UParticleModuleTypeDataRibbon::BuildRibbonFromParticles(
         FinalColor.B *= RibbonColor.Z;
         FinalColor.A *= RibbonColor.W;
 
-        // Fade alpha at tail
-        FinalColor.A *= T;
+        // Fade alpha at tail (최소 알파 유지하여 완전 투명 방지)
+        float MinAlpha = 0.05f;
+        FinalColor.A *= FMath::Max(T, MinAlpha);
 
         OutPoints.Add(Data.Location);
         OutWidths.Add(Width);
