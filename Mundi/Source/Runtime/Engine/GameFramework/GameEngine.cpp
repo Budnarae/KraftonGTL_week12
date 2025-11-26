@@ -220,18 +220,6 @@ bool UGameEngine::Startup(HINSTANCE hInstance)
         Actor->BeginPlay();
     }
 
-    // GameMode를 찾아서 World에 설정
-    AGameModeBase* GameMode = GWorld->FindActor<AGameModeBase>();
-    if (GameMode)
-    {
-        GWorld->SetGameMode(GameMode);
-        UE_LOG("[Game] GameMode found and set: %s", GameMode->GetClass()->Name);
-    }
-    else
-    {
-        UE_LOG("[Game] No GameMode found in level");
-    }
-
     bPlayActive = true;
     bRunning = true;
     return true;

@@ -169,7 +169,7 @@ AParticleSystemActor::AParticleSystemActor()
 	// 스프라이트 에미터를 테스트하려면 위의 메시 에미터 코드를 주석 처리하고
 	// 아래 코드의 주석을 해제하세요.
 	// ============================================================
-	
+	/*
 	{
 		// 1. ParticleSystem 템플릿 생성
 		UParticleSystem* TestTemplate = NewObject<UParticleSystem>();
@@ -293,7 +293,7 @@ AParticleSystemActor::AParticleSystemActor()
 		// 파티클 시스템 활성화
 		ParticleSystemComponent->Activate(false);
 	}
-	
+	*/
 	// ============================================================
 	// END OF SPRITE EMITTER TEST CODE
 	// ============================================================
