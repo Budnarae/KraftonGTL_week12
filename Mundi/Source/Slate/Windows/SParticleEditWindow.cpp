@@ -128,7 +128,7 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     },
     {"충돌",
     {
-        {"콜리전", FMenuAction::CreateSpawnModule(UParticleModuleCollision::StaticClass()->Name)},
+        {"콜리전", FMenuAction::CreateUpdateModule(UParticleModuleCollision::StaticClass()->Name)},
     }
     },
     {"빔",
@@ -141,9 +141,10 @@ TMap<FString, TMap<FString, FMenuAction>> DropdownActionMap =
     },
     {"타입 데이터",
     {
-        {"스프라이트 (기본)", FMenuAction::CreateSetTypeData("")},  // nullptr = Sprite (default)
-        {"빔", FMenuAction::CreateSetTypeData(UParticleModuleTypeDataBeam::StaticClass()->Name)},
-        {"리본", FMenuAction::CreateSetTypeData(UParticleModuleTypeDataRibbon::StaticClass()->Name)},
+        {"스프라이트 (기본)", FMenuAction::CreateRemoveTypeData()},  // TypeData 제거 = Sprite (default)
+        {"메시", FMenuAction::CreateSetTypeData(EDET_Mesh)},
+        {"빔", FMenuAction::CreateSetTypeData(EDET_Beam)},
+        {"리본", FMenuAction::CreateSetTypeData(EDET_Ribbon)},
     }
     },
 };
@@ -208,30 +209,6 @@ void SParticleEditWindow::AddUpdateModule(const FString& ClassName)
         if (UParticleModule* Module = Cast<UParticleModule>(obj))
         {
             LOD->AddUpdateModule(Module);
-        }
-        State->ReStartParticle();
-    }
-}
-
-void SParticleEditWindow::SetTypeDataModule(const FString& ClassName)
-{
-    if (State->SelectedEmitter)
-    {
-        UParticleLODLevel* LOD = State->SelectedEmitter->GetParticleLODLevelWithIndex(0);
-
-        // 빈 문자열이면 스프라이트 (기본값) - TypeData를 nullptr로 설정
-        if (ClassName.empty())
-        {
-            LOD->SetTypeDataModule(nullptr);
-        }
-        else
-        {
-            // 새 TypeData 모듈 생성
-            UObject* obj = NewObject(UClass::FindClass(ClassName));
-            if (UParticleModuleTypeDataBase* TypeData = Cast<UParticleModuleTypeDataBase>(obj))
-            {
-                LOD->SetTypeDataModule(TypeData);
-            }
         }
         State->ReStartParticle();
     }
@@ -771,13 +748,6 @@ void SParticleEditWindow::DrawEmitterView()
 
 
         DrawModuleInEmitterView(Emitter, RequireModule, RequireModuleSize);
-
-        // TypeDataModule 표시 (RequiredModule 바로 아래)
-        UParticleModuleTypeDataBase* TypeDataModule = ParticleLOD->GetTypeDataModule();
-        if (TypeDataModule)
-        {
-            DrawModuleInEmitterView(Emitter, TypeDataModule, ModuleSize);
-        }
 
         for (UParticleModule* Module : SpawnModules)
         {

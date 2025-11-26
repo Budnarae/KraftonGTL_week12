@@ -80,6 +80,27 @@ void UParticleModuleCollision::Update(FParticleContext& Context, float DeltaTime
         // Add event to component
         Component->AddCollisionEvent(CollideEvent);
 
+        // ========================================
+        // 충돌한 액터에 대한 처리 (여기에 원하는 동작 추가)
+        // ========================================
+        if (HitActor)
+        {
+            // 예시 1: 로그 출력
+            UE_LOG("[ParticleCollision] Hit Actor: %s", HitActor->GetName().c_str());
+
+            // 예시 2: 액터에 데미지 주기 (TakeDamage 함수가 있다면)
+            // HitActor->TakeDamage(10.0f);
+
+            // 예시 3: 액터 삭제
+            // HitActor->Destroy();
+
+            // 예시 4: 액터의 특정 컴포넌트에 힘 가하기
+            // if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HitComponent))
+            // {
+            //     PrimComp->AddImpulse(Particle->Velocity * 100.0f);
+            // }
+        }
+
         // Apply collision response
         if (bKillOnCollision || CollisionResponse == EParticleCollisionResponse::Kill)
         {

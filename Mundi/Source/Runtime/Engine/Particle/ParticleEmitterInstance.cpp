@@ -80,6 +80,17 @@ void FParticleEmitterInstance::CopyFrom(const FParticleEmitterInstance& Other)
 
 void FParticleEmitterInstance::Update(float DeltaTime)
 {
+    // null 체크
+    if (!SpriteTemplate)
+        return;
+
+    UParticleLODLevel* LODLevel = SpriteTemplate->GetCurrentLODLevelInstance();
+    if (!LODLevel)
+        return;
+
+    UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+    TArray<UParticleModule*>& UpdateModules = LODLevel->GetUpdateModule();
+
     for (int32 Index = ActiveParticles - 1; Index >= 0; Index--)
     {
         DECLARE_PARTICLE_PTR(ParticleBase, ParticleData + ParticleStride * Index);
@@ -87,17 +98,14 @@ void FParticleEmitterInstance::Update(float DeltaTime)
         // FParticleContext 생성
         FParticleContext Context(ParticleBase, OwnerComponent);
 
-        UParticleModuleRequired* RequiredModule = \
-            SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
-
-        RequiredModule->Update(Context, DeltaTime);
-
-        TArray<UParticleModule*>& UpdateModules = \
-            SpriteTemplate->GetCurrentLODLevelInstance()->GetUpdateModule();
+        if (RequiredModule)
+        {
+            RequiredModule->Update(Context, DeltaTime);
+        }
 
         for (UParticleModule* UpdateModule : UpdateModules)
         {
-            if (UpdateModule->GetActive()) 
+            if (UpdateModule && UpdateModule->GetActive())
             {
                 UpdateModule->Update(Context, DeltaTime);
             }
@@ -122,6 +130,18 @@ void FParticleEmitterInstance::SpawnParticles
     FParticleEventInstancePayload* EventPayload
 )
 {
+    // null 체크
+    if (!SpriteTemplate)
+        return;
+
+    UParticleLODLevel* LODLevel = SpriteTemplate->GetCurrentLODLevelInstance();
+    if (!LODLevel)
+        return;
+
+    UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+    TArray<UParticleModule*>& SpawnModules = LODLevel->GetSpawnModule();
+    UParticleModuleTypeDataBase* TypeDataModule = LODLevel->GetTypeDataModule();
+
     for (int32 Index = 0; Index < SpawnNum; Index++)
     {
         if (ActiveParticles >= MaxActiveParticles)
@@ -156,16 +176,15 @@ void FParticleEmitterInstance::SpawnParticles
         FParticleContext Context(&ParticleBase, OwnerComponent);
 
         // RequiredModule의 Spawn 호출 (필수)
-        UParticleModuleRequired* RequiredModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetRequiredModule();
         if (RequiredModule)
         {
             RequiredModule->Spawn(Context, StartTime);
         }
 
         // 추가 SpawnModules 호출
-        for (UParticleModule* Module : SpriteTemplate->GetCurrentLODLevelInstance()->GetSpawnModule())
+        for (UParticleModule* Module : SpawnModules)
         {
-            if (Module->GetActive()) 
+            if (Module && Module->GetActive())
             {
                 Module->Spawn(Context, StartTime);
             }
@@ -173,7 +192,6 @@ void FParticleEmitterInstance::SpawnParticles
 
         // TypeDataModule의 Spawn 호출 (Ribbon/Beam 등에서 SpawnTime 설정)
         // Index * Increment로 시간 분산하여 각 파티클이 고유한 SpawnTime을 가짐
-        UParticleModuleTypeDataBase* TypeDataModule = SpriteTemplate->GetCurrentLODLevelInstance()->GetTypeDataModule();
         if (TypeDataModule)
         {
             TypeDataModule->Spawn(Context, StartTime + (float)Index * Increment);
@@ -212,8 +230,25 @@ void FParticleEmitterInstance::KillAllParticles()
 
 float FParticleEmitterInstance::GetLifeTimeValue()
 {
-    return SpriteTemplate->
-        GetCurrentLODLevelInstance()->
-        GetRequiredModule()->
-        GetLifeTime();
+    if (!SpriteTemplate)
+    {
+        UE_LOG("[GetLifeTimeValue] SpriteTemplate is null");
+        return 1.0f;  // 기본값
+    }
+
+    UParticleLODLevel* LODLevel = SpriteTemplate->GetCurrentLODLevelInstance();
+    if (!LODLevel)
+    {
+        UE_LOG("[GetLifeTimeValue] LODLevel is null");
+        return 1.0f;
+    }
+
+    UParticleModuleRequired* RequiredModule = LODLevel->GetRequiredModule();
+    if (!RequiredModule)
+    {
+        UE_LOG("[GetLifeTimeValue] RequiredModule is null");
+        return 1.0f;
+    }
+
+    return RequiredModule->GetLifeTime();
 }
