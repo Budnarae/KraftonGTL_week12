@@ -19,6 +19,9 @@
 #include "USlateManager.h"
 #include "ImGui/imgui_curve.hpp"
 #include "Source/Runtime/Engine/Particle/ParticleModuleSpawn.h"
+#include "Source/Runtime/Engine/Particle/ParticleAsset.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystem.h"
+#include "Source/Runtime/Engine/Particle/ParticleSystemComponent.h"
 #include "PathUtils.h"
 #include "ObjectFactory.h"
 
@@ -37,6 +40,8 @@ TArray<FString> UPropertyRenderer::CachedSoundPaths;
 TArray<const char*> UPropertyRenderer::CachedSoundItems;
 TArray<FString> UPropertyRenderer::CachedScriptPaths;
 TArray<const char*> UPropertyRenderer::CachedScriptItems;
+TArray<FString> UPropertyRenderer::CachedParticleSystemPaths;
+TArray<FString> UPropertyRenderer::CachedParticleSystemItems;
 
 static bool ItemsGetter(void* Data, int Index, const char** CItem)
 {
@@ -478,6 +483,8 @@ void UPropertyRenderer::ClearResourcesCache()
 	CachedSoundItems.Empty();
 	CachedScriptPaths.Empty();
 	CachedScriptItems.Empty();
+	CachedParticleSystemPaths.Empty();
+	CachedParticleSystemItems.Empty();
 }
 
 // ===== 타입별 렌더링 구현 =====
@@ -689,6 +696,78 @@ bool UPropertyRenderer::RenderObjectPtrProperty(const FProperty& Prop, void* Ins
 {
 	UObject** ObjPtr = Prop.GetValuePtr<UObject*>(Instance);
 
+	// UParticleSystem* 타입인 경우 선택 콤보박스 표시
+	if (Prop.ClassName == "UParticleSystem")
+	{
+		UParticleSystem** ParticleSystemPtr = reinterpret_cast<UParticleSystem**>(ObjPtr);
+		UParticleSystem* CurrentPS = *ParticleSystemPtr;
+
+		// 현재 선택된 파티클 시스템의 인덱스 찾기
+		int CurrentIndex = 0;
+		if (CurrentPS)
+		{
+			// 현재 Template의 경로를 찾기 위해 캐시된 파티클 시스템들과 비교
+			for (int i = 1; i < CachedParticleSystemPaths.Num(); ++i) // 0은 "None"이므로 1부터
+			{
+				if (!CachedParticleSystemPaths[i].empty())
+				{
+					UParticleAsset* Asset = UResourceManager::GetInstance().Load<UParticleAsset>(CachedParticleSystemPaths[i]);
+					if (Asset && &Asset->ParticleSystem == CurrentPS)
+					{
+						CurrentIndex = i;
+						break;
+					}
+				}
+			}
+		}
+
+		// 콤보박스 표시
+		bool bChanged = false;
+		if (ImGui::BeginCombo(Prop.Name, CachedParticleSystemItems[CurrentIndex].c_str()))
+		{
+			for (int i = 0; i < CachedParticleSystemItems.Num(); ++i)
+			{
+				bool bIsSelected = (i == CurrentIndex);
+				if (ImGui::Selectable(CachedParticleSystemItems[i].c_str(), bIsSelected))
+				{
+					if (i == 0) // "None" 선택
+					{
+						*ParticleSystemPtr = nullptr;
+					}
+					else
+					{
+						// 선택된 파티클 시스템 로드
+						UParticleAsset* Asset = UResourceManager::GetInstance().Load<UParticleAsset>(CachedParticleSystemPaths[i]);
+						if (Asset)
+						{
+							*ParticleSystemPtr = &Asset->ParticleSystem;
+						}
+					}
+					bChanged = true;
+				}
+				if (bIsSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		// Template이 변경되었으면 ParticleSystemComponent의 Activate 호출
+		if (bChanged)
+		{
+			UObject* Obj = static_cast<UObject*>(Instance);
+			if (UParticleSystemComponent* PSC = Cast<UParticleSystemComponent>(Obj))
+			{
+				PSC->SetTemplate(*ParticleSystemPtr);
+				PSC->Activate(true);
+			}
+		}
+
+		return bChanged;
+	}
+
+	// 일반 ObjectPtr 처리 (읽기 전용)
 	if (*ObjPtr)
 	{
 		// 객체가 있으면 클래스 이름과 객체 이름 표시
