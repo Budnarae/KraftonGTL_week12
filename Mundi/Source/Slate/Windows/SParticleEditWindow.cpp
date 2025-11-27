@@ -33,6 +33,7 @@
 #include "Source/Runtime/Engine/Particle/ParticleLODLevel.h"
 #include "Source/Runtime/Core/Math/Statistics.h"
 #include "Source/Runtime/Core/Object/Property.h"
+#include "Source/Runtime/Renderer/StatManagement/ParticleStatManager.h"
 
 ImVec2 TopMenuBarOffset = ImVec2(0, 30);
 ImVec2 TopMenuBarSize = ImVec2(-1, 40);
@@ -508,6 +509,9 @@ void SParticleEditWindow::OnRender()
         {
             State->ReStartParticle();
         }
+        ImGui::SameLine();
+        ImGui::Text("Count : %d", FParticleStatManager::GetInstance().GetTotalParticleCount());
+        FParticleStatManager::GetInstance().ResetFrameStats();
 
         //뷰포트
         ImVec2 ChildSize = Size * 0.5f;

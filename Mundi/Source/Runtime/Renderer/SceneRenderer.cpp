@@ -89,9 +89,6 @@ void FSceneRenderer::Render()
     // 뷰(View) 준비: 행렬, 절두체 등 프레임에 필요한 기본 데이터 계산
     PrepareView();
 
-    // 파티클 통계 초기화 (매 프레임)
-    FParticleStatManager::GetInstance().ResetFrameStats();
-
     // (Background is cleared per-path when binding scene color)
     // 렌더링할 대상 수집 (Cull + Gather)
     GatherVisibleProxies();

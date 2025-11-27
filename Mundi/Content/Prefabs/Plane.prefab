@@ -1,0 +1,29 @@
+{
+  "ObjectName" : "스태틱 메시_0",
+  "OwnedComponents" : [{
+      "Id" : 2443,
+      "MaterialSlots" : [{
+          "AssetPath" : "uberlit",
+          "Type" : "UMaterial"
+        }],
+      "ObjectName" : "UStaticMeshComponent_1",
+      "ParentId" : 0,
+      "RelativeLocation" : [0.000000, 3.664970, 0.000000],
+      "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+      "RelativeScale" : [0.200000, 0.200000, 0.200000],
+      "StaticMesh" : "Content/Resources/Model\\Plane",
+      "Type" : "UStaticMeshComponent",
+      "bBlockComponent" : false,
+      "bCastShadows" : true,
+      "bGenerateOverlapEvents" : true,
+      "bHiddenInGame" : false,
+      "bIsActive" : true,
+      "bIsVisible" : true,
+      "bTickEnabled" : true
+    }],
+  "RootComponentId" : 2443,
+  "Tag" : "",
+  "Type" : "AStaticMeshActor",
+  "bActorHiddenInGame" : false,
+  "bActorIsActive" : true
+}

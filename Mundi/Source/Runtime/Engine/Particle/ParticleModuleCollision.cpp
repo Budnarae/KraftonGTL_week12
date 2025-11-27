@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleModuleCollision.h"
 #include "ParticleSystemComponent.h"
 #include "ParticleEventTypes.h"
@@ -61,9 +61,6 @@ void UParticleModuleCollision::Update(FParticleContext& Context, float DeltaTime
         HitComponent,
         OwnerActor))  // Pass owner actor to avoid self-collision
     {
-        // Debug log for collision detection
-        UE_LOG("[ParticleCollision] Particle %d collided with Actor at (%.2f, %.2f, %.2f)",
-            Context.ParticleIndex, HitLocation.X, HitLocation.Y, HitLocation.Z);
 
         // Generate collision event
         FParticleEventCollideData CollideEvent;
@@ -86,8 +83,6 @@ void UParticleModuleCollision::Update(FParticleContext& Context, float DeltaTime
         // ========================================
         if (HitActor)
         {
-            // 예시 1: 로그 출력
-            UE_LOG("[ParticleCollision] Hit Actor: %s", HitActor->GetName().c_str());
 
             // 예시 2: 액터에 데미지 주기 (TakeDamage 함수가 있다면)
             // HitActor->TakeDamage(10.0f);
