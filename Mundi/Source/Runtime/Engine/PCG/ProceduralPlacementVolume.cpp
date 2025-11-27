@@ -69,11 +69,10 @@ EDistributionType AProceduralPlacementVolume::GetDistributionType() const
 
 void AProceduralPlacementVolume::Generate()
 {
-    ClearPlacement();
-
     // 메시 배열 체크
     if (PlacementMeshes.Num() == 0)
     {
+        ClearPlacement();
         return;
     }
 
@@ -87,6 +86,7 @@ void AProceduralPlacementVolume::Generate()
 
     if (TotalWeight <= 0.0f)
     {
+        ClearPlacement();
         return;
     }
 
@@ -97,11 +97,15 @@ void AProceduralPlacementVolume::Generate()
     FVector Extent = VolumeComponent->GetBoxExtent();
     Distribution.SetBounds(Extent);
 
-    // 표면 배치 모드면 BVH 캐시 빌드 (성능 최적화)
+    // 표면 배치 모드면 BVH 캐시 먼저 빌드 (SpawnedActors로 이전 액터 제외 가능)
+    // ClearPlacement 전에 빌드해야 SpawnedActors.Contains() 체크가 작동함
     if (bPlaceOnSurface)
     {
         BuildBVHCache();
     }
+
+    // BVH 캐시 빌드 후 이전 액터들 삭제
+    ClearPlacement();
 
     TArray<FVector> Points = GeneratePoints();
 
@@ -190,6 +194,12 @@ void AProceduralPlacementVolume::ClearPlacement()
 
 TArray<FVector> AProceduralPlacementVolume::GeneratePoints()
 {
+    // Surface 배치 모드 + Poisson Disk 분포일 때는 2D 버전 사용
+    // (3D Poisson은 얇은 볼륨에서 포인트 생성이 제한됨)
+    if (bPlaceOnSurface && GetDistributionType() == EDistributionType::PoissonDisk)
+    {
+        return Distribution.GeneratePoissonDisk2D(MinDistance, TargetCount);
+    }
     return Distribution.GeneratePoints(GetDistributionType(), TargetCount, MinDistance);
 }
 

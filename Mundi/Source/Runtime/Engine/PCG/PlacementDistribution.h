@@ -23,6 +23,7 @@ public:
 
     TArray<FVector> GenerateRandom(int32 Count);
     TArray<FVector> GeneratePoissonDisk(float MinDistance, int32 MaxPoints = 10000);
+    TArray<FVector> GeneratePoissonDisk2D(float MinDistance, int32 MaxPoints = 10000);  // Surface 배치용 2D 버전
     TArray<FVector> GenerateGrid(int32 Count, float Jitter = 0.3f);
     TArray<FVector> GenerateClustered(int32 ClusterCount, int32 PointsPerCluster, float ClusterRadius);
 

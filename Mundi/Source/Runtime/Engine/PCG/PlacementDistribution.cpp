@@ -188,6 +188,122 @@ TArray<FVector> FPlacementDistribution::GeneratePoissonDisk(float MinDistance, i
     return Points;
 }
 
+TArray<FVector> FPlacementDistribution::GeneratePoissonDisk2D(float MinDistance, int32 MaxPoints)
+{
+    TArray<FVector> Points;
+    TArray<int32> ActiveList;
+
+    float CellSize = MinDistance / 1.414f;  // sqrt(2) for 2D
+
+    int32 GridSizeX = static_cast<int32>(std::ceil(Extent.X * 2.0f / CellSize));
+    int32 GridSizeY = static_cast<int32>(std::ceil(Extent.Y * 2.0f / CellSize));
+
+    int32 TotalCells = GridSizeX * GridSizeY;
+    TArray<int32> Grid;
+    Grid.SetNum(TotalCells);
+    for (int32 i = 0; i < TotalCells; ++i)
+    {
+        Grid[i] = -1;
+    }
+
+    auto GetGridIndex = [GridSizeX, GridSizeY](int32 x, int32 y) -> int32
+    {
+        if (x < 0 || x >= GridSizeX || y < 0 || y >= GridSizeY)
+            return -1;
+        return x + y * GridSizeX;
+    };
+
+    // 첫 포인트 (Z는 0으로 설정, 나중에 레이캐스트로 결정됨)
+    FVector FirstPoint(
+        RandomFloatInRange(-Extent.X, Extent.X),
+        RandomFloatInRange(-Extent.Y, Extent.Y),
+        0.0f
+    );
+    Points.Add(FirstPoint);
+    ActiveList.Add(0);
+
+    {
+        int32 cx = static_cast<int32>((FirstPoint.X + Extent.X) / CellSize);
+        int32 cy = static_cast<int32>((FirstPoint.Y + Extent.Y) / CellSize);
+        int32 idx = GetGridIndex(cx, cy);
+        if (idx >= 0) Grid[idx] = 0;
+    }
+
+    const int32 MaxAttempts = 30;
+
+    while (ActiveList.Num() > 0 && Points.Num() < MaxPoints)
+    {
+        int32 ActiveIndex = RandomInt(0, ActiveList.Num() - 1);
+        int32 PointIndex = ActiveList[ActiveIndex];
+        FVector Point = Points[PointIndex];
+
+        bool bFound = false;
+
+        for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+        {
+            // 2D 원형 샘플링 (XY 평면)
+            float Radius = RandomFloatInRange(MinDistance, MinDistance * 2.0f);
+            float Theta = RandomFloatInRange(0.0f, TWO_PI);
+
+            FVector NewPoint(
+                Point.X + Radius * std::cos(Theta),
+                Point.Y + Radius * std::sin(Theta),
+                0.0f  // Z는 0 (레이캐스트에서 결정)
+            );
+
+            // XY 범위 체크
+            if (NewPoint.X < -Extent.X || NewPoint.X > Extent.X ||
+                NewPoint.Y < -Extent.Y || NewPoint.Y > Extent.Y)
+            {
+                continue;
+            }
+
+            int32 CellX = static_cast<int32>((NewPoint.X + Extent.X) / CellSize);
+            int32 CellY = static_cast<int32>((NewPoint.Y + Extent.Y) / CellSize);
+
+            // 2D 거리 체크 (주변 셀만)
+            bool bValid = true;
+            for (int32 dx = -2; dx <= 2 && bValid; ++dx)
+            {
+                for (int32 dy = -2; dy <= 2 && bValid; ++dy)
+                {
+                    int32 idx = GetGridIndex(CellX + dx, CellY + dy);
+                    if (idx >= 0 && Grid[idx] != -1)
+                    {
+                        // 2D 거리만 체크 (XY)
+                        FVector Diff = Points[Grid[idx]] - NewPoint;
+                        float DistSq = Diff.X * Diff.X + Diff.Y * Diff.Y;
+                        if (DistSq < MinDistance * MinDistance)
+                        {
+                            bValid = false;
+                        }
+                    }
+                }
+            }
+
+            if (bValid)
+            {
+                int32 NewIndex = Points.Num();
+                Points.Add(NewPoint);
+                ActiveList.Add(NewIndex);
+
+                int32 idx = GetGridIndex(CellX, CellY);
+                if (idx >= 0) Grid[idx] = NewIndex;
+
+                bFound = true;
+                break;
+            }
+        }
+
+        if (!bFound)
+        {
+            ActiveList.RemoveAt(ActiveIndex);
+        }
+    }
+
+    return Points;
+}
+
 TArray<FVector> FPlacementDistribution::GenerateGrid(int32 Count, float Jitter)
 {
     TArray<FVector> Points;
