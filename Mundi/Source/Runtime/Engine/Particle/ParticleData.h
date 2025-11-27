@@ -272,7 +272,7 @@ struct FParticleInstanceData
     // 주의: Particle->Location은 이미 월드 좌표이므로 ComponentLocation을 더하지 않음
     void FillFromParticle(const FBaseParticle* Particle, const FVector& ComponentLocation, bool bEnableCameraFacing = true)
     {
-        Position = Particle->Location;  // 이미 월드 좌표
+        Position = Particle->Location;
         Rotation = Particle->Rotation;
         Size = FVector2D(Particle->Size.X, Particle->Size.Y);
         CameraFacing = bEnableCameraFacing ? 1.0f : 0.0f;

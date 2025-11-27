@@ -520,7 +520,8 @@ void UStatsOverlayD2D::Draw()
 	D2dCtx->SetTarget(nullptr);
 
 	FScopeCycleCounter::TimeProfileInit();
-
+	// 파티클 통계 초기화 (매 프레임)
+	FParticleStatManager::GetInstance().ResetFrameStats();
 
 	SafeRelease(TargetBmp);
 	SafeRelease(Dwrite);

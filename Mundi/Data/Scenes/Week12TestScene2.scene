@@ -1,0 +1,1140 @@
+{
+  "Actors" : {
+    "4669" : {
+      "ObjectName" : "APlayerCameraManager_2",
+      "OwnedComponents" : [{
+          "Id" : 4670,
+          "ObjectName" : "USceneComponent_3",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, -20.227484, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "USceneComponent",
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4670,
+      "Tag" : "",
+      "Type" : "APlayerCameraManager",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4671" : {
+      "ObjectName" : "AStaticMeshActor_1",
+      "OwnedComponents" : [{
+          "Id" : 4673,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [-16.535812, -25.654428, 3.992520],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [2.300000, 20.200001, 20.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4674,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4673,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4673,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4675" : {
+      "ObjectName" : "파티클 시스템_0",
+      "OwnedComponents" : [{
+          "ElapsedTime" : 2012.955200,
+          "Id" : 4677,
+          "ObjectName" : "UParticleSystemComponent_2",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, -55.507645, -8.353252],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 28.355453],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Template" : {
+            "ClassName" : "UParticleSystem",
+            "Duration" : 0.000000,
+            "Emitters" : [{
+                "ClassName" : "UParticleEmitter",
+                "EmitterName" : "NewEmitter",
+                "LODLevels" : [{
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 150.000000,
+                          "Min" : 100.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }, {
+                        "ClassName" : "UParticleModuleVelocity",
+                        "StartVelocity" : {
+                          "Curve" : [],
+                          "Max" : [80.000000, 80.000000, 80.000000],
+                          "Min" : [-80.000000, -80.000000, -80.000000],
+                          "Mode" : 0
+                        },
+                        "StartVelocityRadial" : {
+                          "Curve" : [],
+                          "Max" : 0.000000,
+                          "Min" : 0.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true,
+                        "bApplyOwnerScale" : true,
+                        "bInWorldSpace" : false
+                      }, {
+                        "ClassName" : "UParticleModuleLocation",
+                        "DistributeOverNPoints" : 0.000000,
+                        "Distribution" : {
+                          "Curve" : [],
+                          "Max" : [3.000000, 3.000000, 3.000000],
+                          "Min" : [-3.000000, -3.000000, -3.000000],
+                          "Mode" : 0
+                        },
+                        "DistributionThreshold" : 0.000000,
+                        "bActive" : true
+                      }, {
+                        "ClassName" : "UParticleModuleLifetime",
+                        "Lifetime" : {
+                          "Curve" : [],
+                          "Max" : 500.000000,
+                          "Min" : 500.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+                      "ClassName" : "UParticleModuleTypeDataMesh",
+                      "Mesh" : "Content/Resources/Model\\Sphere",
+                      "bActive" : true,
+                      "bCameraFacing" : false,
+                      "bOverrideMaterial" : false
+                    },
+                    "UpdateModules" : [{
+                        "ClassName" : "UParticleModuleCollision",
+                        "CollisionRadius" : 1.000000,
+                        "CollisionResponse" : 0,
+                        "DampingFactor" : 0.000000,
+                        "DampingFactorRotation" : 1.000000,
+                        "Friction" : 0.200000,
+                        "MaxCollisions" : 0,
+                        "Restitution" : 1.000000,
+                        "bActive" : true,
+                        "bApplyPhysics" : true,
+                        "bKillOnCollision" : false
+                      }],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }, {
+                    "ClassName" : "UParticleLODLevel",
+                    "LODDistance" : 0.000000,
+                    "Level" : 0,
+                    "RequiredModule" : {
+                      "ClassName" : "UParticleModuleRequired",
+                      "EmitterDelay" : 0.000000,
+                      "EmitterDuration" : 0.000000,
+                      "EmitterOrigin" : [0.000000, 0.000000, 0.000000],
+                      "LifeTime" : 3.000000,
+                      "Material" : "Shaders/Materials/UberLit.hlsl",
+                      "SpawnRate" : 0.000000,
+                      "bActive" : true,
+                      "bEnableCameraFacing" : true
+                    },
+                    "SpawnModules" : [{
+                        "BurstList" : [],
+                        "ClassName" : "UParticleModuleSpawn",
+                        "Rate" : {
+                          "Curve" : [],
+                          "Max" : 20.000000,
+                          "Min" : 20.000000,
+                          "Mode" : 0
+                        },
+                        "RateScale" : {
+                          "Curve" : [],
+                          "Max" : 1.000000,
+                          "Min" : 1.000000,
+                          "Mode" : 0
+                        },
+                        "bActive" : true
+                      }],
+                    "TypeDataModule" : {
+
+                    },
+                    "UpdateModules" : [],
+                    "bEnabled" : false
+                  }],
+                "MaxParticleCount" : 1500,
+                "bActive" : true
+              }],
+            "LODDistanceCheckTime" : 0.250000,
+            "LODMethod" : 0
+          },
+          "Type" : "UParticleSystemComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4774,
+          "ObjectName" : "UBillboardComponent_10",
+          "ParentId" : 4677,
+          "RelativeLocation" : [0.000000, 0.981833, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Texture" : "Data/UI/Icons/EmptyActor.dds",
+          "Type" : "UBillboardComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : true,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4677,
+      "Tag" : "",
+      "Type" : "AParticleSystemActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4775" : {
+      "ObjectName" : "앰비언트 라이트_0",
+      "OwnedComponents" : [{
+          "Id" : 4777,
+          "Intensity" : 0.200000,
+          "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "ObjectName" : "UAmbientLightComponent_3",
+          "ParentId" : 0,
+          "RelativeLocation" : [9.377167, 4.308411, 5.739155],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.000010,
+          "ShadowResolutionScale" : 1024,
+          "ShadowSharpen" : 0.500000,
+          "ShadowSlopeBias" : 0.000010,
+          "Temperature" : 6500.000000,
+          "Type" : "UAmbientLightComponent",
+          "bCastShadows" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4777,
+      "Tag" : "",
+      "Type" : "AAmbientLightActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4778" : {
+      "ObjectName" : "스태틱 메시_1",
+      "OwnedComponents" : [{
+          "Id" : 4780,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [-21.279877, -68.690681, 6.240738],
+          "RelativeRotationEuler" : [-66.703117, -58.517582, 69.836418],
+          "RelativeScale" : [7.000000, 7.000000, 7.000000],
+          "StaticMesh" : "Content/Resources/Model\\Sphere",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4781,
+          "ObjectName" : "USphereComponent_1",
+          "ParentId" : 4780,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, 0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "SphereRadius" : 1.539001,
+          "Type" : "USphereComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4780,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4782" : {
+      "ObjectName" : "AStaticMeshActor_6",
+      "OwnedComponents" : [{
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4784,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4785,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4785,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [-40.813019, -43.196098, 0.322327],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [5.000000, 100.000000, 100.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4785,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4786" : {
+      "ObjectName" : "AStaticMeshActor_8",
+      "OwnedComponents" : [{
+          "Id" : 4788,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [50.398449, -43.196098, 3.992520],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [5.000000, 100.000000, 100.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4789,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4788,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4788,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4790" : {
+      "ObjectName" : "포인트 라이트_0",
+      "OwnedComponents" : [{
+          "AttenuationRadius" : 100.000000,
+          "FalloffExponent" : 0.100000,
+          "Id" : 4792,
+          "Intensity" : 81.400002,
+          "LightColor" : [0.000000, 1.000000, 1.000000, 1.000000],
+          "ObjectName" : "UPointLightComponent_1",
+          "ParentId" : 0,
+          "RelativeLocation" : [-28.209917, -76.012375, 34.935169],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.000010,
+          "ShadowResolutionScale" : 1024,
+          "ShadowSharpen" : 0.500000,
+          "ShadowSlopeBias" : 0.000010,
+          "SourceRadius" : 0.000000,
+          "Temperature" : 6500.000000,
+          "Type" : "UPointLightComponent",
+          "bCastShadows" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bOverrideCameraLightPerspective" : false,
+          "bTickEnabled" : true,
+          "bUseInverseSquareFalloff" : true
+        }],
+      "RootComponentId" : 4792,
+      "Tag" : "",
+      "Type" : "APointLightActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4793" : {
+      "ObjectName" : "스태틱 메시_1",
+      "OwnedComponents" : [{
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4795,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4796,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4796,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, -91.412476, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [100.000000, 5.000000, 100.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4796,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4797" : {
+      "ObjectName" : "스태틱 메시_1",
+      "OwnedComponents" : [{
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4800,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4799,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4799,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [0.000000, 1.862816, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [100.000000, 5.000000, 100.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4799,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4801" : {
+      "ObjectName" : "포인트 라이트_1",
+      "OwnedComponents" : [{
+          "AttenuationRadius" : 78.199997,
+          "FalloffExponent" : 2.000000,
+          "Id" : 4803,
+          "Intensity" : 65.300003,
+          "LightColor" : [0.400000, 1.000000, 0.000000, 1.000000],
+          "ObjectName" : "UPointLightComponent_2",
+          "ParentId" : 0,
+          "RelativeLocation" : [36.987541, -76.450272, -35.167320],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.000010,
+          "ShadowResolutionScale" : 1024,
+          "ShadowSharpen" : 0.500000,
+          "ShadowSlopeBias" : 0.000010,
+          "SourceRadius" : 0.000000,
+          "Temperature" : 6500.000000,
+          "Type" : "UPointLightComponent",
+          "bCastShadows" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bOverrideCameraLightPerspective" : false,
+          "bTickEnabled" : true,
+          "bUseInverseSquareFalloff" : true
+        }],
+      "RootComponentId" : 4803,
+      "Tag" : "",
+      "Type" : "APointLightActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4804" : {
+      "ObjectName" : "포인트 라이트_2",
+      "OwnedComponents" : [{
+          "AttenuationRadius" : 80.199997,
+          "FalloffExponent" : 2.000000,
+          "Id" : 4806,
+          "Intensity" : 88.699997,
+          "LightColor" : [1.000000, 0.305882, 0.345098, 1.000000],
+          "ObjectName" : "UPointLightComponent_3",
+          "ParentId" : 0,
+          "RelativeLocation" : [-28.277765, -8.890472, 37.580406],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.000010,
+          "ShadowResolutionScale" : 1024,
+          "ShadowSharpen" : 0.500000,
+          "ShadowSlopeBias" : 0.000010,
+          "SourceRadius" : 0.000000,
+          "Temperature" : 6500.000000,
+          "Type" : "UPointLightComponent",
+          "bCastShadows" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bOverrideCameraLightPerspective" : false,
+          "bTickEnabled" : true,
+          "bUseInverseSquareFalloff" : true
+        }],
+      "RootComponentId" : 4806,
+      "Tag" : "",
+      "Type" : "APointLightActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4807" : {
+      "ObjectName" : "AStaticMeshActor_5",
+      "OwnedComponents" : [{
+          "Id" : 4809,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [15.609928, -25.654428, 3.992520],
+          "RelativeRotationEuler" : [2.000516, 29.629797, 35.308975],
+          "RelativeScale" : [2.300000, 20.200001, 20.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "BoxExtent" : [4.670166, 0.568638, 0.478105],
+          "Id" : 4810,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4809,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4809,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4811" : {
+      "ObjectName" : "포인트 라이트_3",
+      "OwnedComponents" : [{
+          "AttenuationRadius" : 85.500000,
+          "FalloffExponent" : 2.000000,
+          "Id" : 4813,
+          "Intensity" : 45.200001,
+          "LightColor" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "ObjectName" : "UPointLightComponent_4",
+          "ParentId" : 0,
+          "RelativeLocation" : [35.035919, -76.780083, 33.314491],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.000010,
+          "ShadowResolutionScale" : 1024,
+          "ShadowSharpen" : 0.500000,
+          "ShadowSlopeBias" : 0.000010,
+          "SourceRadius" : 0.000000,
+          "Temperature" : 6500.000000,
+          "Type" : "UPointLightComponent",
+          "bCastShadows" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bOverrideCameraLightPerspective" : false,
+          "bTickEnabled" : true,
+          "bUseInverseSquareFalloff" : true
+        }],
+      "RootComponentId" : 4813,
+      "Tag" : "",
+      "Type" : "APointLightActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4814" : {
+      "ObjectName" : "포인트 라이트_4",
+      "OwnedComponents" : [{
+          "AttenuationRadius" : 76.800003,
+          "FalloffExponent" : 0.100000,
+          "Id" : 4816,
+          "Intensity" : 89.300003,
+          "LightColor" : [1.000000, 0.615686, 0.682353, 1.000000],
+          "ObjectName" : "UPointLightComponent_6",
+          "ParentId" : 0,
+          "RelativeLocation" : [-1.993259, -46.536682, 12.841930],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "ShadowBias" : 0.000010,
+          "ShadowResolutionScale" : 1024,
+          "ShadowSharpen" : 0.500000,
+          "ShadowSlopeBias" : 0.000010,
+          "SourceRadius" : 1.000000,
+          "Temperature" : 6500.000000,
+          "Type" : "UPointLightComponent",
+          "bCastShadows" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bOverrideCameraLightPerspective" : false,
+          "bTickEnabled" : true,
+          "bUseInverseSquareFalloff" : true
+        }],
+      "RootComponentId" : 4816,
+      "Tag" : "",
+      "Type" : "APointLightActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4817" : {
+      "ObjectName" : "AStaticMeshActor_0",
+      "OwnedComponents" : [{
+          "Id" : 4819,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [3.474704, -43.196098, 43.327843],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [100.000000, 100.000000, 5.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4820,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4819,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4819,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4821" : {
+      "ObjectName" : "AStaticMeshActor_1",
+      "OwnedComponents" : [{
+          "Id" : 4823,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [3.474704, -43.196098, -46.144783],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [100.000000, 100.000000, 5.000000],
+          "StaticMesh" : "Content/Resources/Model\\Cube",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "BoxExtent" : [0.500000, 0.500000, 0.500000],
+          "Id" : 4824,
+          "ObjectName" : "UBoxComponent_1",
+          "ParentId" : 4823,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "Type" : "UBoxComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4823,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4825" : {
+      "ObjectName" : "AStaticMeshActor_2",
+      "OwnedComponents" : [{
+          "Id" : 4827,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [41.516956, -68.690681, 6.240738],
+          "RelativeRotationEuler" : [-66.703117, -58.517582, 69.836418],
+          "RelativeScale" : [7.000000, 7.000000, 7.000000],
+          "StaticMesh" : "Content/Resources/Model\\Sphere",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4828,
+          "ObjectName" : "USphereComponent_1",
+          "ParentId" : 4827,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, 0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "SphereRadius" : 1.539001,
+          "Type" : "USphereComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4827,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    },
+    "4829" : {
+      "ObjectName" : "AStaticMeshActor_3",
+      "OwnedComponents" : [{
+          "Id" : 4831,
+          "MaterialSlots" : [{
+              "AssetPath" : "uberlit",
+              "Type" : "UMaterial"
+            }],
+          "ObjectName" : "UStaticMeshComponent_8",
+          "ParentId" : 0,
+          "RelativeLocation" : [26.981686, -13.773178, 23.969275],
+          "RelativeRotationEuler" : [-66.703117, -58.517582, 69.836418],
+          "RelativeScale" : [7.000000, 7.000000, 7.000000],
+          "StaticMesh" : "Content/Resources/Model\\Sphere",
+          "Type" : "UStaticMeshComponent",
+          "bBlockComponent" : false,
+          "bCastShadows" : true,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bTickEnabled" : true
+        }, {
+          "Id" : 4832,
+          "ObjectName" : "USphereComponent_1",
+          "ParentId" : 4831,
+          "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+          "RelativeRotationEuler" : [0.000000, 0.000000, 0.000000],
+          "RelativeScale" : [1.000000, 1.000000, 1.000000],
+          "SphereRadius" : 1.539001,
+          "Type" : "USphereComponent",
+          "bBlockComponent" : false,
+          "bGenerateOverlapEvents" : true,
+          "bHiddenInGame" : false,
+          "bIsActive" : true,
+          "bIsVisible" : true,
+          "bShapeHiddenInGame" : true,
+          "bShapeIsVisible" : true,
+          "bTickEnabled" : true
+        }],
+      "RootComponentId" : 4831,
+      "Tag" : "",
+      "Type" : "AStaticMeshActor",
+      "bActorHiddenInGame" : false,
+      "bActorIsActive" : true
+    }
+  },
+  "NextUUID" : 4840,
+  "PerspectiveCamera" : {
+    "FOV" : [60.000000],
+    "FarClip" : [2000.000000],
+    "Location" : [-17.352678, -38.640648, 27.067707],
+    "NearClip" : [0.100000],
+    "Rotation" : [0.000000, 51.000164, -44.499096]
+  },
+  "Version" : 1
+}

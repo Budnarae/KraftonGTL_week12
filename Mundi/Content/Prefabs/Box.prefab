@@ -1,0 +1,46 @@
+{
+  "ObjectName" : "스태틱 메시_1",
+  "OwnedComponents" : [{
+      "Id" : 2454,
+      "MaterialSlots" : [{
+          "AssetPath" : "uberlit",
+          "Type" : "UMaterial"
+        }],
+      "ObjectName" : "UStaticMeshComponent_8",
+      "ParentId" : 0,
+      "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+      "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+      "RelativeScale" : [10.000000, 10.000000, 1.000000],
+      "StaticMesh" : "Content/Resources/Model\\Cube",
+      "Type" : "UStaticMeshComponent",
+      "bBlockComponent" : false,
+      "bCastShadows" : true,
+      "bGenerateOverlapEvents" : true,
+      "bHiddenInGame" : false,
+      "bIsActive" : true,
+      "bIsVisible" : true,
+      "bTickEnabled" : true
+    }, {
+      "BoxExtent" : [0.500000, 0.500000, 0.500000],
+      "Id" : 2455,
+      "ObjectName" : "UBoxComponent_1",
+      "ParentId" : 2454,
+      "RelativeLocation" : [0.000000, 0.000000, 0.000000],
+      "RelativeRotationEuler" : [0.000000, -0.000000, 0.000000],
+      "RelativeScale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "UBoxComponent",
+      "bBlockComponent" : false,
+      "bGenerateOverlapEvents" : true,
+      "bHiddenInGame" : false,
+      "bIsActive" : true,
+      "bIsVisible" : true,
+      "bShapeHiddenInGame" : true,
+      "bShapeIsVisible" : true,
+      "bTickEnabled" : true
+    }],
+  "RootComponentId" : 2454,
+  "Tag" : "",
+  "Type" : "AStaticMeshActor",
+  "bActorHiddenInGame" : false,
+  "bActorIsActive" : true
+}
